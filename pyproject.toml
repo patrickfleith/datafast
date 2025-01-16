@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=62.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datafast"
+version = "0.0.1"
+description = "A Python package for generating data quickly"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Patrick Fleith" }
+]
+keywords = ["dataset", "text", "generation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11"
+]
+dependencies = []
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+
+[tool.ruff]
+# Basic ruff configuration
+select = ["E", "F", "C", "W"]
+ignore = []
+exclude = ["venv", ".venv", "build", "dist", "__pycache__"]
+line-length = 88
+
+[project.urls]
+"Documentation" = "https://github.com/patrickfleith/datafast"
+"Issue Tracker" = "https://github.com/patrickfleith/datafast/issues"
+"Discussions" = "https://github.com/patrickfleith/datafast/discussions"

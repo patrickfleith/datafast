@@ -10,4 +10,4 @@ def random_string(length: int = 10) -> str:
     :return: A random string of given length.
     """
     chars = string.ascii_lowercase + string.digits
-    return ''.join(random.choice(chars) for _ in range(length))
+    return "".join(random.choice(chars) for _ in range(length))
