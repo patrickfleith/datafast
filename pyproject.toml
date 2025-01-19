@@ -21,7 +21,12 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11"
 ]
-dependencies = []
+dependencies = [
+    "datasets",
+    "instructor",
+    "google-generativeai"
+    "python-dotenv"
+]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
