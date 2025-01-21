@@ -134,6 +134,21 @@ def google_generator(prompt : str, model_id :str, response_model : BaseModel):
 
 
 def openai_generator(prompt : str, model_id :str, response_model : BaseModel):
+    """Generate responses using OpenAI models with structured output.
+
+    Args:
+        prompt (str): The input prompt to send to the model
+        model_id (str): The OpenAI model identifier (e.g., "gpt-4")
+        response_model (BaseModel): Pydantic model defining the expected response structure
+
+    Returns:
+        BaseModel: Structured response matching the provided response_model
+
+    Raises:
+        ValueError: If API key is missing or client initialization fails
+        RuntimeError: If model generation fails
+        Exception: For unexpected errors during execution
+    """
     
     openai_model = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
@@ -149,4 +164,3 @@ def openai_generator(prompt : str, model_id :str, response_model : BaseModel):
     )
 
     return model_response
-
