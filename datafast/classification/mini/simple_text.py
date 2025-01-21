@@ -7,6 +7,7 @@ import random
 import uuid
 import time
 import os
+from llm_utils import anthropic_generator, google_generator, openai_generator
 
 # Load the environment variables from secrets.env file
 env_path = Path(__file__).parents[3] / "secrets.env"
@@ -17,13 +18,7 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 
-
-MODEL_ID = 'gemini-1.5-flash'
-
-import google.generativeai as genai
-genai.configure(api_key=GOOGLE_API_KEY)
-google_model = genai.GenerativeModel(model_name=MODEL_ID)
-
+from config import MODEL_IDS
 
 labels_listing = [label['name'] for label in config.LABELS]
 
@@ -43,24 +38,26 @@ class TextEntries(BaseModel):
     )
 
 
-client = instructor.from_gemini(
-    client=google_model,
-    mode=instructor.Mode.GEMINI_JSON,
-)
-
-
 def initialise_dataset(keys : list[str] = ["uuid", "text", "label", "model", "language"]) -> dict:
     return {key: [] for key in keys}
+
+
+def get_generator_function(provider: str):
+    """Get the appropriate generator function based on the provider."""
+    generator_map = {
+        'google': google_generator,
+        'anthropic': anthropic_generator,
+        'openai': openai_generator
+    }
+    return generator_map.get(provider)
 
 
 dataset_dict = initialise_dataset()
 print(dataset_dict)
 
-
 rpm_counter = 0
 
 for LABEL in config.LABELS:
-
     prompt = config.PROMPT_TEMPLATE.format(
         num_samples=NUM_SAMPLES,
         labels_listing=labels_listing,
@@ -71,42 +68,55 @@ for LABEL in config.LABELS:
     for _, language in config.LANGUAGES.items():
         language_specific_prompt = prompt + f" Your answers must be in {language}."
 
-        try:
-            model_response = client.messages.create(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a helpful AI Assistant"},
-                    {
-                        "role": "user",
-                        "content": language_specific_prompt},
-                ],
-                response_model=TextEntries
-            )
-
+        for model_config in MODEL_IDS:
+            provider = model_config['provider']
+            model_id = model_config['model_id']
+            
             try:
-                for entry in model_response.entries:
-                    dataset_dict['uuid'].append(str(uuid.uuid4()))  # Generate a unique ID
-                    dataset_dict['text'].append(entry)
-                    dataset_dict['label'].append(LABEL['label_id'])
-                    dataset_dict['model'].append(MODEL_ID)
-                    dataset_dict['language'].append(language)
+                generator_func = get_generator_function(provider)
+                if generator_func is None:
+                    print(f"Unknown provider: {provider}")
+                    continue
 
-                rpm_counter += 1
-            except:
-                print("Error saving record in dataset dictionary")
+                # Call the appropriate generator with provider-specific arguments
+                if provider == 'anthropic':
+                    model_response = generator_func(
+                        prompt=language_specific_prompt,
+                        model_id=model_id,
+                        temperature=0.3,
+                        max_tokens=4096,
+                        response_model=TextEntries
+                    )
+                else:
+                    model_response = generator_func(
+                        prompt=language_specific_prompt,
+                        model_id=model_id,
+                        response_model=TextEntries
+                    )
 
-        except:
-            print("Error calling model")
-            time.sleep(10) # wait for 10s if an exception occured.
-            pass
+                try:
+                    for entry in model_response.entries:
+                        dataset_dict['uuid'].append(str(uuid.uuid4()))
+                        dataset_dict['text'].append(entry)
+                        dataset_dict['label'].append(LABEL['label_id'])
+                        dataset_dict['model'].append(model_id)
+                        dataset_dict['language'].append(language)
 
-        print(f"Generated a total of {rpm_counter*NUM_SAMPLES} instances so far")
+                    rpm_counter += 1
+                except Exception as e:
+                    print(f"Error saving record in dataset dictionary: {str(e)}")
 
-    if rpm_counter >= 14:
-        print("Quota pause...")
-        time.sleep(60)
-        rpm_counter = 0
+            except Exception as e:
+                print(f"Error calling {provider} model {model_id}: {str(e)}")
+                time.sleep(10)
+                continue
+
+            print(f"Generated a total of {rpm_counter*NUM_SAMPLES} instances so far")
+
+        if rpm_counter >= 14:
+            print("Quota pause...")
+            time.sleep(60)
+            rpm_counter = 0
 
 
 from datasets import Dataset
