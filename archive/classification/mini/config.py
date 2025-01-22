@@ -1,3 +1,6 @@
+HF_USERNAME = "patrickfleith"
+DATASET_NAME = "text-classficiation-generation-mini-demo"
+
 LABELS = [
     {
         'label_id': 0,
