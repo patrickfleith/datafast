@@ -7,143 +7,171 @@ from dotenv import load_dotenv
 import instructor
 import google.generativeai as genai
 from openai import OpenAI
+from abc import ABC, abstractmethod
 
-def anthropic_generator(prompt : str, model_id :str, response_model : BaseModel, api_key: str = None, max_tokens: int = 2056, temperature: float = 0.3):
-    """Generate responses using Anthropic's Claude models with structured output.
-
-    Args:
-        prompt (str): The input prompt to send to the model
-        model_id (str): The Anthropic model identifier (e.g., "claude-3-opus-20240229")
-        response_model (BaseModel): Pydantic model defining the expected response structure
-        api_key (str): Anthropic API key (optional)
-        max_tokens (int, optional): Maximum number of tokens in the response. Defaults to 2056.
-        temperature (float, optional): Sampling temperature. Defaults to 0.3.
-
-    Returns:
-        BaseModel: Structured response matching the provided response_model
-
-    Raises:
-        ValueError: If API key is missing or client initialization fails
-        RuntimeError: If model generation fails
-        Exception: For unexpected errors during execution
-    """
-    try:
-        ANTHROPIC_API_KEY = api_key or os.getenv('ANTHROPIC_API_KEY')
-        if not ANTHROPIC_API_KEY:
-            raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
-
+class LLMProvider(ABC):
+    """Base class for LLM providers."""
+    
+    ENV_KEY_NAME: str = ""  # Override in subclasses
+    DEFAULT_MODEL: str = ""  # Override in subclasses
+    
+    def __init__(self, model_id: str | None = None, api_key: str | None = None):
+        self.model_id = model_id or self.DEFAULT_MODEL
+        self.api_key = api_key or self._get_api_key()
+        self.client = self._initialize_client()
+    
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Provider name"""
+        pass
+    
+    def _get_api_key(self) -> str:
+        """Get API key from environment"""
+        api_key = os.getenv(self.ENV_KEY_NAME)
+        if not api_key:
+            raise ValueError(f"{self.ENV_KEY_NAME} environment variable is not set")
+        return api_key
+    
+    @abstractmethod
+    def _initialize_client(self):
+        """Initialize the LLM client"""
+        pass
+    
+    def generate(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+        """Generate a structured response from the LLM.
+        
+        Args:
+            prompt: The input prompt to send to the model
+            response_format: A Pydantic model class defining the expected response structure
+            
+        Returns:
+            An instance of the response_format model containing the structured response
+            
+        Example:
+            class MovieReview(BaseModel):
+                rating: int
+                text: str
+            
+            provider = create_provider('anthropic')  # Uses default model
+            review = provider.generate("Review Inception", MovieReview)
+            print(f"Rating: {review.rating}")
+        """
         try:
-            anthropic_model = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-            anthropic_client = instructor.from_anthropic(anthropic_model, mode=instructor.Mode.ANTHROPIC_TOOLS)
+            return self._generate_impl(prompt, response_format)
+        except Exception as e:
+            raise RuntimeError(f"Error generating response with {self.name}: {str(e)}")
+    
+    @abstractmethod
+    def _generate_impl(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+        """Implementation of generate() to be provided by subclasses"""
+        pass
+
+class AnthropicProvider(LLMProvider):
+    """Claude provider for structured text generation."""
+    
+    ENV_KEY_NAME = "ANTHROPIC_API_KEY"
+    DEFAULT_MODEL = "claude-3-sonnet-20240229"
+    
+    def __init__(self, model_id: str | None = None, api_key: str | None = None,
+                 max_tokens: int = 2056, temperature: float = 0.3):
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        super().__init__(model_id, api_key)
+    
+    @property
+    def name(self) -> str:
+        return "anthropic"
+    
+    def _initialize_client(self):
+        try:
+            anthropic_model = anthropic.Anthropic(api_key=self.api_key)
+            return instructor.from_anthropic(anthropic_model, mode=instructor.Mode.ANTHROPIC_TOOLS)
         except Exception as e:
             raise ValueError(f"Error initializing Anthropic client: {str(e)}")
-
-        try:
-            model_response = anthropic_client.messages.create(
-                model=model_id,
-                max_tokens=max_tokens,
-                messages=get_messages(prompt),
-                temperature=temperature,
-                response_model=response_model,
-            )
-            return model_response
-        except Exception as e:
-            raise RuntimeError(f"Error generating response: {str(e)}")
-
-    except ValueError as ve:
-        # Handle configuration and validation errors
-        raise ve
-    except RuntimeError as re:
-        # Handle model generation errors
-        raise re
-    except Exception as e:
-        # Handle any unexpected errors
-        raise RuntimeError(f"Unexpected error in anthropic_generator: {str(e)}")
-
-
-def google_generator(prompt : str, model_id :str, response_model : BaseModel, api_key: str = None):
-    """Generate responses using Google's Gemini models with structured output.
-
-    Args:
-        prompt (str): The input prompt to send to the model
-        model_id (str): The Gemini model identifier (e.g., "gemini-pro")
-        response_model (BaseModel): Pydantic model defining the expected response structure
-        api_key (str): Gemini API key (optional)
-
-    Returns:
-        BaseModel: Structured response matching the provided response_model
-
-    Raises:
-        ValueError: If API key is missing or client initialization fails
-        RuntimeError: If model generation fails
-        Exception: For unexpected errors during execution
-    """
-    try:
-        GOOGLE_API_KEY = api_key or os.getenv('GOOGLE_API_KEY')
-        if not GOOGLE_API_KEY:
-            raise ValueError("GOOGLE_API_KEY environment variable is not set")
-
-        genai.configure(api_key=GOOGLE_API_KEY)
-        
-        try:
-            google_model = genai.GenerativeModel(model_name=model_id)
-        except Exception as e:
-            raise ValueError(f"Invalid model ID or model initialization error: {str(e)}")
-
-        google_client = instructor.from_gemini(
-            client=google_model,
-            mode=instructor.Mode.GEMINI_JSON
+    
+    def _generate_impl(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+        return self.client.messages.create(
+            model=self.model_id,
+            max_tokens=self.max_tokens,
+            messages=get_messages(prompt),
+            temperature=self.temperature,
+            response_model=response_format,
         )
 
+class GoogleProvider(LLMProvider):
+    """Google Gemini provider for structured text generation."""
+    
+    ENV_KEY_NAME = "GOOGLE_API_KEY"
+    DEFAULT_MODEL = "gemini-pro"
+    
+    @property
+    def name(self) -> str:
+        return "google"
+    
+    def _initialize_client(self):
         try:
-            model_response = google_client.messages.create(
-                messages=get_messages(prompt),
-                response_model=response_model,
+            genai.configure(api_key=self.api_key)
+            google_model = genai.GenerativeModel(model_name=self.model_id)
+            return instructor.from_gemini(
+                client=google_model,
+                mode=instructor.Mode.GEMINI_JSON
             )
-            return model_response
         except Exception as e:
-            raise RuntimeError(f"Error generating response: {str(e)}")
+            raise ValueError(f"Invalid model ID or model initialization error: {str(e)}")
+    
+    def _generate_impl(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+        return self.client.messages.create(
+            messages=get_messages(prompt),
+            response_model=response_format,
+        )
 
-    except ValueError as ve:
-        # Handle configuration and validation errors
-        raise ve
-    except RuntimeError as re:
-        # Handle model generation errors
-        raise re
-    except Exception as e:
-        # Handle any unexpected errors
-        raise RuntimeError(f"Unexpected error in google_generator: {str(e)}")
+class OpenAIProvider(LLMProvider):
+    """OpenAI provider for structured text generation."""
+    
+    ENV_KEY_NAME = "OPENAI_API_KEY"
+    DEFAULT_MODEL = "gpt-4"
+    
+    @property
+    def name(self) -> str:
+        return "openai"
+    
+    def _initialize_client(self):
+        try:
+            openai_model = OpenAI(api_key=self.api_key)
+            return instructor.from_openai(
+                client=openai_model,
+                mode=instructor.Mode.JSON
+            )
+        except Exception as e:
+            raise ValueError(f"Error initializing OpenAI client: {str(e)}")
+    
+    def _generate_impl(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+        return self.client.chat.completions.create(
+            model=self.model_id,
+            messages=get_messages(prompt),
+            response_model=response_format,
+        )
 
-
-def openai_generator(prompt : str, model_id :str, response_model : BaseModel, api_key: str = None):
-    """Generate responses using OpenAI models with structured output.
-
+def create_provider(provider: str, model_id: str | None = None, **kwargs) -> LLMProvider:
+    """Create an LLM provider for structured text generation.
+    
     Args:
-        prompt (str): The input prompt to send to the model
-        model_id (str): The OpenAI model identifier (e.g., "gpt-4")
-        response_model (BaseModel): Pydantic model defining the expected response structure
-        api_key (str): OpenAI API key (optional)
-
+        provider: Provider name ('anthropic', 'google', or 'openai')
+        model_id: Optional model identifier. If not provided, uses provider's default
+        **kwargs: Additional provider-specific arguments
+        
     Returns:
-        BaseModel: Structured response matching the provided response_model
-
-    Raises:
-        ValueError: If API key is missing or client initialization fails
-        RuntimeError: If model generation fails
-        Exception: For unexpected errors during execution
+        An initialized LLM provider
     """
+    provider_map = {
+        'anthropic': AnthropicProvider,
+        'google': GoogleProvider,
+        'openai': OpenAIProvider
+    }
     
-    openai_model = OpenAI(api_key=api_key or os.getenv('OPENAI_API_KEY'))
+    provider_class = provider_map.get(provider.lower())
+    if not provider_class:
+        raise ValueError(f"Unknown provider: {provider}")
     
-    openai_client = instructor.from_openai(
-        client=openai_model,
-        mode=instructor.Mode.JSON
-    )
-    
-    model_response = openai_client.chat.completions.create(
-        model=model_id,
-        messages=get_messages(prompt),
-        response_model=response_model,
-    )
-
-    return model_response
+    return provider_class(model_id=model_id, **kwargs)
