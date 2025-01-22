@@ -4,7 +4,7 @@ from typing import List
 from datafast.providers.base import LLMProvider
 from datafast.prompts import classification_prompts
 from datafast.schema.config import ClassificationConfig
-from datafast.schema.data_rows import TextClassificationRow
+from datafast.schema.data_rows import TextClassificationRow, LabelSource
 from datafast.expanders import expand_prompts
 
 
@@ -66,25 +66,25 @@ class TextClassificationDataset(DatasetBase):
             for llm in llms:
                 try:
                     response_text = llm.generate(expanded_prompt)
+                    labels = []  # Assuming labels are empty for now
                     row = TextClassificationRow(
                         text=response_text,
-                        provider=llm.name,
+                        labels=labels,
                         model_id=llm.model_id,
-                        metadata=meta
+                        metadata=meta,
+                        label_source=LabelSource.SYNTHETIC
                     )
                     self.data_rows.append(row)
                     
-                    # Partial save if needed
-                    if len(self.data_rows) % self.config.save_frequency == 0:
-                        save_rows_partial(self.data_rows, self.config.output_file)
                 except Exception as e:
                     # Log or handle errors, skip
-                    print(f"Error with provider {llm.name}: {e}")
+                    print(f"Error with llm provider {llm.name}: {e}")
         
         # Final save at the end
         final_save(self.data_rows, self.config.output_file)
         return self
 
+
     def _get_default_prompts(self) -> List[str]:
         """Return the default prompt templates for text classification."""
-        return classification_prompts.DEFAULT_PROMPTS
+        return classification_prompts.DEFAULT_TEMPLATES
