@@ -2,10 +2,6 @@ import itertools
 import random
 from math import prod
 
-class ExpandPromptsError(Exception):
-    """Base exception for expand_prompts function."""
-    pass
-
 def expand_prompts(
     prompt_templates: list[str],
     placeholders: dict[str, list[str]],

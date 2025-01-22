@@ -87,4 +87,4 @@ class TextClassificationDataset(DatasetBase):
 
     def _get_default_prompts(self) -> List[str]:
         """Return the default prompt templates for text classification."""
-        return DEFAULT_PROMPTS
+        return classification_prompts.DEFAULT_PROMPTS
