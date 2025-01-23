@@ -1,4 +1,4 @@
-from llm_utils import get_messages
+from .llm_utils import get_messages
 import anthropic
 from pydantic import BaseModel
 import os
@@ -71,7 +71,7 @@ class AnthropicProvider(LLMProvider):
     """Claude provider for structured text generation."""
     
     ENV_KEY_NAME = "ANTHROPIC_API_KEY"
-    DEFAULT_MODEL = "claude-3-sonnet-20240229"
+    DEFAULT_MODEL = "claude-3-5-haiku-latest"
     
     def __init__(self, model_id: str | None = None, api_key: str | None = None,
                  max_tokens: int = 2056, temperature: float = 0.3):
@@ -103,7 +103,7 @@ class GoogleProvider(LLMProvider):
     """Google Gemini provider for structured text generation."""
     
     ENV_KEY_NAME = "GOOGLE_API_KEY"
-    DEFAULT_MODEL = "gemini-pro"
+    DEFAULT_MODEL = "gemini-1.5-flash"
     
     @property
     def name(self) -> str:
@@ -130,7 +130,7 @@ class OpenAIProvider(LLMProvider):
     """OpenAI provider for structured text generation."""
     
     ENV_KEY_NAME = "OPENAI_API_KEY"
-    DEFAULT_MODEL = "gpt-4"
+    DEFAULT_MODEL = "gpt-4o-mini"
     
     @property
     def name(self) -> str:

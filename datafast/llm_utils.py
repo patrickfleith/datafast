@@ -1,5 +1,3 @@
-from llms import create_provider, LLMProvider
-
 def get_messages(prompt: str) -> list[dict[str, str]]:
     """Convert a single prompt into a message list format expected by LLM APIs.
 
@@ -14,7 +12,7 @@ def get_messages(prompt: str) -> list[dict[str, str]]:
         {"role": "user", "content": prompt},
     ]
 
-def get_provider(provider: str, model_id: str, **kwargs) -> LLMProvider:
+def get_provider(provider: str, model_id: str, **kwargs):
     """Get an LLM provider instance.
     
     Args:
