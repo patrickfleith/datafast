@@ -14,7 +14,7 @@ LabelType = Union[str, list[str], list[int]]
 
 class TextClassificationRow(BaseModel):
     text: str
-    labels: LabelType  # Must be either str, list[str], or list[int]
+    label: LabelType  # Must be either str, list[str], or list[int]
     model_id: Optional[str] = None
     label_source: LabelSource = LabelSource.SYNTHETIC
     confidence_scores: Optional[dict[str, float]] = Field(default_factory=dict)
