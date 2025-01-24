@@ -6,75 +6,89 @@ def expand_prompts(
     prompt_templates: list[str],
     placeholders: dict[str, list[str]],
     combinatorial: bool = True,
-    num_samples: int = 1
+    num_samples: int = 1,
+    max_samples: int = 1000,
 ) -> list[tuple[str, dict[str, str]]]:
-    """Expand template strings by filling in placeholders with provided values.
-
-    This function generates variations of prompt templates by substituting placeholders
-    with values using two possible strategies: combinatorial expansion or random sampling.
-
+    """Generate expanded prompts by filling template placeholders with provided values.
+    
+    This versatile function supports two modes of operation:
+    1. Combinatorial Mode (default): Generates all possible combinations per template
+    2. Random Sampling Mode: Creates a specified number of random expansions across templates
+    
+    Key Features:
+    - Handles multiple templates simultaneously
+    - Supports both exhaustive and randomized sampling
+    - Provides detailed metadata about chosen values
+    - Built-in safety limits to prevent memory issues
+    - Preserves templates without placeholders
+    
     Args:
-        prompt_templates: List of template strings containing placeholders in {placeholder_name} format.
-        placeholders: Dictionary mapping placeholder names to lists of possible values.
-        combinatorial: If True, generates all possible combinations using cartesian product.
-                      If False, generates random samples. Default is True.
-        num_samples: Number of random variations to generate when combinatorial=False. Default is 1.
-
+        prompt_templates: Templates containing {placeholder} format strings
+            Example: ["The {color} {animal} jumps", "I love {food}"]
+        placeholders: Mapping of placeholder names to their possible values
+            Example: {"color": ["red", "blue"], "animal": ["fox", "dog"], "food": ["pizza"]}
+        combinatorial: If True, generates all possible combinations (default)
+            If False, performs random sampling based on num_samples
+        num_samples: Number of random samples to generate when combinatorial=False
+            Ignored when combinatorial=True
+        max_samples: Safety limit for total number of generated prompts
+            Applies to both combinatorial and random sampling modes
+    
     Returns:
-        list[tuple[str, dict[str, str]]]: List of tuples where each tuple contains:
-            - expanded_prompt: Template with placeholders filled in
-            - metadata_dict: Dictionary recording which values were chosen for each placeholder
-
-    Examples:
-        >>> templates = ["The {color} {animal} jumps"]
-        >>> values = {
-        ...     "color": ["red", "blue"],
-        ...     "animal": ["fox", "rabbit"]
-        ... }
+        A list of tuples, each containing:
+        - expanded_prompt: The fully expanded template string
+        - metadata: Dictionary mapping used placeholders to their chosen values
         
-        # Combinatorial expansion (all possible combinations):
-        >>> expand_prompts(templates, values, combinatorial=True)
+        Example:
         [
             ("The red fox jumps", {"color": "red", "animal": "fox"}),
-            ("The red rabbit jumps", {"color": "red", "animal": "rabbit"}),
-            ("The blue fox jumps", {"color": "blue", "animal": "fox"}),
-            ("The blue rabbit jumps", {"color": "blue", "animal": "rabbit"})
+            ("The blue dog jumps", {"color": "blue", "animal": "dog"}),
+            ("I love pizza", {"food": "pizza"})
         ]
-
-        # Random sampling:
-        >>> expand_prompts(templates, values, combinatorial=False, num_samples=2)
-        [
-            ("The blue fox jumps", {"color": "blue", "animal": "fox"}),
-            ("The red rabbit jumps", {"color": "red", "animal": "rabbit"})
-        ]
-
-    Notes:
-        - Only placeholders that actually appear in a template are considered
-        - Each template is processed independently
-        - The function uses Python's string.format() for template expansion
-        - When combinatorial=True, be cautious with large numbers of placeholders
-          or values as the number of combinations grows exponentially
+    
+    Raises:
+        ValueError: If the total possible combinations or requested samples exceed max_samples
+    
+    Performance Notes:
+    - Memory usage scales with the number of combinations/samples
+    - For large combinatorial spaces, consider using random sampling instead
     """
-    all_expanded = []
+    if not combinatorial and num_samples > max_samples:
+        raise ValueError(f"num_samples ({num_samples}) cannot exceed max_samples ({max_samples})")
 
-    for template in prompt_templates:
-        # Identify placeholders actually used in this template
-        used_keys = [k for k in placeholders if f"{{{k}}}" in template]
+    if combinatorial:
+        total_combinations = sum(
+            prod(len(placeholders[k]) for k in placeholders if f"{{{k}}}" in template) or 1
+            for template in prompt_templates
+        )
+        
+        if total_combinations > max_samples:
+            raise ValueError(
+                f"Total possible combinations ({total_combinations}) exceeds "
+                f"max_samples ({max_samples}). Consider using combinatorial=False "
+                f"with num_samples to randomly sample instead."
+            )
 
-        if combinatorial:
-            # cartesian product across used placeholders
+    expanded_prompts = []
+
+    if combinatorial:
+        for template in prompt_templates:
+            used_keys = [k for k in placeholders if f"{{{k}}}" in template]
+            
+            if not used_keys:
+                expanded_prompts.append((template, {}))
+                continue
+
             value_lists = [placeholders[k] for k in used_keys]
-            for combo in itertools.product(*value_lists):
-                combo_dict = dict(zip(used_keys, combo))
-                filled_prompt = template.format(**combo_dict)
-                all_expanded.append((filled_prompt, combo_dict))
-        else:
-            # random sampling approach
-            for _ in range(num_samples):
-                chosen = {}
-                for k in used_keys:
-                    chosen[k] = random.choice(placeholders[k])
-                filled_prompt = template.format(**chosen)
-                all_expanded.append((filled_prompt, chosen))
+            for values in itertools.product(*value_lists):
+                combo_dict = dict(zip(used_keys, values))
+                expanded_prompts.append((template.format(**combo_dict), combo_dict))
+    else:
+        num_templates = len(prompt_templates)
+        for i in range(num_samples):
+            template = prompt_templates[i % num_templates]
+            used_keys = [k for k in placeholders if f"{{{k}}}" in template]
+            chosen_values = {key: random.choice(placeholders[key]) for key in used_keys}
+            expanded_prompts.append((template.format(**chosen_values), chosen_values))
 
-    return all_expanded
+    return expanded_prompts
