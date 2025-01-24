@@ -21,7 +21,19 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11"
 ]
-dependencies = []
+dependencies = [
+    "datasets",
+    "instructor",
+    "google-generativeai",
+    "python-dotenv",
+    "anthropic",
+    "openai",
+    "pydantic"
+]
+
+[tool.setuptools.packages.find]
+include = ["datafast*"]
+exclude = ["archive*"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

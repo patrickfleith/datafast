@@ -4,10 +4,14 @@ import string
 
 def random_string(length: int = 10) -> str:
     """
-    Generate a random string of lowercase letters and digits.
+    Generates a random string of lowercase letters and digits.
 
-    :param length: The length of the generated string.
-    :return: A random string of given length.
+    Args:
+        length (int): The length of the generated string.
+
+    Returns:
+        str: A random string of the given length.
     """
     chars = string.ascii_lowercase + string.digits
     return "".join(random.choice(chars) for _ in range(length))
+
