@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "datafast"
 version = "0.0.1"
-description = "A Python package for generating data quickly"
+description = "A Python package for synthetic text dataset generation"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [

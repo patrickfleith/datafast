@@ -1,18 +1,5 @@
 # datafast
 
-**datafast** will be a Python package for generating data quickly.
+**datafast** will be a Python package for synthetic data generation
 
-## Installation
-
-```bash
-pip install datafast
-```
-
-## Usage
-
-```python
-from datafast.generators import random_string
-
-text = random_string()
-print(text)
-```
+- WIP: don't use for now 😅

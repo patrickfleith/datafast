@@ -30,9 +30,9 @@ def main():
 
     # 2. Create LLM providers (will use default models)
     providers = [
-        OpenAIProvider(),  # default to gpt-4o-mini
-        AnthropicProvider(),  # default to claude-3-5-haiku-latest
-        GoogleProvider(),  # default to gemini-1.5-flash
+        OpenAIProvider(model_id='gpt-4o-mini'),
+        AnthropicProvider(model_id='claude-3-5-sonnet-latest'),
+        GoogleProvider(model_id='gemini-1.5-flash'),
     ]
 
     # 3. Generate the dataset

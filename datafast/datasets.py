@@ -212,6 +212,7 @@ class TextClassificationDataset(DatasetBase):
                                 label_source=LabelSource.SYNTHETIC,
                             )
                             self.data_rows.append(row)
+                        print(f" Generated total of {len(self.data_rows)} examples")
                             
                     except Exception as e:
                         print(f"Error with llm provider {llm.name}: {e}")
