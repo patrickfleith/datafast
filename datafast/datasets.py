@@ -174,48 +174,54 @@ class TextClassificationDataset(DatasetBase):
         # Get labels listing for context in prompts
         labels_listing = [label['name'] for label in self.config.classes]
         
-        # For each label, generate examples using all providers
+        # Get languages from config, default to English if not specified
+        languages = self.config.languages or {'en': 'English'}
+        
+        # For each label and language, generate examples using all providers
         for label in self.config.classes:
-            # 1. Create base prompt for this label
-            base_prompts = self.config.prompts or self._get_default_prompts()
-            base_prompts = [
-                prompt.format(
-                    num_samples=self.config.num_samples_per_prompt,
-                    labels_listing=labels_listing,
-                    label_name=label["name"],
-                    label_description=label["description"])
-                for prompt in base_prompts
-            ]
-            
-            # 2. Expand prompts
-            expansions = expand_prompts(
-                prompt_templates=base_prompts,
-                **self.config.expansion.model_dump()
-            )
+            for lang_code, language_name in languages.items():
+                # 1. Create base prompt for this label and language
+                base_prompts = self.config.prompts or self._get_default_prompts()
+                base_prompts = [
+                    prompt.format(
+                        num_samples=self.config.num_samples_per_prompt,
+                        labels_listing=labels_listing,
+                        label_name=label["name"],
+                        label_description=label["description"],
+                        language_name=language_name)
+                    for prompt in base_prompts
+                ]
+                
+                # 2. Expand prompts
+                expansions = expand_prompts(
+                    prompt_templates=base_prompts,
+                    **self.config.expansion.model_dump()
+                )
 
-            # 3. For each expanded prompt, call each provider
-            for expanded_prompt, meta in expansions:
-                for llm in llms:
-                    try:
-                        # Generate multiple examples using the LLM
-                        response = llm.generate(
-                            expanded_prompt,
-                            response_format=TextEntries
-                        )
-                        
-                        # Create a row for each generated example
-                        for text in response.entries:
-                            row = TextClassificationRow(
-                                text=text,
-                                label=label["name"],
-                                model_id=llm.model_id,
-                                label_source=LabelSource.SYNTHETIC,
+                # 3. For each expanded prompt, call each provider
+                for expanded_prompt, meta in expansions:
+                    for llm in llms:
+                        try:
+                            # Generate multiple examples using the LLM
+                            response = llm.generate(
+                                expanded_prompt,
+                                response_format=TextEntries
                             )
-                            self.data_rows.append(row)
-                        print(f" Generated total of {len(self.data_rows)} examples")
                             
-                    except Exception as e:
-                        print(f"Error with llm provider {llm.name}: {e}")
+                            # Create a row for each generated example
+                            for text in response.entries:
+                                row = TextClassificationRow(
+                                    text=text,
+                                    label=label["name"],
+                                    model_id=llm.model_id,
+                                    label_source=LabelSource.SYNTHETIC,
+                                    metadata={"language": lang_code}  # Store language info
+                                )
+                                self.data_rows.append(row)
+                            print(f" Generated total of {len(self.data_rows)} examples")
+                                
+                        except Exception as e:
+                            print(f"Error with llm provider {llm.name}: {e}")
         
         # Final save at the end
         self.to_jsonl(self.config.output_file)
