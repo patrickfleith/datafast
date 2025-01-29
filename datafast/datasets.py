@@ -177,10 +177,10 @@ class TextClassificationDataset(DatasetBase):
         # Get languages from config, default to English if not specified
         languages = self.config.languages or {'en': 'English'}
         
-        # For each label and language, generate examples using all providers
+        # For each label, generate examples using all providers
         for label in self.config.classes:
             for lang_code, language_name in languages.items():
-                # 1. Create base prompt for this label and language
+                # 1. Create base prompts for this label and language
                 base_prompts = self.config.prompts or self._get_default_prompts()
                 base_prompts = [
                     prompt.format(
@@ -188,11 +188,11 @@ class TextClassificationDataset(DatasetBase):
                         labels_listing=labels_listing,
                         label_name=label["name"],
                         label_description=label["description"],
-                        language_name=language_name)
+                        language_name=language_name)  # Directly use language name
                     for prompt in base_prompts
                 ]
-                
-                # 2. Expand prompts
+
+                # 2. Expand prompts with configured variations
                 expansions = expand_prompts(
                     prompt_templates=base_prompts,
                     **self.config.expansion.model_dump()
