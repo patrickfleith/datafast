@@ -175,3 +175,5 @@ cython_debug/
 secrets.env
 .windsurfrules
 IDEAS.md
+
+*.jsonl
