@@ -53,24 +53,6 @@ def main():
 
     # 3. Generate the dataset
     dataset = TextClassificationDataset(config)
-    
-    # Debug: Print the expanded prompts
-    labels_listing = [label['name'] for label in config.classes]
-    for label in config.classes:
-        base_prompt = config.prompts[0].format(
-            num_samples=config.num_samples_per_prompt,
-            labels_listing=labels_listing,
-            label_name=label["name"],
-            label_description=label["description"],
-            language_name='English'
-        )
-        expansions = expand_prompts(
-            prompt_templates=[base_prompt],
-            **config.expansion.model_dump()
-        )
-        print(f"\nExpanded prompts for {label['name']}:")
-        for prompt, meta in expansions:
-            print(f"\n--- Prompt ---\n{prompt}\n--- Meta ---\n{meta}")
 
     dataset.generate(providers)
 
