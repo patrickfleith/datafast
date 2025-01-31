@@ -1,7 +1,7 @@
 from datafast.datasets import TextClassificationDataset
 from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
-from datafast.llms import create_provider, OpenAIProvider, AnthropicProvider, GoogleProvider
-from datafast.expanders import expand_prompts
+from datafast.llms import OpenAIProvider
+
 
 def main():
     # 1. Configure dataset generation with prompt expansion
@@ -9,24 +9,30 @@ def main():
         classes=[
             {
                 "name": "positive",
-                "description": "Text expressing positive emotions, approval, or favorable opinions"
+                "description": "Text expressing positive emotions, approval, or \
+                    favorable opinions",
             },
             {
                 "name": "negative",
-                "description": "Text expressing negative emotions, criticism, or unfavorable opinions"
+                "description": "Text expressing negative emotions, criticism, or \
+                    unfavorable opinions",
             },
             {
                 "name": "neutral",
-                "description": "Text expressing factual, objective, or balanced statements without strong emotions"
-            }
+                "description": "Text expressing factual, objective, or balanced \
+                    statements without strong emotions",
+            },
         ],
         num_samples_per_prompt=5,  # Generate 5 samples per expanded prompt
         output_file="sentiment_dataset.jsonl",
-        languages={'en': 'English'},  # English only
+        languages={"en": "English"},  # English only
         prompts=[
-            """Generate {num_samples} reviews in {language_name} which are diverse \
-            and representative of a '{label_name}' sentiment class. {label_description}. \
-            The reviews should be {{style}} and in the context of {{context}}."""
+            (
+                "Generate {num_samples} reviews in {language_name} which are diverse "
+                "and representative of a '{label_name}' sentiment class. "
+                "{label_description}. The reviews should be {{style}} and in the "
+                "context of {{context}}."
+            )
         ],
         expansion=PromptExpansionConfig(
             placeholders={
@@ -35,20 +41,17 @@ def main():
                     "movie review",
                     "restaurant experience",
                     "customer service",
-                    "travel experience"
+                    "travel experience",
                 ],
-                "style": [
-                    "brief",
-                    "detailed"
-                ]
+                "style": ["brief", "detailed"],
             },
-            combinatorial=True  # Generate all combinations
-        )
+            combinatorial=True,  # Generate all combinations
+        ),
     )
 
     # 2. Create LLM providers with recommended models
     providers = [
-        OpenAIProvider(model_id='gpt-4o-mini'),
+        OpenAIProvider(model_id="gpt-4o-mini"),
     ]
 
     # 3. Generate the dataset
@@ -66,7 +69,9 @@ def main():
     # )
     # print(f"\nDataset pushed to Hugging Face Hub: {url}")
 
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
-    load_dotenv('secrets.env')
+
+    load_dotenv("secrets.env")
     main()

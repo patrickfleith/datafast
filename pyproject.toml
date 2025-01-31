@@ -46,11 +46,14 @@ minversion = "6.0"
 addopts = "-ra -q"
 
 [tool.ruff]
-# Basic ruff configuration
-select = ["E", "F", "C", "W"]
-ignore = []
+# Basic Ruff configuration
 exclude = ["venv", ".venv", "build", "dist", "__pycache__"]
 line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "C", "W"]
+ignore = ["E501"]
+
 
 [project.urls]
 "Documentation" = "https://github.com/patrickfleith/datafast"
