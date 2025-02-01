@@ -1,4 +1,4 @@
-from datafast.exanpders import expand_prompts
+from datafast.expanders import expand_prompts
 
 
 def main():
@@ -47,15 +47,15 @@ def main():
 
     # 3) Random Sampling Test
     print("=== Random Sampling ===")
-    num_samples = 6
+    num_random_samples = 6
     random_sampling_results = expand_prompts(
         prompt_templates=prompt_templates,
         placeholders=placeholders,
         combinatorial=False,
-        num_samples=num_samples,
+        num_random_samples=num_random_samples,
     )
     print(
-        f"Total expansions (random, num_samples={num_samples}): \
+        f"Total expansions (random, num_random_samples={num_random_samples}): \
             {len(random_sampling_results)}"
     )
     for i, (prompt, meta) in enumerate(random_sampling_results, start=1):
@@ -70,7 +70,7 @@ def main():
             prompt_templates=prompt_templates,
             placeholders=placeholders,
             combinatorial=False,
-            num_samples=6,
+            num_random_samples=6,
             max_samples=4,
         )
     except ValueError as e:

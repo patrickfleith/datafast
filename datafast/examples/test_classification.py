@@ -10,7 +10,7 @@ def main():
             {
                 "name": "concise",
                 "description": "Concise text is characterized by clarity, precision, \
-                and brevity. It communicates ideas directly, in a very compact \
+                 and brevity. It communicates ideas directly, in a very compact \
                 manner using only the words necessary to convey the intended message.",
             },
             {
@@ -22,7 +22,7 @@ def main():
         ],
         num_samples_per_prompt=10,
         output_file="concise_vs_verbose.jsonl",
-        languages={"en": "English", "fr": "French", "de": "German", "es": "Spanish"},
+        languages={"en": "English", "fr": "French"},
     )
 
     # 2. Create LLM providers (will use default models)
@@ -37,9 +37,10 @@ def main():
     dataset.generate(providers)
 
     # 4. Push to HF hub
-    USERNAME = "patrickfleith"
+    USERNAME = "YOUR_USERNAME" # <--- Your hugging face username
+    DATASET_NAME = "YOUR_DATASET_NAME" # <--- Your hugging face dataset name
     url = dataset.push_to_hub(
-        repo_id=f"{USERNAME}/text-classification-datafast-demo",
+        repo_id=f"{USERNAME}/{DATASET_NAME}",
         train_size=0.7,
         seed=20250125,
         shuffle=True,
@@ -49,6 +50,5 @@ def main():
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
-
     load_dotenv("secrets.env")
     main()
