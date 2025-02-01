@@ -7,10 +7,6 @@
 > [!WARNING]
 > This library is in its early stages of development and might change significantly.
 
-## Our focus is on:
-- Ease of use
-- Generated diversity
-
 ## Supported Dataset Types
 - [X] Text Classification Dataset generation
 
@@ -66,7 +62,8 @@ dataset.generate(providers)
 # Optionally, push the dataset to Hugging Face Hub
 repo_url = dataset.push_to_hub(
     repo_id="YOUR_USERNAME/YOUR_DATASET_NAME",
-    train_size=0.75)
+    train_size=0.75
+)
 ```
 
 ## Testing
