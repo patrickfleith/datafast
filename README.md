@@ -66,10 +66,7 @@ dataset.generate(providers)
 # Optionally, push the dataset to Hugging Face Hub
 repo_url = dataset.push_to_hub(
     repo_id="YOUR_USERNAME/YOUR_DATASET_NAME",
-    train_size=0.7,
-    seed=20250131,
-    shuffle=True,
-)
+    train_size=0.75)
 ```
 
 ## Testing
