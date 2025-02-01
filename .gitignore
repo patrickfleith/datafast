@@ -177,3 +177,4 @@ secrets.env
 IDEAS.md
 
 *.jsonl
+.DS_Store
