@@ -1,6 +1,7 @@
 site_name: Datafast
 site_description: A Python package for synthetic text dataset generation
 site_author: Patrick Fleith
+site_url: https://patrickfleith.github.io/datafast/
 
 # Repository
 repo_name: patrickfleith/datafast
@@ -36,7 +37,6 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
   - tables
   - toc:
       permalink: true
