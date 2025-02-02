@@ -1,6 +1,8 @@
-# Datafast: Synthetic Text Dataset Generator
+# Welcome to Datafast
 
-Datafast is a powerful Python package designed to generate synthetic text datasets, designed to:
+Datafast is a Python package for high-quality and diverse synthetic text dataset generation. 
+
+It is designed **to help you get the data you need** to:
 
 * Experiment and test LLM-based applications
 * Fine-tune and evaluate language models (LLMs / NLP)
@@ -10,17 +12,12 @@ Datafast is a powerful Python package designed to generate synthetic text datase
 
 ### Key Features
 
-🚀 **Easy-to-use** and simple interface
-
-🌍 **Multi-lingual** datasets generation 
-
-🤖 **Multiple LLMs** used to boost dataset **diversity**
-
-📝 **Flexible prompt**: default or custom
-
-🔄 **Prompt expansion** to maximize diversity
-
-🤗 **Hugging Face Integration**: Push generated datasets to the Hub, soon to argilla
+* **Easy-to-use** and simple interface 🚀
+* **Multi-lingual** datasets generation 🌍
+* **Multiple LLMs** used to boost dataset diversity 🤖
+* **Flexible prompt**: default or custom 📝
+* **Prompt expansion** to maximize diversity 🔄
+* **Hugging Face Integration**: Push generated datasets to the Hub, soon to argilla 🤗
 
 ## Quick Start
 
@@ -81,3 +78,7 @@ Currently supported dataset types:
 ## Next Steps
 
 * Visit our [GitHub repository](https://github.com/patrickfleith/datafast) for the latest updates
+
+## Creator
+
+Made with ❤️ by [Patrick Fleith](https://www.linkedin.com/in/patrick-fleith/).
