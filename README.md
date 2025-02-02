@@ -28,9 +28,20 @@ pip install datafast
 ```
 
 ## Usage
+
+Make sure you have created an `secrets.env` file with your API keys.
+HF token is needed if you want to push the dataset to your HF hub.
+Other keys depends on which LLM providers you use.
+```
+GOOGLE_API_KEY=XXXX
+OPENAI_API_KEY=sk-XXXX
+ANTHROPIC_API_KEY=sk-ant-XXXXX
+HF_TOKEN=hf_XXXXX
+```
+
 ```python
 from datafast.datasets import TextClassificationDataset
-from datafast.schema.config import ClassificationConfig
+from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
 from dotenv import load_dotenv
 
@@ -40,29 +51,47 @@ load_dotenv("secrets.env") # <--- your API keys
 # Configure the dataset for text classification
 config = ClassificationConfig(
     classes=[
-        {"name": "concise", "description": "Concise text - clear and precise."},
-        {"name": "verbose", "description": "Verbose text - detailed and redundant."}
+        {"name": "positive", "description": "Text expressing positive emotions or approval"},
+        {"name": "negative", "description": "Text expressing negative emotions or criticism"}
     ],
     num_samples_per_prompt=5,
-    output_file="concise_vs_verbose.jsonl",
-    languages={"en": "English", "fr": "French"},
+    output_file="outdoor_activities_sentiments.jsonl",
+    languages={
+        "en": "English", 
+        "fr": "French"
+    },
+    prompts=[
+        (
+            "Generate {num_samples} reviews in {language_name} which are diverse "
+            "and representative of a '{label_name}' sentiment class. "
+            "{label_description}. The reviews should be {{style}} and in the "
+            "context of {{context}}."
+        )
+    ],
+    expansion=PromptExpansionConfig(
+        placeholders={
+            "context": ["hike review", "speedboat tour review", "outdoor climbing experience"],
+            "style": ["brief", "detailed"]
+        },
+        combinatorial=True
+    )
 )
 
 # Create LLM providers
 providers = [
     OpenAIProvider(model_id="gpt-4o-mini"),
-    AnthropicProvider(model_id="claude-3-5-sonnet-latest"),
-    GoogleProvider(model_id="gemini-1.5-flash"),
+    AnthropicProvider(model_id="claude-3-5-haiku-latest"),
+    GoogleProvider(model_id="gemini-1.5-flash")
 ]
 
-# Generate the dataset
+# Generate dataset
 dataset = TextClassificationDataset(config)
 dataset.generate(providers)
 
-# Optionally, push the dataset to Hugging Face Hub
-repo_url = dataset.push_to_hub(
+# Optional: Push to Hugging Face Hub
+dataset.push_to_hub(
     repo_id="YOUR_USERNAME/YOUR_DATASET_NAME",
-    train_size=0.75
+    train_size=0.6
 )
 ```
 
