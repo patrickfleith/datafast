@@ -14,16 +14,16 @@ class MovieReview(BaseModel):
 def main():
     # Initialize the HuggingFace provider
     provider = HuggingFaceProvider(
-        model_id="deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",  # You can change this to your preferred model
+        model_id="meta-llama/Llama-3.1-8B-Instruct",  # You can change this to your preferred model
         api_key=os.getenv("HF_TOKEN")
     )
 
     # Example prompt for movie review analysis
     prompt = """
     Analyze this movie review and provide structured feedback:
-    'The new Spider-Man movie was amazing! The action scenes and the chemistry between 
-    Tom Holland and Zendaya were so much fun to watch. The plot twists kept me on the 
-    edge of my seat, though the special effects were somewhat over the top.'
+    'Dune: Part Two exceeded all expectations! The stunning visuals and epic scale of 
+    the desert battles were breathtaking. Timothée Chalamet and Zendaya delivered powerful 
+    performances, and the score perfectly enhanced the intense atmosphere throughout.'
     """
 
     try:
