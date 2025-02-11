@@ -267,6 +267,8 @@ class TextDataset(DatasetBase):
                 prompt.format(
                     num_samples=self.config.num_samples_per_prompt,
                     language_name=language_name,
+                    document_type=text_attrs['document_type'],
+                    domain=text_attrs['domain'],
                 )
                 for prompt in base_prompts
             ]
