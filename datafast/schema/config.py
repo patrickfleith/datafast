@@ -42,8 +42,42 @@ class ClassificationConfig(BaseModel):
     expansion: PromptExpansionConfig = PromptExpansionConfig()
 
     languages: dict[str, str] = Field(
-        default={"en": "English"},
+        default_factory={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
 
-    # Other relevant fields...
+
+
+class TextDatasetConfig(BaseModel):
+    dataset_type: str = Field(default="text")
+
+    # Text generation attributes
+    text_attributes: dict[str, str] = Field(
+        default_factory=dict,
+        description="Text generation attributes. Required: document_type, domain. \
+            Optional: style, perspective, length, audience, format_structure, \
+            additional_instructions"
+    )
+    
+    # Prompt templates (strings) provided by the user; if empty, use defaults
+    prompts: Optional[list[str]] = Field(
+        default=None, description="Optional custom prompt templates"
+    )
+
+    num_samples_per_prompt: int = (
+        5  # number of samples to generate simultaneously via LLM call.
+    )
+
+    # Where to save the output
+    output_file: str = Field(
+        default="text.jsonl",
+        description="Path to save text results",
+    )
+
+    # Expansion config
+    expansion: PromptExpansionConfig = PromptExpansionConfig()
+
+    languages: dict[str, str] = Field(
+        default_factory={"en": "English"},
+        description="Language ISO codes and their corresponding names",
+    )
