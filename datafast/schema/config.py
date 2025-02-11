@@ -42,7 +42,7 @@ class ClassificationConfig(BaseModel):
     expansion: PromptExpansionConfig = PromptExpansionConfig()
 
     languages: dict[str, str] = Field(
-        default_factory={"en": "English"},
+        default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
 
@@ -78,6 +78,6 @@ class TextDatasetConfig(BaseModel):
     expansion: PromptExpansionConfig = PromptExpansionConfig()
 
     languages: dict[str, str] = Field(
-        default_factory={"en": "English"},
+        default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
