@@ -6,15 +6,10 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
 def main():
     # 1. Configure the dataset generation
     config = TextDatasetConfig(
-        text_attributes={
-            "document_type": "blog_post",
-            "domain": "technology",
-            "style": "informative",
-            "length": "between 100 and 300 words",
-            "audience": "tech professionals"
-        },
+        document_types=["tech journalism blog", "personal blog", "MSc lecture notes"],
+        topics=["technology", "artificial intelligence", "cloud computing"],
         num_samples_per_prompt=5,
-        output_file="tech_blog_posts.jsonl",
+        output_file="tech_posts.jsonl",
         languages={"en": "English", "fr": "French"},
     )
 

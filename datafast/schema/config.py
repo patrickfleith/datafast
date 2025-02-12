@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+import warnings
 
 
 class PromptExpansionConfig(BaseModel):
@@ -50,16 +51,39 @@ class ClassificationConfig(BaseModel):
 
 class TextDatasetConfig(BaseModel):
     dataset_type: str = Field(default="text")
-
-    # Text generation attributes
-    text_attributes: dict[str, str] = Field(
-        default_factory=dict,
-        description="Text generation attributes. Required: document_type, domain. \
-            Optional: style, perspective, length, audience, format_structure, \
-            additional_instructions"
-    )
     
-    # Prompt templates (strings) provided by the user; if empty, use defaults
+    # Text generation attributes
+    document_types: list[str] = Field(
+        default_factory=list,
+        description="List of text generation document types. Required.",
+    )
+
+    topics: list[str] = Field(
+        default_factory=list,
+        description="List of text generation topics. Required.",
+    )
+       
+    @field_validator('document_types')
+    def validate_document_types(cls, v):
+        if not v:
+            raise ValueError("document_types is required and should be a list[str]")
+        return v
+
+    @field_validator('topics')
+    def validate_topics(cls, v):
+        if not v:
+            raise ValueError("topics is required and should be a list[str]")
+        return v
+    
+    @field_validator('num_samples_per_prompt')
+    def validate_num_samples(cls, v):
+        if v > 5:
+            warnings.warn(
+                "Values higher than 5 for num_samples_per_prompt are not recommended for raw text generation",
+                UserWarning
+            )
+        return v
+
     prompts: Optional[list[str]] = Field(
         default=None, description="Optional custom prompt templates"
     )
