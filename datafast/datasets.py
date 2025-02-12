@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
+from ast import Not
 from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import Any, Optional
 from datasets import Dataset
 from huggingface_hub import HfApi
 from datafast.llms import LLMProvider
-from datafast.prompts import classification_prompts
-from datafast.schema.config import ClassificationConfig
-from datafast.schema.data_rows import TextClassificationRow, LabelSource
+from datafast.prompts import classification_prompts, text_prompts
+from datafast.schema.config import ClassificationConfig, TextDatasetConfig
+from datafast.schema.data_rows import TextClassificationRow, LabelSource, TextRow, TextSource
 from datafast.expanders import expand_prompts
 import os
 
@@ -145,7 +146,7 @@ class DatasetBase(ABC):
 
 class TextEntries(BaseModel):
     entries: list[str] = Field(
-        ..., description="List of generated texts for a specific class"
+        ..., description="List of generated texts"
     )
 
 
@@ -229,3 +230,96 @@ class TextClassificationDataset(DatasetBase):
     def _get_default_prompts(self) -> list[str]:
         """Return the default prompt templates for text classification."""
         return classification_prompts.DEFAULT_TEMPLATES
+
+
+class TextDataset(DatasetBase):
+
+    def __init__(self, config: TextDatasetConfig):
+        super().__init__(config)
+        self.config = config
+    
+
+    def generate(self, llms: list[LLMProvider]) -> "TextDataset":
+        """Generate text data by calling multiple providers.
+
+        Args:
+            llms: List of LLM providers to use for generation.
+
+        Raises:
+            ValueError: If no LLM providers are supplied or if text_attributes are missing.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+
+        # Get languages from config, default to English if not specified
+        languages = self.config.languages or {"en": "English"}
+
+        # For each language, generate examples using all providers
+        for document_type in self.config.document_types:
+            for topic in self.config.topics:
+                for lang_code, language_name in languages.items():
+                    # Add language to text attributes for prompt generation
+                    # text_attrs = self.config.text_attributes.copy()
+                    # text_attrs['language_name'] = language_name
+                    # text_attrs['num_samples'] = str(self.config.num_samples_per_prompt)
+
+                    # 1. Create base prompts for this language
+                    base_prompts = self.config.prompts or self._get_default_prompts()
+                    base_prompts = [
+                        prompt.format(
+                            num_samples=self.config.num_samples_per_prompt,
+                            language_name=language_name,
+                            document_type=document_type,
+                            topic=topic,
+                        )
+                        for prompt in base_prompts
+                    ]
+
+
+                    # 2. Expand prompts with configured variations
+                    expansions = expand_prompts(
+                        prompt_templates=base_prompts, **self.config.expansion.model_dump()
+                    )
+
+                    # 3. For each expanded prompt, call each provider
+                    for expanded_prompt, meta in expansions:
+                        for llm in llms:
+                            try:
+                                # Generate multiple examples using the LLM
+                                response = llm.generate(
+                                    expanded_prompt,
+                                    response_format=TextEntries
+                                )
+
+                                # Create a row for each generated example
+                                for text in response.entries:
+                                    row = TextRow(
+                                        text=text,
+                                        text_source=TextSource.SYNTHETIC,
+                                        model_id=llm.model_id,
+                                        metadata={
+                                            "language": lang_code,
+                                            "document_type": document_type,
+                                            "topic": topic,
+                                        }
+                                    )
+                                    self.data_rows.append(row)
+                                print(f" Generated total of {len(self.data_rows)} examples")
+
+                            except Exception as e:
+                                print(f"Error with llm provider {llm.name}: {e}")
+
+
+        # Final save at the end
+        self.to_jsonl(self.config.output_file)
+        return self
+
+
+    def _get_default_prompts(self) -> list[str]:
+        """Return the default prompt templates for text generation."""
+        return text_prompts.DEFAULT_TEMPLATES
+
+        
+    
+
+    

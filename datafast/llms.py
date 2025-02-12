@@ -5,6 +5,7 @@ import os
 import instructor
 import google.generativeai as genai
 from openai import OpenAI
+from huggingface_hub import InferenceClient
 from abc import ABC, abstractmethod
 
 
@@ -79,7 +80,7 @@ class AnthropicProvider(LLMProvider):
 
     def __init__(
         self,
-        model_id: str | None = None,
+        model_id: str | None = None, # TODO: are these arguments needed?
         api_key: str | None = None,
         max_tokens: int = 2056,
         temperature: float = 0.3,
@@ -170,6 +171,33 @@ class OpenAIProvider(LLMProvider):
             model=self.model_id,
             messages=get_messages(prompt),
             response_model=response_format,
+        )
+
+
+class HuggingFaceProvider(LLMProvider):
+    """Hugging Face provider for structured text generation."""
+
+    ENV_KEY_NAME = "HF_TOKEN"
+    DEFAULT_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+
+    @property
+    def name(self) -> str:
+        return "huggingface"
+
+    def _initialize_client(self):
+        try:
+            hf_client = InferenceClient(model=self.model_id, api_key=self.api_key)
+            return hf_client
+        except Exception as e:
+            raise ValueError(f"Error initializing Hugging Face client: {str(e)}")
+    
+    def _generate_impl(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+        return self.client.chat.completions.create(
+            model=self.model_id, 
+            messages=get_messages(prompt), 
+            # temperature=0.5,
+            # max_tokens=2048,
+            response_format={"type": "json", "value": response_format.model_json_schema()},
         )
 
 
