@@ -104,6 +104,8 @@ dataset.push_to_hub(
 Currently supported dataset types:
 
 * ✅ Text Classification
+* ✅ Raw Text Generation
+* 🚧 Instruction Dataset (in progress)
 * 📋 More coming soon!
 
 ## Next Steps
