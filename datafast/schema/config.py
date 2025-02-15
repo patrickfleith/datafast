@@ -140,7 +140,7 @@ class UltraChatDatasetConfig(BaseModel):
         default=None, description="Optional custom prompt templates for question generation"
     )
 
-    personas_question_reformulation_prompt: str = Field(
+    persona_question_reformulation_prompt: str = Field(
             default=None, description="Optional custom prompt template to reformulate \
                 questions based on personas"
     )

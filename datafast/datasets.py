@@ -34,6 +34,18 @@ class UserQueries(BaseModel):
     )
 
 
+class ReformulatedUserQuery(BaseModel):
+    query: str = Field(
+        ..., description="Reformulated user query"
+    )
+
+
+class Answer(BaseModel):
+    answer: str = Field(
+        ..., description="Answer to the user query"
+    )
+    
+
 class DatasetBase(ABC):
     """Abstract base class for all dataset generators."""
 
@@ -388,14 +400,43 @@ class UltraChatDataset(DatasetBase):
                                     response_format=UserQueries
                                 )
 
-                                for opening_question in opening_questions.entries:
+                                for opening_question in opening_questions.queries:
 
-                                random_persona = pick_random_persona(self.config.personas)
+                                    random_persona = np.random.choice(self.config.personas)
 
-                                reformulated_question = llm.generate(
-                                    prompt=s,
-                                    response_format=TextEntries
-                                )
+
+
+                                    reformulated_question = llm.generate(
+                                        prompt=self.config.persona_question_reformulation_prompt.format(
+                                            question=opening_question,
+                                            persona=random_persona,
+                                            topic=topic,
+                                            subtopic=subtopic
+                                        ),
+                                        response_format=ReformulatedUserQuery
+                                    )
+
+                                    # simulate the assistant response to the opening question
+                                    assistant_response = llm.generate(
+                                        prompt=self.config.simulated_assistant_prompt.format(
+                                            domain=self.config.domain,
+                                            topic=topic,
+                                            subtopic=subtopic,
+                                            reformulated_question=reformulated_question.query
+                                        ),
+                                        response_format=Answer
+                                    )
+
+                                    # make sure to call the correct prompt construction above _get_default_user_system_prompt...
+
+                                    # choose to continue the conversation or not (proba 0.5)
+
+                                        # assemble the dialog to prompt the user
+
+                                        # simulate the user follow-up question
+
+                                        # simulate the assistant response
+
 
                                 # Create a row for each generated example
                                 # for text in response.entries:
