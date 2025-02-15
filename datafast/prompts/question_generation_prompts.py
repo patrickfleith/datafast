@@ -4,19 +4,18 @@ DOMAIN_TOPIC_SUBTOPIC_N_QUESTION_GENERATION_DEFAULT_TEMPLATES = [
     "Your task is to produce {num_samples} questions about {subtopic}, a subtopic under {topic} in the {domain} field. These questions must range from beginner to advanced levels, including short, medium, and longer forms. The questions are in {language_name}. Advanced queries should be highly detailed and use occasional technical jargon. Do not reuse the words “{subtopic}” or “{topic}” directly. Format the output as JSON with exactly {num_samples} entries, and provide no introduction, conclusion, or additional text—only the questions."
 ]
 
-PERSONA_QUESTION_REFORMULATION_DEFAULT_TEMPLATE = "Your task is to confirm the user’s question is plausible for the specified persona. \
-    If it already fits, leave it unchanged; otherwise, make some necessary edits to really fit the persona (without overexagerating it). \
-        The question meaning should not be changed, and should still pertains to the topic of {subtopic} (from {topic}). Ensure the \
-        reformulated question could be asked from the viewpoint of {persona}. Respond only with the final question—no additional text. \
-        Here is the question: {question}"
+PERSONA_QUESTION_REFORMULATION_DEFAULT_TEMPLATE = "Your task is to reformulate the following question so that it is \
+     plausible for the specified persona. If it already fits, leave it unchanged; otherwise, make some necessary edits \
+     to really fit the persona (without overexagerating it). The question meaning should not be changed, and should \
+     still pertains to the topic of {subtopic}. Ensure the reformulated question could be asked from the \
+     viewpoint of {persona}. Respond only with the final question—no additional text. Here is the question: {question}"
 
-SIMULATED_ASSISTANT_DEFAULT_TEMPLATE = """You are a helpful AI assistant specialized in the domain of {domain} and in particular about {topic} and specifically about {subtopic}
+SIMULATED_ASSISTANT_DEFAULT_TEMPLATE = """You are specialized in the domain of {domain} and in particular about {topic} and specifically about {subtopic}
 You task to answer to inquiries that showcase your depth of knowledge and ability to communicate complex information very concisely, clearly and effectively.
-
-Instructions:
-
-Provide clear, very concise answers that directly address the users' questions.
-If is helps, and only if you are sure about it, you can include relevant facts, numbers, or examples where appropriate to enhance understanding."""
+Provide clear, very concise answers that directly address the question.
+If is helps, and only if you are sure about it, you can include relevant facts, numbers, or examples where appropriate to enhance understanding.
+Here is the question to answer: {question}
+"""
 
 
 USER_SYSTEM_PROMPT_TEMPLATE = """You are a helpful assistant, in particular you are very skilled in role playing what a human user would be asking as a followup questions to an AI to continue the conversation. You are role playing this persona: {persona}"""
