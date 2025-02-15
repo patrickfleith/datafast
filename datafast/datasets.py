@@ -1,16 +1,37 @@
 from abc import ABC, abstractmethod
 from ast import Not
+import numpy as np
 from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import Any, Optional
 from datasets import Dataset
 from huggingface_hub import HfApi
 from datafast.llms import LLMProvider
-from datafast.prompts import classification_prompts, text_prompts
-from datafast.schema.config import ClassificationConfig, TextDatasetConfig
+from datafast.prompts import (
+    classification_prompts, 
+    question_generation_prompts, 
+    text_prompts
+)
+from datafast.schema.config import (
+    ClassificationConfig, 
+    TextDatasetConfig,
+    UltraChatDatasetConfig
+)
 from datafast.schema.data_rows import TextClassificationRow, LabelSource, TextRow, TextSource
 from datafast.expanders import expand_prompts
 import os
+
+
+class TextEntries(BaseModel):
+    entries: list[str] = Field(
+        ..., description="List of generated texts"
+    )
+
+
+class UserQueries(BaseModel):
+    queries: list[str] = Field(
+        ..., description="List of user queries"
+    )
 
 
 class DatasetBase(ABC):
@@ -142,12 +163,6 @@ class DatasetBase(ABC):
             raise
 
         return f"https://huggingface.co/datasets/{repo_id}"
-
-
-class TextEntries(BaseModel):
-    entries: list[str] = Field(
-        ..., description="List of generated texts"
-    )
 
 
 class TextClassificationDataset(DatasetBase):
@@ -320,6 +335,109 @@ class TextDataset(DatasetBase):
         return text_prompts.DEFAULT_TEMPLATES
 
         
+class UltraChatDataset(DatasetBase):
+
+    def __init__(self, config: UltraChatDatasetConfig):
+        super().__init__(config)
+        self.config = config
     
+    def generate(self, llms: list[LLMProvider]) -> "TextDataset":
+
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+
+        # Get languages from config, default to English if not specified
+        languages = self.config.languages or {"en": "English"}
+
+        # For each language, generate examples using all providers
+        for lang_code, language_name in languages.items():
+            for topic, subtopics in self.config.topics_and_subtopics.items():
+                for subtopic in subtopics:
+
+                    # 1. Create base prompts for this language
+                    base_prompts = self.config.question_generation_prompts or \
+                        self._get_default_question_generation_prompts()
+
+                    base_prompts = [
+                        prompt.format(
+                            num_samples=self.config.num_samples,
+                            language_name=language_name,
+                            domain=self.config.domain,
+                            topic=topic,
+                            subtopic=subtopic,
+                        )
+                        for prompt in base_prompts
+                    ]
+
+
+                    # 2. Expand prompts with configured variations
+                    expansions = expand_prompts(
+                        prompt_templates=base_prompts, **self.config.expansion.model_dump()
+                    )
+
+                    # 3. For each expanded prompt, call each provider in UltraChat iteration
+                    for expanded_prompt, meta in expansions:
+                        for llm in llms:
+
+                            try:
+                                # Generate multiple examples using the LLM
+
+                                # --- Here goes the ultraChat loop ---
+                                opening_questions = llm.generate(
+                                    expanded_prompt,
+                                    response_format=UserQueries
+                                )
+
+                                for opening_question in opening_questions.entries:
+
+                                random_persona = pick_random_persona(self.config.personas)
+
+                                reformulated_question = llm.generate(
+                                    prompt=s,
+                                    response_format=TextEntries
+                                )
+
+                                # Create a row for each generated example
+                                # for text in response.entries:
+                                #     row = TextRow(
+                                #         text=text,
+                                #         text_source=TextSource.SYNTHETIC,
+                                #         model_id=llm.model_id,
+                                #         metadata={
+                                #             "language": lang_code,
+                                #             "document_type": document_type,
+                                #             "topic": topic,
+                                #         }
+                                #     )
+                                    self.data_rows.append(row)
+                                print(f" Generated total of {len(self.data_rows)} examples")
+
+                            except Exception as e:
+                                print(f"Error with llm provider {llm.name}: {e}")
+                    
+                        
+
+
+
+
+        raise NotImplementedError
+    
+    def _get_default_question_generation_prompts(self) -> list[str]:
+        return question_generation_prompts.DOMAIN_TOPIC_SUBTOPIC_N_QUESTION_GENERATION_DEFAULT_TEMPLATES
+    
+    def _get_default_personas_question_reformulation_prompt(self) -> str:
+        return question_generation_prompts.PERSONA_QUESTION_REFORMULATION_DEFAULT_TEMPLATE
+    
+    def _get_default_simulated_assistant_prompt(self) -> str:
+        return question_generation_prompts.SIMULATED_ASSISTANT_DEFAULT_TEMPLATE
+
+    def _get_default_user_system_prompt(self) -> str:
+        return question_generation_prompts.USER_SYSTEM_PROMPT_TEMPLATE
+
+    def _get_default_user_followup_prompt(self) -> str:
+        return question_generation_prompts.USER_FOLLOWUP_PROMPT_TEMPLATE
+    
+
+
 
     

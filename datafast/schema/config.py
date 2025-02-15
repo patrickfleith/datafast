@@ -105,3 +105,68 @@ class TextDatasetConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+
+
+class UltraChatDatasetConfig(BaseModel):
+    dataset_type: str = Field(default="instruction_dataset")
+
+    domain: str = Field(
+        default="Science, Technology, Engineering, and Mathematics",
+        description="Domain of the instruction dataset",
+    )
+
+    topics_and_subtopics: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Dictionary of topics and their corresponding subtopics",
+    )
+
+    personas: list[str] = Field(
+        default_factory=list,
+        description="List of personas",
+    )
+
+    num_samples: int = Field(
+        default=10,
+        description="Number of questions to generate for each topic and subtopic pair",
+    )
+
+    # Where to save the output
+    output_file: str = Field(
+        default="instruction_dataset.jsonl",
+        description="Path to save instruction dataset results",
+    )
+
+    question_generation_prompts: Optional[list[str]] = Field(
+        default=None, description="Optional custom prompt templates for question generation"
+    )
+
+    personas_question_reformulation_prompt: str = Field(
+            default=None, description="Optional custom prompt template to reformulate \
+                questions based on personas"
+    )
+
+    simulated_assistant_prompt: str = Field(
+            default=None, description="Optional custom prompt template for the simulated \
+                assistant"
+    )
+
+    user_system_prompt: str = Field(
+            default=None, description="Optional custom system prompt for the AI to act \
+                as a user"
+    )
+
+    user_followup_prompt: str = Field(
+            default=None, description="Optional custom prompt template for the user's \
+                follow-up message"
+    )
+
+    # Expansion config
+    expansion: PromptExpansionConfig = PromptExpansionConfig()
+
+    languages: dict[str, str] = Field(
+        default={"en": "English"},
+        description="Language ISO codes and their corresponding names",
+    )
+
+
+
