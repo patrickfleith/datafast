@@ -110,6 +110,13 @@ class TextDatasetConfig(BaseModel):
 class UltraChatDatasetConfig(BaseModel):
     dataset_type: str = Field(default="instruction_dataset")
 
+    conversation_continuation_prob: float = Field(
+        default=0.5,
+        description="Probability of continuing the conversation with a follow-up question",
+        ge=0.0,
+        le=1.0
+    )
+
     domain: str = Field(
         default="Science, Technology, Engineering, and Mathematics",
         description="Domain of the instruction dataset",
