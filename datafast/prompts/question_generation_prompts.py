@@ -17,14 +17,11 @@ If is helps, and only if you are sure about it, you can include relevant facts, 
 Here is the question to answer: {question}
 """
 
-
-USER_SYSTEM_PROMPT_TEMPLATE = """You are a helpful assistant, in particular you are very skilled in role playing what a human user would be asking as a followup questions to an AI to continue the conversation. You are role playing this persona: {persona}"""
-
-USER_FOLLOWUP_PROMPT_TEMPLATE = """Here is a summary of a conversation between a user and an intelligent assistant.
-
+USER_FOLLOWUP_PROMPT_TEMPLATE = """Act as if you are very skilled in role playing what a human user would be asking as a followup questions to an AI to continue the conversation. 
+You are role playing this persona: {persona}
+Here is a summary of a conversation between a user and an intelligent assistant.
 {dialog_summary}
-
 Above is a conversation summary between a user and an intelligent assistant about the topic of {subtopic} in the {domain} domain.
 Now suppose you are the human user, say something to continue the conversation based on given context.
-Make the follow-up question short and realistic given that you should act as {persona}. Your query should feel 
+Make the follow-up question short and realistic given you role. Your query should feel 
 natural and related to the previous conversation. You can ask for more details, clarification, or further explanation, another example, digging deeper etc. etc."""
