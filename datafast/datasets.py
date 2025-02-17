@@ -44,6 +44,11 @@ class Answer(BaseModel):
     answer: str = Field(
         ..., description="Answer to the user query"
     )
+
+class FollowupQuestion(BaseModel):
+    question: str = Field(
+        ..., description="Followup question of a user to an AI assistant response."
+    )
     
 
 class DatasetBase(ABC):
@@ -405,9 +410,9 @@ class UltraChatDataset(DatasetBase):
                                     random_persona = np.random.choice(self.config.personas)
 
 
-
+                                    reformulation_prompt = self._get_default_persona_question_reformulation_prompt()
                                     reformulated_question = llm.generate(
-                                        prompt=self.config.persona_question_reformulation_prompt.format(
+                                        prompt=reformulation_prompt.format(
                                             question=opening_question,
                                             persona=random_persona,
                                             topic=topic,
@@ -417,8 +422,9 @@ class UltraChatDataset(DatasetBase):
                                     )
 
                                     # simulate the assistant response to the opening question
+                                    assistant_prompt = self._get_default_simulated_assistant_prompt()
                                     assistant_response = llm.generate(
-                                        prompt=self.config.simulated_assistant_prompt.format(
+                                        prompt=assistant_prompt.format(
                                             domain=self.config.domain,
                                             topic=topic,
                                             subtopic=subtopic,
@@ -427,11 +433,24 @@ class UltraChatDataset(DatasetBase):
                                         response_format=Answer
                                     )
 
-                                    # make sure to call the correct prompt construction above _get_default_user_system_prompt...
-
                                     # choose to continue the conversation or not (proba 0.5)
+                                    if np.random.random() < self.config.conversation_continuation_prob:
 
                                         # assemble the dialog to prompt the user
+                                        dialog_summary = f"{reformulated_question.query}\n{assistant_response.answer}"
+
+                                        followup_prompt = self._get_default_user_followup_prompt()
+                                        followup_question = llm.generate(
+                                            prompt=followup_prompt.format(
+                                                dialog_summary=dialog_summary,
+                                                persona=random_persona,
+                                                subtopic=subtopic,
+                                                domain=self.config.domain
+                                            ),
+                                            response_format=FollowupQuestion
+                                        )
+
+                                    
 
                                         # simulate the user follow-up question
 
@@ -466,14 +485,14 @@ class UltraChatDataset(DatasetBase):
     def _get_default_question_generation_prompts(self) -> list[str]:
         return question_generation_prompts.DOMAIN_TOPIC_SUBTOPIC_N_QUESTION_GENERATION_DEFAULT_TEMPLATES
     
-    def _get_default_personas_question_reformulation_prompt(self) -> str:
+    def _get_default_persona_question_reformulation_prompt(self) -> str:
         return question_generation_prompts.PERSONA_QUESTION_REFORMULATION_DEFAULT_TEMPLATE
     
     def _get_default_simulated_assistant_prompt(self) -> str:
         return question_generation_prompts.SIMULATED_ASSISTANT_DEFAULT_TEMPLATE
 
-    def _get_default_user_system_prompt(self) -> str:
-        return question_generation_prompts.USER_SYSTEM_PROMPT_TEMPLATE
+    # def _get_default_user_system_prompt(self) -> str:
+    #     return question_generation_prompts.USER_SYSTEM_PROMPT_TEMPLATE
 
     def _get_default_user_followup_prompt(self) -> str:
         return question_generation_prompts.USER_FOLLOWUP_PROMPT_TEMPLATE
