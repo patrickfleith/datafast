@@ -434,11 +434,18 @@ class UltraChatDataset(DatasetBase):
                                     )
 
                                     # choose to continue the conversation or not (proba 0.5)
+                                    count = 0
+                                    messages = [
+                                        {"role": "user", "content": reformulated_question.query},
+                                        {"role": "assistant", "content": assistant_response.answer}
+                                    ]
+
+                                    # assemble the dialog to prompt the user
+                                    dialog_summary = f"{reformulated_question.query}\n{assistant_response.answer}"
+
                                     if np.random.random() < self.config.conversation_continuation_prob:
 
-                                        # assemble the dialog to prompt the user
-                                        dialog_summary = f"{reformulated_question.query}\n{assistant_response.answer}"
-
+                                        # simulate the user follow-up question
                                         followup_prompt = self._get_default_user_followup_prompt()
                                         followup_question = llm.generate(
                                             prompt=followup_prompt.format(
@@ -449,12 +456,24 @@ class UltraChatDataset(DatasetBase):
                                             ),
                                             response_format=FollowupQuestion
                                         )
-
-                                    
-
-                                        # simulate the user follow-up question
-
                                         # simulate the assistant response
+                                        messages.append(
+                                            {"role": "user", "content": followup_question.question}
+                                        )
+                                        ai_response = llm.generate(
+                                            messages=messages,
+                                            response_format=Answer
+                                        )
+
+                                        dialog_summary += f"\n{followup_question.question}\n{ai_response.answer}"
+                                        messages.append(
+                                            {"role": "assistant", "content": ai_response.answer}
+                                        )
+
+                                        count += 1
+                                        if count >=4:
+                                            break
+
 
 
                                 # Create a row for each generated example

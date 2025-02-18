@@ -38,11 +38,11 @@ class LLMProvider(ABC):
         """Initialize the LLM client"""
         pass
 
-    def generate(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+    def generate(self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]) -> BaseModel:
         """Generate a structured response from the LLM.
 
         Args:
-            prompt: The input prompt to send to the model
+            prompt (str, list[dict[str, str]]): The input prompt to send to the model
             response_format: A Pydantic model class defining the expected response
             structure
 
@@ -66,7 +66,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     def _generate_impl(
-        self, prompt: str, response_format: type[BaseModel]
+        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
     ) -> BaseModel:
         """Implementation of generate() to be provided by subclasses"""
         pass
@@ -103,12 +103,12 @@ class AnthropicProvider(LLMProvider):
             raise ValueError(f"Error initializing Anthropic client: {str(e)}")
 
     def _generate_impl(
-        self, prompt: str, response_format: type[BaseModel]
+        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
     ) -> BaseModel:
         return self.client.messages.create(
             model=self.model_id,
             max_tokens=self.max_tokens,
-            messages=get_messages(prompt),
+            messages=get_messages(prompt) if isinstance(prompt, str) else prompt,
             temperature=self.temperature,
             response_model=response_format,
         )
@@ -137,10 +137,10 @@ class GoogleProvider(LLMProvider):
             )
 
     def _generate_impl(
-        self, prompt: str, response_format: type[BaseModel]
+        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
     ) -> BaseModel:
         return self.client.messages.create(
-            messages=get_messages(prompt),
+            messages=get_messages(prompt) if isinstance(prompt, str) else prompt,
             response_model=response_format,
         )
 
@@ -165,11 +165,11 @@ class OpenAIProvider(LLMProvider):
             raise ValueError(f"Error initializing OpenAI client: {str(e)}")
 
     def _generate_impl(
-        self, prompt: str, response_format: type[BaseModel]
+        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
     ) -> BaseModel:
         return self.client.chat.completions.create(
             model=self.model_id,
-            messages=get_messages(prompt),
+            messages=get_messages(prompt) if isinstance(prompt, str) else prompt,
             response_model=response_format,
         )
 
@@ -191,10 +191,10 @@ class HuggingFaceProvider(LLMProvider):
         except Exception as e:
             raise ValueError(f"Error initializing Hugging Face client: {str(e)}")
     
-    def _generate_impl(self, prompt: str, response_format: type[BaseModel]) -> BaseModel:
+    def _generate_impl(self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]) -> BaseModel:
         return self.client.chat.completions.create(
             model=self.model_id, 
-            messages=get_messages(prompt), 
+            messages=get_messages(prompt) if isinstance(prompt, str) else prompt, 
             # temperature=0.5,
             # max_tokens=2048,
             response_format={"type": "json", "value": response_format.model_json_schema()},
