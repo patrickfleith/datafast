@@ -30,6 +30,16 @@ class TextRow(BaseModel):
     metadata: dict[str, str] = Field(default_factory=dict)
 
 
+class ChatRow(BaseModel):
+    """Row for storing generated conversations"""
+    opening_question: str
+    messages: list[dict[str, str]]
+    model_id: Optional[str] = None
+    uuid: UUID = Field(default_factory=uuid4)
+    metadata: dict[str, str] = Field(default_factory=dict)
+    persona: str
+
+
 class TextClassificationRow(BaseModel):
     text: str
     label: LabelType  # Must be either str, list[str], or list[int]

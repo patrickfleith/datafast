@@ -117,6 +117,13 @@ class UltraChatDatasetConfig(BaseModel):
         le=1.0
     )
 
+    max_turns: int = Field(
+        default=1,
+        description="Maximum number of turns in generated Human-AI interaction (default to 1)",
+        ge=1,
+        le=10
+    )
+
     domain: str = Field(
         default="Science, Technology, Engineering, and Mathematics",
         description="Domain of the instruction dataset",

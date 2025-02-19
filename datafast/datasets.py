@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from ast import Not
 import numpy as np
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -18,6 +17,7 @@ from datafast.schema.config import (
     UltraChatDatasetConfig,
 )
 from datafast.schema.data_rows import (
+    ChatRow,
     TextClassificationRow,
     LabelSource,
     TextRow,
@@ -428,7 +428,7 @@ class UltraChatDataset(DatasetBase):
                                     )
 
                                     # choose to continue the conversation or not (proba 0.5)
-                                    count = 0
+                                    count = 1
                                     messages = [
                                         {
                                             "role": "user",
@@ -443,9 +443,10 @@ class UltraChatDataset(DatasetBase):
                                     # assemble the dialog to prompt the user
                                     dialog_summary = f"{reformulated_question.query}\n{assistant_response.answer}"
 
-                                    if (
-                                        np.random.random()
-                                        < self.config.conversation_continuation_prob
+                                    while (
+                                        (count < self.config.max_turns) and (
+                                            np.random.random() < self.config.conversation_continuation_prob
+                                        )
                                     ):
                                         # simulate the user follow-up question
                                         followup_prompt = (
@@ -480,21 +481,22 @@ class UltraChatDataset(DatasetBase):
                                         )
 
                                         count += 1
-                                        if count >= 4:
+                                        if count >= self.config.max_turns:
                                             break
 
                                     # Create a row for each generated example
-                                    # for text in response.entries:
-                                    #     row = TextRow(
-                                    #         text=text,
-                                    #         text_source=TextSource.SYNTHETIC,
-                                    #         model_id=llm.model_id,
-                                    #         metadata={
-                                    #             "language": lang_code,
-                                    #             "document_type": document_type,
-                                    #             "topic": topic,
-                                    #         }
-                                    #     )
+                                    row = ChatRow(
+                                        opening_question=messages[0]['content'],
+                                        messages=messages,
+                                        model_id=llm.model_id,
+                                        metadata={
+                                            "language": lang_code,
+                                            "domain": self.config.domain,
+                                            "topic": topic,
+                                            "subtopic": subtopic                                            
+                                        },
+                                        persona=random_persona
+                                    )
                                     self.data_rows.append(row)
                                 print(
                                     f" Generated total of {len(self.data_rows)} examples"
