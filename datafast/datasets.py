@@ -443,10 +443,9 @@ class UltraChatDataset(DatasetBase):
                                     # assemble the dialog to prompt the user
                                     dialog_summary = f"{reformulated_question.query}\n{assistant_response.answer}"
 
-                                    while (
-                                        (count < self.config.max_turns) and (
-                                            np.random.random() < self.config.conversation_continuation_prob
-                                        )
+                                    while (count < self.config.max_turns) and (
+                                        np.random.random()
+                                        < self.config.conversation_continuation_prob
                                     ):
                                         # simulate the user follow-up question
                                         followup_prompt = (
@@ -486,16 +485,16 @@ class UltraChatDataset(DatasetBase):
 
                                     # Create a row for each generated example
                                     row = ChatRow(
-                                        opening_question=messages[0]['content'],
+                                        opening_question=messages[0]["content"],
                                         messages=messages,
                                         model_id=llm.model_id,
                                         metadata={
                                             "language": lang_code,
                                             "domain": self.config.domain,
                                             "topic": topic,
-                                            "subtopic": subtopic                                            
+                                            "subtopic": subtopic,
                                         },
-                                        persona=random_persona
+                                        persona=random_persona,
                                     )
                                     self.data_rows.append(row)
                                 print(
