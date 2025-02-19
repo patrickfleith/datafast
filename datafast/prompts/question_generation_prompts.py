@@ -19,7 +19,7 @@ Here is the question to answer: {question}
 
 USER_FOLLOWUP_PROMPT_TEMPLATE = """Act as if you are very skilled in role playing what a human user would be asking as a followup questions to an AI to continue the conversation. 
 You are role playing this persona: {persona}
-Here is a summary of a conversation between a user and an intelligent assistant.
+Here is a summary of a conversation between a user and an intelligent assistant:
 {dialog_summary}
 Above is a conversation summary between a user and an intelligent assistant about the topic of {subtopic} in the {domain} domain.
 Now suppose you are the human user, say something to continue the conversation based on given context.
