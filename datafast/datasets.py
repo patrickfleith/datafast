@@ -31,16 +31,16 @@ class TextEntries(BaseModel):
     entries: list[str] = Field(..., description="List of generated texts")
 
 
-class UserQueries(BaseModel):
-    queries: list[str] = Field(..., description="List of user queries")
+class UserQuestions(BaseModel):
+    questions: list[str] = Field(..., description="List of user questions")
 
 
-class ReformulatedUserQuery(BaseModel):
-    query: str = Field(..., description="Reformulated user query")
+class ReformulatedUserQuestion(BaseModel):
+    question: str = Field(..., description="Reformulated user question")
 
 
 class Answer(BaseModel):
-    answer: str = Field(..., description="Answer to the user query")
+    answer: str = Field(..., description="Answer to the user question")
 
 
 class FollowupQuestion(BaseModel):
@@ -387,22 +387,30 @@ class UltraChatDataset(DatasetBase):
                     )
 
                     # 3. For each expanded prompt, call each provider in UltraChat iteration
-                    for expanded_prompt, meta in expansions:
+                    print(f"\nStarting UltraChat generation with {len(expansions)} expansions")
+                    for i, (expanded_prompt, meta) in enumerate(expansions, 1):
+                        print(f"\nProcessing expansion {i}/{len(expansions)}")
                         for llm in llms:
+                            print(f"\nUsing LLM: {llm.name} (model: {llm.model_id})")
                             try:
                                 # Generate multiple examples using the LLM
 
                                 # --- Here goes the ultraChat loop ---
                                 opening_questions = llm.generate(
-                                    expanded_prompt, response_format=UserQueries
+                                    expanded_prompt, response_format=UserQuestions
                                 )
+                                print(f"Generated {len(opening_questions.questions)} opening questions")
 
-                                for opening_question in opening_questions.queries:
+                                for opening_question in opening_questions.questions:
                                     random_persona = np.random.choice(
                                         self.config.personas
                                     )
+                                    print(f"\nStarting conversation with persona: {random_persona}")
+                                    print(f"Opening question: {opening_question}")
 
                                     reformulation_prompt = self._get_default_persona_question_reformulation_prompt()
+                                    print(f"\nReformulation prompt:\n{reformulation_prompt}")
+                                    print(f"Formatting with:\n- question: {opening_question}\n- persona: {random_persona}\n- topic: {topic}\n- subtopic: {subtopic}")
                                     reformulated_question = llm.generate(
                                         prompt=reformulation_prompt.format(
                                             question=opening_question,
@@ -410,19 +418,21 @@ class UltraChatDataset(DatasetBase):
                                             topic=topic,
                                             subtopic=subtopic,
                                         ),
-                                        response_format=ReformulatedUserQuery,
+                                        response_format=ReformulatedUserQuestion,
                                     )
 
                                     # simulate the assistant response to the opening question
                                     assistant_prompt = (
                                         self._get_default_simulated_assistant_prompt()
                                     )
+                                    print(f"\nAssistant prompt:\n{assistant_prompt}")
+                                    print(f"Formatting with:\n- domain: {self.config.domain}\n- topic: {topic}\n- subtopic: {subtopic}\n- reformulated_question: {reformulated_question.question}")
                                     assistant_response = llm.generate(
                                         prompt=assistant_prompt.format(
                                             domain=self.config.domain,
                                             topic=topic,
                                             subtopic=subtopic,
-                                            reformulated_question=reformulated_question.query,
+                                            question=reformulated_question.question,
                                         ),
                                         response_format=Answer,
                                     )
@@ -432,7 +442,7 @@ class UltraChatDataset(DatasetBase):
                                     messages = [
                                         {
                                             "role": "user",
-                                            "content": reformulated_question.query,
+                                            "content": reformulated_question.question,
                                         },
                                         {
                                             "role": "assistant",
@@ -441,16 +451,19 @@ class UltraChatDataset(DatasetBase):
                                     ]
 
                                     # assemble the dialog to prompt the user
-                                    dialog_summary = f"{reformulated_question.query}\n{assistant_response.answer}"
+                                    dialog_summary = f"{reformulated_question.question}\n{assistant_response.answer}"
 
                                     while (count < self.config.max_turns) and (
                                         np.random.random()
                                         < self.config.conversation_continuation_prob
                                     ):
+                                        print(f"\nStarting conversation turn {count + 1}/{self.config.max_turns}")
                                         # simulate the user follow-up question
                                         followup_prompt = (
                                             self._get_default_user_followup_prompt()
                                         )
+                                        print(f"\nFollowup prompt:\n{followup_prompt}")
+                                        print(f"Formatting with:\n- dialog_summary: {dialog_summary}\n- persona: {random_persona}\n- subtopic: {subtopic}\n- domain: {self.config.domain}")
                                         followup_question = llm.generate(
                                             prompt=followup_prompt.format(
                                                 dialog_summary=dialog_summary,
@@ -458,7 +471,7 @@ class UltraChatDataset(DatasetBase):
                                                 subtopic=subtopic,
                                                 domain=self.config.domain,
                                             ),
-                                            response_format=FollowupQuestion,
+                                            response_format=ReformulatedUserQuestion,
                                         )
                                         # simulate the assistant response
                                         messages.append(
@@ -502,9 +515,15 @@ class UltraChatDataset(DatasetBase):
                                 )
 
                             except Exception as e:
-                                print(f"Error with llm provider {llm.name}: {e}")
+                                import traceback
+                                error_trace = traceback.format_exc()
+                                print(f"\nError with llm provider {llm.name}:\n{error_trace}")
+                                print(f"Error occurred at response type: {response_format.__name__ if 'response_format' in locals() else 'unknown'}")
+                                if 'reformulated_question' in locals():
+                                    print(f"Last reformulated_question: {reformulated_question}")
 
-        raise NotImplementedError
+        self.to_jsonl(self.config.output_file)
+        return self
 
     def _get_default_question_generation_prompts(self) -> list[str]:
         return question_generation_prompts.DOMAIN_TOPIC_SUBTOPIC_N_QUESTION_GENERATION_DEFAULT_TEMPLATES
