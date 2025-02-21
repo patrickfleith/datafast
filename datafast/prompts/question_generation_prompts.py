@@ -1,7 +1,7 @@
 DOMAIN_TOPIC_SUBTOPIC_N_QUESTION_GENERATION_DEFAULT_TEMPLATES = [
-    "You are an expert in {domain}. Generate a series of {num_samples} questions about {subtopic} in the context of {topic}",
-    "You are a distinguished professor of {topic} in the Departement of {domain}. Your task is to generate {num_samples} exam questions about the topic of {subtopic} in {language_name}.",
-    "Your task is to produce {num_samples} questions about {subtopic}, a subtopic under {topic} in the {domain} field. These questions must range from beginner to advanced levels, including short, medium, and longer forms. The questions are in {language_name}. Advanced queries should be highly detailed and use occasional technical jargon. Do not reuse the words “{subtopic}” or “{topic}” directly. Format the output as JSON with exactly {num_samples} entries, and provide no introduction, conclusion, or additional text—only the questions."
+    "You are an expert in {domain}. Generate a series of {num_samples} questions in {language_name} about {subtopic} in the context of {topic}",
+    # "You are a distinguished professor of {topic} in the Departement of {domain}. Your task is to generate {num_samples} exam questions about the topic of {subtopic} in {language_name}.",
+    # "Your task is to produce {num_samples} questions about {subtopic}, a subtopic under {topic} in the {domain} field. These questions must range from beginner to advanced levels, including short, medium, and longer forms. The questions are in {language_name}. Advanced queries should be highly detailed and use occasional technical jargon. Do not reuse the words “{subtopic}” or “{topic}” directly. Format the output as JSON with exactly {num_samples} entries, and provide no introduction, conclusion, or additional text—only the questions."
 ]
 
 PERSONA_QUESTION_REFORMULATION_DEFAULT_TEMPLATE = "Your task is to reformulate the following question so that it is \
