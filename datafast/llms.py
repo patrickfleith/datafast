@@ -62,7 +62,9 @@ class LLMProvider(ABC):
         try:
             return self._generate_impl(prompt, response_format)
         except Exception as e:
-            raise RuntimeError(f"Error generating response with {self.name}: {str(e)}")
+            import traceback
+            error_trace = traceback.format_exc()
+            raise RuntimeError(f"Error generating response with {self.name}:\n{error_trace}")
 
     @abstractmethod
     def _generate_impl(
