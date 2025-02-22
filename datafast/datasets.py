@@ -387,7 +387,6 @@ class UltraChatDataset(DatasetBase):
                     )
 
                     # 3. For each expanded prompt, call each provider in UltraChat iteration
-                    print(f"Starting UltraChat generation with {len(expansions)} expansions")
                     for i, (expanded_prompt, meta) in enumerate(expansions, 1):
                         for llm in llms:
                             try:
