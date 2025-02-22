@@ -387,30 +387,21 @@ class UltraChatDataset(DatasetBase):
                     )
 
                     # 3. For each expanded prompt, call each provider in UltraChat iteration
-                    print(f"\nStarting UltraChat generation with {len(expansions)} expansions")
+                    print(f"Starting UltraChat generation with {len(expansions)} expansions")
                     for i, (expanded_prompt, meta) in enumerate(expansions, 1):
-                        print(f"\nProcessing expansion {i}/{len(expansions)}")
                         for llm in llms:
-                            print(f"\nUsing LLM: {llm.name} (model: {llm.model_id})")
                             try:
                                 # Generate multiple examples using the LLM
-
                                 # --- Here goes the ultraChat loop ---
                                 opening_questions = llm.generate(
                                     expanded_prompt, response_format=UserQuestions
                                 )
-                                print(f"Generated {len(opening_questions.questions)} opening questions")
 
                                 for opening_question in opening_questions.questions:
                                     random_persona = np.random.choice(
                                         self.config.personas
                                     )
-                                    print(f"\nStarting conversation with persona: {random_persona}")
-                                    print(f"Opening question: {opening_question}")
-
                                     reformulation_prompt = self._get_default_persona_question_reformulation_prompt()
-                                    print(f"\nReformulation prompt:\n{reformulation_prompt}")
-                                    print(f"Formatting with:\n- question: {opening_question}\n- persona: {random_persona}\n- topic: {topic}\n- subtopic: {subtopic}")
                                     reformulated_question = llm.generate(
                                         prompt=reformulation_prompt.format(
                                             question=opening_question,
@@ -425,8 +416,6 @@ class UltraChatDataset(DatasetBase):
                                     assistant_prompt = (
                                         self._get_default_simulated_assistant_prompt()
                                     )
-                                    print(f"\nAssistant prompt:\n{assistant_prompt}")
-                                    print(f"Formatting with:\n- domain: {self.config.domain}\n- topic: {topic}\n- subtopic: {subtopic}\n- reformulated_question: {reformulated_question.question}")
                                     assistant_response = llm.generate(
                                         prompt=assistant_prompt.format(
                                             domain=self.config.domain,
@@ -457,13 +446,10 @@ class UltraChatDataset(DatasetBase):
                                         np.random.random()
                                         < self.config.conversation_continuation_prob
                                     ):
-                                        print(f"\nStarting conversation turn {count + 1}/{self.config.max_turns}")
                                         # simulate the user follow-up question
                                         followup_prompt = (
                                             self._get_default_user_followup_prompt()
                                         )
-                                        print(f"\nFollowup prompt:\n{followup_prompt}")
-                                        print(f"Formatting with:\n- dialog_summary: {dialog_summary}\n- persona: {random_persona}\n- subtopic: {subtopic}\n- domain: {self.config.domain}")
                                         followup_question = llm.generate(
                                             prompt=followup_prompt.format(
                                                 dialog_summary=dialog_summary,
