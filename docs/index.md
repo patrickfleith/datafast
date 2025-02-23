@@ -23,7 +23,7 @@ It is designed **to help you get the data you need** to:
 
 ### 1. Environment Setup
 
-Make sure you have created an `secrets.env` file with your API keys.
+Make sure you have created a `secrets.env` file with your API keys.
 HF token is needed if you want to push the dataset to your HF hub.
 Other keys depends on which LLM providers you use.
 ```
@@ -103,8 +103,11 @@ dataset.push_to_hub(
 
 Currently supported dataset types:
 
-* ✅ Text Classification
-* 📋 More coming soon!
+- ✅ Text Classification
+- ✅ Raw Text Generation
+- ✅ Instruction Dataset
+    - UltraChat
+- 📋 More coming soon!
 
 ## Next Steps
 

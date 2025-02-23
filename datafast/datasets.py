@@ -1,16 +1,52 @@
 from abc import ABC, abstractmethod
-from ast import Not
+import numpy as np
 from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import Any, Optional
 from datasets import Dataset
 from huggingface_hub import HfApi
 from datafast.llms import LLMProvider
-from datafast.prompts import classification_prompts, text_prompts
-from datafast.schema.config import ClassificationConfig, TextDatasetConfig
-from datafast.schema.data_rows import TextClassificationRow, LabelSource, TextRow, TextSource
+from datafast.prompts import (
+    classification_prompts,
+    question_generation_prompts,
+    text_prompts,
+)
+from datafast.schema.config import (
+    ClassificationConfig,
+    TextDatasetConfig,
+    UltraChatDatasetConfig,
+)
+from datafast.schema.data_rows import (
+    ChatRow,
+    TextClassificationRow,
+    LabelSource,
+    TextRow,
+    TextSource,
+)
 from datafast.expanders import expand_prompts
 import os
+
+
+class TextEntries(BaseModel):
+    entries: list[str] = Field(..., description="List of generated texts")
+
+
+class UserQuestions(BaseModel):
+    questions: list[str] = Field(..., description="List of user questions")
+
+
+class ReformulatedUserQuestion(BaseModel):
+    question: str = Field(..., description="Reformulated user question")
+
+
+class Answer(BaseModel):
+    answer: str = Field(..., description="Answer to the user question")
+
+
+class FollowupQuestion(BaseModel):
+    question: str = Field(
+        ..., description="Followup question of a user to an AI assistant response."
+    )
 
 
 class DatasetBase(ABC):
@@ -144,12 +180,6 @@ class DatasetBase(ABC):
         return f"https://huggingface.co/datasets/{repo_id}"
 
 
-class TextEntries(BaseModel):
-    entries: list[str] = Field(
-        ..., description="List of generated texts"
-    )
-
-
 class TextClassificationDataset(DatasetBase):
     def __init__(self, config: ClassificationConfig):
         super().__init__(config)
@@ -233,11 +263,9 @@ class TextClassificationDataset(DatasetBase):
 
 
 class TextDataset(DatasetBase):
-
     def __init__(self, config: TextDatasetConfig):
         super().__init__(config)
         self.config = config
-    
 
     def generate(self, llms: list[LLMProvider]) -> "TextDataset":
         """Generate text data by calling multiple providers.
@@ -275,10 +303,10 @@ class TextDataset(DatasetBase):
                         for prompt in base_prompts
                     ]
 
-
                     # 2. Expand prompts with configured variations
                     expansions = expand_prompts(
-                        prompt_templates=base_prompts, **self.config.expansion.model_dump()
+                        prompt_templates=base_prompts,
+                        **self.config.expansion.model_dump(),
                     )
 
                     # 3. For each expanded prompt, call each provider
@@ -287,8 +315,7 @@ class TextDataset(DatasetBase):
                             try:
                                 # Generate multiple examples using the LLM
                                 response = llm.generate(
-                                    expanded_prompt,
-                                    response_format=TextEntries
+                                    expanded_prompt, response_format=TextEntries
                                 )
 
                                 # Create a row for each generated example
@@ -301,25 +328,201 @@ class TextDataset(DatasetBase):
                                             "language": lang_code,
                                             "document_type": document_type,
                                             "topic": topic,
-                                        }
+                                        },
                                     )
                                     self.data_rows.append(row)
-                                print(f" Generated total of {len(self.data_rows)} examples")
+                                print(
+                                    f" Generated total of {len(self.data_rows)} examples"
+                                )
 
                             except Exception as e:
                                 print(f"Error with llm provider {llm.name}: {e}")
-
 
         # Final save at the end
         self.to_jsonl(self.config.output_file)
         return self
 
-
     def _get_default_prompts(self) -> list[str]:
         """Return the default prompt templates for text generation."""
         return text_prompts.DEFAULT_TEMPLATES
 
-        
-    
 
-    
+class UltraChatDataset(DatasetBase):
+    def __init__(self, config: UltraChatDatasetConfig):
+        super().__init__(config)
+        self.config = config
+
+    def generate(self, llms: list[LLMProvider]) -> "TextDataset":
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+
+        # Get languages from config, default to English if not specified
+        languages = self.config.languages or {"en": "English"}
+
+        # For each language, generate examples using all providers
+        for lang_code, language_name in languages.items():
+            for topic, subtopics in self.config.topics_and_subtopics.items():
+                for subtopic in subtopics:
+                    # 1. Create base prompts for this language
+                    base_prompts = (
+                        self.config.question_generation_prompts
+                        or self._get_default_question_generation_prompts()
+                    )
+
+                    base_prompts = [
+                        prompt.format(
+                            num_samples=self.config.num_samples,
+                            language_name=language_name,
+                            domain=self.config.domain,
+                            topic=topic,
+                            subtopic=subtopic,
+                        )
+                        for prompt in base_prompts
+                    ]
+
+                    # 2. Expand prompts with configured variations
+                    expansions = expand_prompts(
+                        prompt_templates=base_prompts,
+                        **self.config.expansion.model_dump(),
+                    )
+
+                    # 3. For each expanded prompt, call each provider in UltraChat iteration
+                    for i, (expanded_prompt, meta) in enumerate(expansions, 1):
+                        for llm in llms:
+                            try:
+                                # Generate multiple examples using the LLM
+                                # --- Here goes the ultraChat loop ---
+                                opening_questions = llm.generate(
+                                    expanded_prompt, response_format=UserQuestions
+                                )
+
+                                for opening_question in opening_questions.questions:
+                                    random_persona = np.random.choice(
+                                        self.config.personas
+                                    )
+                                    reformulation_prompt = self._get_default_persona_question_reformulation_prompt()
+                                    reformulated_question = llm.generate(
+                                        prompt=reformulation_prompt.format(
+                                            question=opening_question,
+                                            persona=random_persona,
+                                            topic=topic,
+                                            subtopic=subtopic,
+                                        ),
+                                        response_format=ReformulatedUserQuestion,
+                                    )
+
+                                    # simulate the assistant response to the opening question
+                                    assistant_prompt = (
+                                        self._get_default_simulated_assistant_prompt()
+                                    )
+                                    assistant_response = llm.generate(
+                                        prompt=assistant_prompt.format(
+                                            domain=self.config.domain,
+                                            topic=topic,
+                                            subtopic=subtopic,
+                                            question=reformulated_question.question,
+                                        ),
+                                        response_format=Answer,
+                                    )
+
+                                    # choose to continue the conversation or not (proba 0.5)
+                                    count = 1
+                                    messages = [
+                                        {
+                                            "role": "user",
+                                            "content": reformulated_question.question,
+                                        },
+                                        {
+                                            "role": "assistant",
+                                            "content": assistant_response.answer,
+                                        },
+                                    ]
+
+                                    # assemble the dialog to prompt the user
+                                    dialog_summary = f"{reformulated_question.question}\n{assistant_response.answer}"
+
+                                    while (count < self.config.max_turns) and (
+                                        np.random.random()
+                                        < self.config.conversation_continuation_prob
+                                    ):
+                                        # simulate the user follow-up question
+                                        followup_prompt = (
+                                            self._get_default_user_followup_prompt()
+                                        )
+                                        followup_question = llm.generate(
+                                            prompt=followup_prompt.format(
+                                                dialog_summary=dialog_summary,
+                                                persona=random_persona,
+                                                subtopic=subtopic,
+                                                domain=self.config.domain,
+                                            ),
+                                            response_format=ReformulatedUserQuestion,
+                                        )
+                                        # simulate the assistant response
+                                        messages.append(
+                                            {
+                                                "role": "user",
+                                                "content": followup_question.question,
+                                            }
+                                        )
+                                        ai_response = llm.generate(
+                                            messages=messages, response_format=Answer
+                                        )
+
+                                        dialog_summary += f"\n{followup_question.question}\n{ai_response.answer}"
+                                        messages.append(
+                                            {
+                                                "role": "assistant",
+                                                "content": ai_response.answer,
+                                            }
+                                        )
+
+                                        count += 1
+                                        if count >= self.config.max_turns:
+                                            break
+
+                                    # Create a row for each generated example
+                                    row = ChatRow(
+                                        opening_question=messages[0]["content"],
+                                        messages=messages,
+                                        model_id=llm.model_id,
+                                        metadata={
+                                            "language": lang_code,
+                                            "domain": self.config.domain,
+                                            "topic": topic,
+                                            "subtopic": subtopic,
+                                        },
+                                        persona=random_persona,
+                                    )
+                                    self.data_rows.append(row)
+                                print(
+                                    f" Generated total of {len(self.data_rows)} examples"
+                                )
+
+                            except Exception as e:
+                                import traceback
+                                error_trace = traceback.format_exc()
+                                print(f"\nError with llm provider {llm.name}:\n{error_trace}")
+                                print(f"Error occurred at response type: {response_format.__name__ if 'response_format' in locals() else 'unknown'}")
+                                if 'reformulated_question' in locals():
+                                    print(f"Last reformulated_question: {reformulated_question}")
+
+        self.to_jsonl(self.config.output_file)
+        return self
+
+    def _get_default_question_generation_prompts(self) -> list[str]:
+        return question_generation_prompts.DOMAIN_TOPIC_SUBTOPIC_N_QUESTION_GENERATION_DEFAULT_TEMPLATES
+
+    def _get_default_persona_question_reformulation_prompt(self) -> str:
+        return (
+            question_generation_prompts.PERSONA_QUESTION_REFORMULATION_DEFAULT_TEMPLATE
+        )
+
+    def _get_default_simulated_assistant_prompt(self) -> str:
+        return question_generation_prompts.SIMULATED_ASSISTANT_DEFAULT_TEMPLATE
+
+    # def _get_default_user_system_prompt(self) -> str:
+    #     return question_generation_prompts.USER_SYSTEM_PROMPT_TEMPLATE
+
+    def _get_default_user_followup_prompt(self) -> str:
+        return question_generation_prompts.USER_FOLLOWUP_PROMPT_TEMPLATE
