@@ -111,6 +111,7 @@ Currently supported dataset types:
 
 ## Next Steps
 
+* Check out our guide on [How to Create a Text Classification Dataset](guides/creating_text_classification_datasets.md)
 * Visit our [GitHub repository](https://github.com/patrickfleith/datafast) for the latest updates
 
 ## Creator
