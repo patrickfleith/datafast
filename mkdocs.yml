@@ -54,7 +54,8 @@ markdown_extensions:
 # Navigation structure
 nav:
   - Home: index.md
-  - Getting Started: getting_started.md
+  # - Getting Started: getting_started.md
+  - Text Classification Example: guides/generating_text_classification_datasets.md
   - API Reference: api.md
 
 # Plugins

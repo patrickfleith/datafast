@@ -19,6 +19,16 @@ It is designed **to help you get the data you need** to:
 * **Prompt expansion** to maximize diversity 🔄
 * **Hugging Face Integration**: Push generated datasets to the Hub, soon to argilla 🤗
 
+## Supported Dataset Types
+
+Currently we support the following dataset types:
+
+- ✅ Text Classification
+- ✅ Raw Text Generation
+- ✅ Instruction Dataset
+    - UltraChat
+- 📋 More coming soon!
+
 ## Quick Start
 
 ### 1. Environment Setup
@@ -99,19 +109,9 @@ dataset.push_to_hub(
 )
 ```
 
-## Supported Dataset Types
-
-Currently supported dataset types:
-
-- ✅ Text Classification
-- ✅ Raw Text Generation
-- ✅ Instruction Dataset
-    - UltraChat
-- 📋 More coming soon!
-
 ## Next Steps
 
-* Check out our guide on [How to Create a Text Classification Dataset](guides/creating_text_classification_datasets.md)
+* Check out our full example guide on [How to Generate a Text Classification Dataset](guides/generating_text_classification_datasets.md)
 * Visit our [GitHub repository](https://github.com/patrickfleith/datafast) for the latest updates
 
 ## Creator
