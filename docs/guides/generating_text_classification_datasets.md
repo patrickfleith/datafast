@@ -135,10 +135,8 @@ config = ClassificationConfig(
         placeholders={
             "context": [
                 "hiking trail experience",
-                "mountain biking adventure", 
                 "kayaking expedition",
                 "rock climbing session",
-                "camping trip",
                 "wildlife safari tour"
             ],
             "style": ["brief", "detailed"]
