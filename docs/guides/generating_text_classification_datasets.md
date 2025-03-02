@@ -174,12 +174,12 @@ The number of generated instances in your dataset in combinatorial modecan be ca
 - number of samples per prompt (here 5)
 - number of LLM providers (here 3)
 - number of variations for each optional placeholders 
-    - 6 for ``{{context}}`` here and;
+    - 4 for ``{{context}}`` here and;
     - 2 for ``{{style}}``
 
-This means: 3 x 2 x 5 x 3 x 6 x 2 = 1080 instances.
+This means: 3 x 2 x 5 x 3 x 4 x 2 = 720 instances.
  
-If that seems sufficient, we can proceed to generate the dataset.
+If that seems sufficient, and representative of your use case, we can proceed to generate the dataset.
 
 ## Step 6: Generate the Dataset
 
@@ -267,10 +267,8 @@ config = ClassificationConfig(
         placeholders={
             "context": [
                 "hiking trail experience",
-                "mountain biking adventure", 
                 "kayaking expedition",
                 "rock climbing session",
-                "camping trip",
                 "wildlife safari tour"
             ],
             "style": ["brief", "detailed", "enthusiastic", "critical"]
