@@ -55,7 +55,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   # - Getting Started: getting_started.md
-  - Text Classification Example: guides/generating_text_classification_datasets.md
+  - How To Guides:
+    - Text Classification: guides/generating_text_classification_datasets.md
+    - Text Generation: guides/generating_text_datasets.md
   - API Reference: api.md
 
 # Plugins
