@@ -224,7 +224,7 @@ def main():
         languages={"en": "English", "fr": "French"},
         prompts=[
             (
-                "Generate {num_samples} {document_type} entries in {language_name} "about {topic}. "
+                "Generate {num_samples} {document_type} entries in {language_name} about {topic}. "
                 "The emphasis should be a perspective from {{country}}"
             )
         ],
