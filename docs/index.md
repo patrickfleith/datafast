@@ -10,15 +10,6 @@ It is designed **to help you get the data you need** to:
 !!! warning
     This library is in its early stages of development and might change significantly.
 
-### Key Features
-
-* **Easy-to-use** and simple interface 🚀
-* **Multi-lingual** datasets generation 🌍
-* **Multiple LLMs** used to boost dataset diversity 🤖
-* **Flexible prompt**: default or custom 📝
-* **Prompt expansion** to maximize diversity 🔄
-* **Hugging Face Integration**: Push generated datasets to the Hub, soon to argilla 🤗
-
 ## Supported Dataset Types
 
 Currently we support the following dataset types:
@@ -26,8 +17,10 @@ Currently we support the following dataset types:
 - ✅ Text Classification
 - ✅ Raw Text Generation
 - ✅ Instruction Dataset
-    - UltraChat
+    - ✅  UltraChat method
 - 📋 More coming soon!
+
+⭐️ Star me if this is something you like!  
 
 ## Quick Start
 
@@ -109,9 +102,21 @@ dataset.push_to_hub(
 )
 ```
 
+### Key Features
+
+* **Easy-to-use** and simple interface 🚀
+* **Multi-lingual** datasets generation 🌍
+* **Multiple LLMs** used to boost dataset diversity 🤖
+* **Flexible prompt**: default or custom 📝
+* **Prompt expansion** to maximize diversity 🔄
+* **Hugging Face Integration**: Push generated datasets to the Hub, soon to argilla 🤗
+
 ## Next Steps
 
-* Check out our full example guide on [How to Generate a Text Classification Dataset](guides/generating_text_classification_datasets.md)
+Check out our guides for different dataset types:
+
+* [How to Generate a Text Classification Dataset](guides/generating_text_classification_datasets.md)
+* [How to Create a Raw Text Dataset](guides/generating_text_datasets.md)
 * Visit our [GitHub repository](https://github.com/patrickfleith/datafast) for the latest updates
 
 ## Creator
