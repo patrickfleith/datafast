@@ -1,35 +1,46 @@
 # Welcome to Datafast
 
-**datafast** is a Python package for synthetic text dataset generation.
-- Ideal to get the data you need to *experiment and test LLM-based applications*.
-- Made to generate diverse datasets to *fine-tune or evaluate* LLMs / NLPs models.
+Datafast is a Python package for high-quality and diverse synthetic text dataset generation. 
+
+It is designed **to help you get the data you need** to:
+
+* Experiment and test LLM-based applications
+* Fine-tune and evaluate language models (LLMs / NLP)
 
 > [!WARNING]
 > This library is in its early stages of development and might change significantly.
 
 ## Supported Dataset Types
-- [X] Text Classification Dataset generation
 
-> [!NOTE]
-> We'll add more as the API design choices prove to be effective.
+Currently we support the following dataset types:
 
-## Features:
-- Easy to use API (see examples)
-- Multi-Lingual dataset generation
-- Multiple LLMs to boost diversity
-- Default or custom prompt templates
-- Prompt expansion to ensure diversity
-- Push the dataset to Hugging Face Hub
+- ✅ Text Classification
+- ✅ Raw Text Generation
+- ✅ Instruction Dataset
+    - ✅  UltraChat method
+- 📋 More coming soon!
 
+⭐️ Star me if this is something you like!  
+
+## Key Features
+
+* **Easy-to-use** and simple interface 🚀
+* **Multi-lingual** datasets generation 🌍
+* **Multiple LLMs** used to boost dataset diversity 🤖
+* **Flexible prompt**: default or custom 📝
+* **Prompt expansion** to maximize diversity 🔄
+* **Hugging Face Integration**: Push generated datasets to the Hub 🤗
 
 ## Installation
 ```bash
 pip install datafast
 ```
 
-## Usage
+## Quick Start
 
-Make sure you have created an `secrets.env` file with your API keys.
+### 1. Environment Setup
+
+Make sure you have created a `secrets.env` file with your API keys.
 HF token is needed if you want to push the dataset to your HF hub.
 Other keys depends on which LLM providers you use.
 ```
@@ -39,6 +50,7 @@ ANTHROPIC_API_KEY=sk-ant-XXXXX
 HF_TOKEN=hf_XXXXX
 ```
 
+### 2. Import Dependencies
 ```python
 from datafast.datasets import TextClassificationDataset
 from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
@@ -47,7 +59,10 @@ from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv("secrets.env") # <--- your API keys
+```
 
+### 3. Configure Dataset
+```python
 # Configure the dataset for text classification
 config = ClassificationConfig(
     classes=[
@@ -76,14 +91,20 @@ config = ClassificationConfig(
         combinatorial=True
     )
 )
+```
 
+### 4. Setup LLM Providers
+```python
 # Create LLM providers
 providers = [
     OpenAIProvider(model_id="gpt-4o-mini"),
     AnthropicProvider(model_id="claude-3-5-haiku-latest"),
     GoogleProvider(model_id="gemini-1.5-flash")
 ]
+```
 
+### 5. Generate and Push Dataset
+```python
 # Generate dataset
 dataset = TextClassificationDataset(config)
 dataset.generate(providers)
@@ -95,8 +116,17 @@ dataset.push_to_hub(
 )
 ```
 
-## Testing
-No tests available yet.
+## Next Steps
+
+Check out our guides for different dataset types (coming soon):
+
+* How to Generate a Text Classification Dataset
+* How to Create a Raw Text Dataset
+* Visit our GitHub repository for the latest updates
+
+## Creator
+
+Made with ❤️ by [Patrick Fleith](https://www.linkedin.com/in/patrick-fleith/).
 
 ## Project Details
 - **Status:** Work in Progress (APIs may change)
