@@ -18,6 +18,7 @@ Currently we support the following dataset types:
 - ✅ Raw Text Generation
 - ✅ Instruction Dataset
     - ✅  UltraChat method
+- [ ] Preference Dataset
 - 📋 More coming soon!
 
 ⭐️ Star me if this is something you like!  
