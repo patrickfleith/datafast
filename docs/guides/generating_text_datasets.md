@@ -219,10 +219,13 @@ url = dataset.push_to_hub(
 print(f"\nDataset pushed to Hugging Face Hub: {url}")
 ```
 
-You don't need to specify a seed if you don't want to use train/test splitting:
+You don't need to specify a seed if you don't want to use train/test splitting: 
 - If not provided, will push the entire dataset with train/test splits.
 
 Make sure you have set your `HF_TOKEN` in the environment variables.
+
+!!! info
+    Check the resulting dataset [here](https://huggingface.co/datasets/patrickfleith/space_engineering_environment_effects_texts).
 
 ## Complete Example
 
@@ -302,8 +305,6 @@ if __name__ == "__main__":
 
 ## Conclusion
 
-With `datafast`, you can easily generate diverse space engineering text datasets across multiple document types, specialized topics, languages, and using multiple LLM providers. The generated datasets are saved in JSONL format and can be pushed to the Hugging Face Hub for sharing and version control.
+`datafast` simplifies generation of diverse technical datasets across document types, topics, and languages using multiple LLM providers. Generated data is saved in JSONL format with Hugging Face Hub integration for sharing.
 
-The `TextDataset` class provides a simple interface for generating specialized technical text data, while the `TextDatasetConfig` class allows you to configure the generation process in detail. By using prompt expansion with expertise levels, you can create datasets that address various reader knowledge levels across specialized space engineering topics.
-
-🚀 There is more to come with new feature for generating raw text datasets on the basis of seed texts, and also using personas for more diversity.
+🚀 Coming soon: seed text-based generation and persona features for enhanced dataset diversity.
