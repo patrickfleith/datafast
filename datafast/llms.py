@@ -203,6 +203,45 @@ class HuggingFaceProvider(LLMProvider):
         )
 
 
+class OllamaProvider(LLMProvider):
+    """Ollama provider for structured text generation."""
+
+    # ENV_KEY_NAME = "OLLAMA_API_KEY"  # No API key needed for local Ollama
+    DEFAULT_MODEL = "llama3:latest"
+
+    @property
+    def name(self) -> str:
+        return "ollama"
+
+    def _initialize_client(self):
+        try:
+            import ollama
+            return ollama
+        except ImportError as e:
+            raise ImportError(f"Ollama package not installed. Install it with 'pip install ollama': {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Error initializing Ollama client: {str(e)}")
+
+    def _generate_impl(
+        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
+    ) -> BaseModel:
+        # Convert prompt to messages format if it's a string
+        messages = get_messages(prompt) if isinstance(prompt, str) else prompt
+        
+        # Get schema for the response format
+        schema = response_format.model_json_schema()
+        
+        # Call the Ollama chat API
+        response = self.client.chat(
+            messages=messages,
+            model=self.model_id,
+            format=schema,
+        )
+        
+        # Parse the response content and validate against the Pydantic model
+        return response_format.model_validate_json(response.message.content)
+
+
 def create_provider(
     provider: str, model_id: str | None = None, **kwargs
 ) -> LLMProvider:
