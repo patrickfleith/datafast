@@ -206,12 +206,16 @@ class HuggingFaceProvider(LLMProvider):
 class OllamaProvider(LLMProvider):
     """Ollama provider for structured text generation."""
 
-    # ENV_KEY_NAME = "OLLAMA_API_KEY"  # No API key needed for local Ollama
+    # No API key needed for local Ollama
     DEFAULT_MODEL = "llama3:latest"
 
     @property
     def name(self) -> str:
         return "ollama"
+        
+    def _get_api_key(self) -> str:
+        """Override _get_api_key since Ollama doesn't need an API key"""
+        return "not_needed"  # Return a dummy value
 
     def _initialize_client(self):
         try:
@@ -239,6 +243,8 @@ class OllamaProvider(LLMProvider):
         )
         
         # Parse the response content and validate against the Pydantic model
+        # Unlike other providers that use instructor and return the parsed model directly,
+        # we need to manually parse the JSON response here
         return response_format.model_validate_json(response.message.content)
 
 
@@ -248,7 +254,7 @@ def create_provider(
     """Create an LLM provider for structured text generation.
 
     Args:
-        provider: Provider name ('anthropic', 'google', or 'openai')
+        provider: Provider name ('anthropic', 'google', 'openai', 'ollama')
         model_id: Optional model identifier. If not provided, uses provider's default
         **kwargs: Additional provider-specific arguments
 
@@ -259,6 +265,7 @@ def create_provider(
         "anthropic": AnthropicProvider,
         "google": GoogleProvider,
         "openai": OpenAIProvider,
+        "ollama": OllamaProvider,
     }
 
     provider_class = provider_map.get(provider.lower())
