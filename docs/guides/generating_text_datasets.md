@@ -1,15 +1,21 @@
 # How to Create a Raw Text Dataset
 
-We'll create a raw text dataset for usage as part of a pre-training with the following characteristics:
+!!! example "Use Case"
+    Let's say you're an AI researcher at a *Space Agency* and you need to improve the text generation capabilities of language models specialized for **space engineering**. 
+    You're tasked with creating a diverse corpus of text covering various space engineering topics to pre-train your foundation model before fine-tuning it on proprietary data.
 
-* Multi-document types: generate different types of documents (blogs, lecture notes, etc.)
-* Multi-topic: generate texts on various topics (AI, cloud computing, etc.)
+We'll demonstrate datafast's capabilities by creating a space engineering text dataset with the following characteristics:
+
+* Multi-document types: generate different types of documents
+* Multi-topic: generate texts on various space environment-related topics
 * Multi-lingual: generate texts in several languages
 * Multi-LLM: generate texts using multiple LLM providers to boost diversity
-* Push the dataset to your Hugging Face Hub (optional)
+* Publish the dataset to your Hugging Face Hub (optional)
 
-!!! note
-    In this guide we are generating raw text without using personas or seed texts. We are only specifying document types, topics, and languages. Generating synthetic data using personas or seed texts is a common use case which is on our roadmap but not yet available.
+??? note
+    In this guide we are generating raw text without using personas or seed texts. 
+    We are only specifying document types, topics, and languages. 
+    Generating synthetic data using personas or seed texts is a common use case which is on our roadmap but not yet available.
 
 ## Step 1: Import Required Modules
 
@@ -74,16 +80,30 @@ Here's a basic configuration example:
 ```python
 config = TextDatasetConfig(
     # Types of documents to generate
-    document_types=["tech journalism blog", "personal blog", "MSc lecture notes"],
+    document_types=[
+        "space engineering textbook", 
+        "spacecraft design justification document", 
+        "personal blog of a space engineer"
+    ],
     
     # Topics to generate content about
-    topics=["technology", "artificial intelligence", "cloud computing"],
+    topics=[
+        "Microgravity",
+        "Vacuum",
+        "Heavy Ions",
+        "Thermal Extremes",
+        "Atomic Oxygen",
+        "Debris Impact",
+        "Electrostatic Charging",
+        "Propellant Boil-off",
+        # ... You can pour hundreds of topics here. 8 is enough for this example
+    ],
     
     # Number of examples to generate per prompt
-    num_samples_per_prompt=3,
+    num_samples_per_prompt=1,
     
     # Output file path
-    output_file="tech_posts.jsonl",
+    output_file="space_engineering_environment_effects_texts.jsonl",
     
     # Languages to generate data for
     languages={"en": "English", "fr": "French"},
@@ -99,7 +119,7 @@ Prompt expansion is a key concept in the `datafast` library. It helps generate m
 
 For example, we added one optional placeholder using double curly braces:
 
-* `{{country}}`: To generate texts that elaborate on cloud computing or AI from different perspectives (e.g., "United States", "Canada", "Europe")
+* `{{expertise_level}}`: To generate texts that elaborate on space engineering topics for different reader expertise levels (e.g., "executives", " engineers", "senior scientists")
 
 You can configure prompt expansion like this:
 
@@ -111,15 +131,16 @@ config = TextDatasetConfig(
     # Custom prompt with placeholders (this will overwrite the default one). Watch out, you have to include the mandatory placeholders defined above.
     prompts=[
         (
-            "Generate {num_samples} {document_type} entries in {language_name} " "about {topic}. "
-            "The emphasis should be a perspective from {{country}}."
+            "Generate {num_samples} section of a {document_type} in {language_name} " 
+            "about the topic of {topic} in Space Engineering "
+            "Target the content for {{expertise_level}} level readers."
         )
     ],
     
     # Add prompt expansion configuration
     expansion=PromptExpansionConfig(
         placeholders={
-            "country": ["United States", "Europe", "Japan", "India", "China", "Australia"]
+            "expertise_level": ["executives", "senior engineers", "PhD candidates"]
         },
         combinatorial=True,  # Generate all combinations
         num_random_samples=100 # Only needed if combinatorial is False. Then samples 100 at random.
@@ -127,7 +148,7 @@ config = TextDatasetConfig(
 )
 ```
 
-This expansion creates prompt variations by replacing `{{country}}` with all possible combinations of the provided values, dramatically increasing the diversity of your dataset.
+This expansion creates prompt variations by replacing `{{expertise_level}}` with all possible combinations of the provided values, dramatically increasing the diversity of your dataset.
 
 ## Step 4: Set Up LLM Providers
 
@@ -135,9 +156,8 @@ Configure one or more LLM providers to generate your dataset:
 
 ```python
 providers = [
-    OpenAIProvider(model_id="gpt-4o-mini"),
+    OpenAIProvider(model_id="gpt-4o-mini"), # You may want to use stronger models
     AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-    GoogleProvider(model_id="gemini-1.5-flash")
 ]
 ```
 
@@ -148,16 +168,16 @@ Using multiple providers helps create more diverse and robust datasets.
 The number of generated instances in your dataset in combinatorial mode can be calculated by multiplying the following:
 
 - number of document types (3 in our example)
-- number of topics (3 in our example)
+- number of topics (8 in our example)
 - number of languages (2 in our example)
-- number of samples per prompt (3 in our example)
-- number of LLM providers (3 in our example)
+- number of samples per prompt (1 in our example)
+- number of LLM providers (2 in our example)
 - number of variations for each optional placeholder (if using prompt expansion)
-  - For example: 6 for `{{country}}`.
+  - For example: 3 for `{{expertise_level}}` (executives, senior engineers, PhD candidates).
 
-With these numbers, and without prompt expansion, we'd generate: 3 × 3 × 2 × 3 × 3 = 162 instances.
+With these numbers, and without prompt expansion, we'd generate: 3 x 8 × 2 × 1 × 2 = 96 instances.
 
-With prompt expansion we further by the number of combinations from the optional placeholders (here 6): 3 × 3 × 2 × 3 × 3 × 6 = 972 instances.
+With prompt expansion we further multiply by the number of combinations from the optional placeholders (here 3): 3 x 8 × 2 × 1 × 2 × 3 = 288 instances.
 
 If that seems sufficient and representative of your use case, we can proceed to generate the dataset.
 
@@ -211,26 +231,41 @@ Here's a complete example script that generates a text dataset across multiple d
 ```python
 from datafast.datasets import TextDataset
 from datafast.schema.config import TextDatasetConfig, PromptExpansionConfig
-from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
+from datafast.llms import OpenAIProvider, AnthropicProvider
 
 
 def main():
     # 1. Configure the dataset generation
     config = TextDatasetConfig(
-        document_types=["tech journalism blog", "personal blog", "MSc lecture notes"],
-        topics=["technology", "artificial intelligence", "cloud computing"],
-        num_samples_per_prompt=3,
-        output_file="tech_posts.jsonl",
+        document_types=[
+            "space engineering textbook", 
+            "spacecraft design justification document", 
+            "personal blog of a space engineer"
+        ],
+        topics=[
+            "Microgravity",
+            "Vacuum",
+            "Heavy Ions",
+            "Thermal Extremes",
+            "Atomic Oxygen",
+            "Debris Impact",
+            "Electrostatic Charging",
+            "Propellant Boil-off",
+            # ... You can pour hundreds of topics here. 8 is enough for this example
+        ],
+        num_samples_per_prompt=1,
+        output_file="space_engineering_environment_effects_texts.jsonl",
         languages={"en": "English", "fr": "French"},
         prompts=[
             (
-                "Generate {num_samples} {document_type} entries in {language_name} about {topic}. "
-                "The emphasis should be a perspective from {{country}}"
+                "Generate {num_samples} section of a {document_type} in {language_name} " 
+                "about the topic of {topic} in Space Engineering "
+                "Target the content for {{expertise_level}} level readers."
             )
         ],
         expansion=PromptExpansionConfig(
             placeholders={
-                "country": ["United States", "Europe", "Japan", "India", "China", "Australia"]
+                "expertise_level": ["executives", "senior engineers", "PhD candidates"]
             },
             combinatorial=True,
         )
@@ -238,9 +273,8 @@ def main():
 
     # 2. Create LLM providers with specific models
     providers = [
-        OpenAIProvider(model_id="gpt-4o-mini"),
+        OpenAIProvider(model_id="gpt-4o-mini"), # You may want to use stronger models
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-        GoogleProvider(model_id="gemini-1.5-flash"),
     ]
 
     # 3. Generate the dataset
@@ -268,8 +302,8 @@ if __name__ == "__main__":
 
 ## Conclusion
 
-With `datafast`, you can easily generate diverse text datasets across multiple document types, topics, languages, and using multiple LLM providers. The generated datasets are saved in JSONL format and can be pushed to the Hugging Face Hub for sharing and version control.
+With `datafast`, you can easily generate diverse space engineering text datasets across multiple document types, specialized topics, languages, and using multiple LLM providers. The generated datasets are saved in JSONL format and can be pushed to the Hugging Face Hub for sharing and version control.
 
-The `TextDataset` class provides a simple interface for generating text data, while the `TextDatasetConfig` class allows you to configure the generation process in detail. By using prompt expansion, you can create even more diverse datasets by generating multiple variations of your base prompts.
+The `TextDataset` class provides a simple interface for generating specialized technical text data, while the `TextDatasetConfig` class allows you to configure the generation process in detail. By using prompt expansion with expertise levels, you can create datasets that address various reader knowledge levels across specialized space engineering topics.
 
 🚀 There is more to come with new feature for generating raw text datasets on the basis of seed texts, and also using personas for more diversity.
