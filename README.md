@@ -16,12 +16,22 @@ Currently we support the following dataset types:
 
 - ✅ Text Classification
 - ✅ Raw Text Generation
-- ✅ Instruction Dataset
-    - ✅  UltraChat method
+- ✅ Instruction Dataset (UltraChat-like)
 - [ ] Preference Dataset
 - 📋 More coming soon!
 
-⭐️ Star me if this is something you like!  
+⭐️ Star me if this is something you like! 🌟
+
+
+## Supported LLM Providers
+
+Currently we support the following LLM providers:
+
+- ✔︎ OpenAI
+- ✔︎ Anthropic
+- ✔︎ Google
+- ✔︎ Ollama
+- ✔︎ HF Endpoints (buggy!)
 
 ## Key Features
 
