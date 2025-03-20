@@ -128,6 +128,9 @@ def main():
 
     # Test OpenAI (GPT-4)
     test_provider("openai", "gpt-4o-mini")
+    
+    # Test Ollama (local LLM)
+    test_provider("ollama", "gemma3:4b")
 
 
 if __name__ == "__main__":
