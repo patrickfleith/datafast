@@ -180,7 +180,7 @@ class HuggingFaceProvider(LLMProvider):
     """Hugging Face provider for structured text generation."""
 
     ENV_KEY_NAME = "HF_TOKEN"
-    DEFAULT_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+    DEFAULT_MODEL = "google/gemma-2-2b-it"
 
     @property
     def name(self) -> str:
