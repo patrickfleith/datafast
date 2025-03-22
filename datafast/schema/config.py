@@ -185,3 +185,80 @@ class UltraChatDatasetConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+
+
+class MCQDatasetConfig(BaseModel):
+    """
+    Configuration for generating multiple choice questions from text in a Hugging Face dataset.
+    Each question has one correct answer and three plausible but incorrect answers.
+    """
+    dataset_type: str = Field(default="mcq_dataset")
+    
+    # Hugging Face dataset information
+    hf_dataset_name: str = Field(
+        ...,  # required field
+        description="Name of the Hugging Face dataset to use"
+    )
+    
+    text_column: str = Field(
+        ...,  # required field
+        description="Column name containing the text to generate questions from"
+    )
+    
+    # MCQ Generation parameters
+    num_samples_per_prompt: int = Field(
+        default=3,
+        description="Number of questions to generate for each text"
+    )
+    
+    sample_count: Optional[int] = Field(
+        default=None,
+        description="Optional number of samples to process from the dataset"
+    )
+
+    min_document_length: int = Field(
+        default=100,
+        description="Minimum number of characters below which documents will be skipped"
+    )
+
+    max_document_length: int = Field(
+        default=10000,
+        description="Maximum number of characters above which documents will be skipped"
+    )
+    
+    # Where to save the output
+    output_file: str = Field(
+        default="mcq_dataset.jsonl",
+        description="Path to save MCQ dataset results"
+    )
+    
+    # Optional custom prompts
+    prompts: Optional[list[str]] = Field(
+        default=None, 
+        description="Optional custom prompt templates"
+    )
+
+    distractor_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional custom distractor prompt template"
+    )
+    
+    # Standard config options
+    expansion: PromptExpansionConfig = PromptExpansionConfig()
+    
+    languages: dict[str, str] = Field(
+        default={"en": "English"},
+        description="Language ISO codes and their corresponding names"
+    )
+    
+    @field_validator("hf_dataset_name")
+    def validate_dataset_name(cls, v):
+        if not v:
+            raise ValueError("hf_dataset_name is required")
+        return v
+    
+    @field_validator("text_column")
+    def validate_text_column(cls, v):
+        if not v:
+            raise ValueError("text_column is required")
+        return v
