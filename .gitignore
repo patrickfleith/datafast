@@ -174,7 +174,6 @@ cython_debug/
 .pypirc
 secrets.env
 .windsurfrules
-IDEAS.md
 
 *.jsonl
 .DS_Store
