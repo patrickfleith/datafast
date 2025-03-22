@@ -180,7 +180,7 @@ class HuggingFaceProvider(LLMProvider):
     """Hugging Face provider for structured text generation."""
 
     ENV_KEY_NAME = "HF_TOKEN"
-    DEFAULT_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
+    DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct"
 
     @property
     def name(self) -> str:
@@ -188,26 +188,38 @@ class HuggingFaceProvider(LLMProvider):
 
     def _initialize_client(self):
         try:
-            hf_client = InferenceClient(model=self.model_id, api_key=self.api_key)
-            return hf_client
+            return InferenceClient(model=self.model_id, api_key=self.api_key)
+        except ImportError as e:
+            raise ImportError(f"huggingface_hub package not installed. Install it with 'pip install huggingface_hub': {str(e)}")
         except Exception as e:
             raise ValueError(f"Error initializing Hugging Face client: {str(e)}")
     
     def _generate_impl(self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]) -> BaseModel:
-        return self.client.chat.completions.create(
-            model=self.model_id, 
-            messages=get_messages(prompt) if isinstance(prompt, str) else prompt, 
-            # temperature=0.5,
-            # max_tokens=2048,
-            response_format={"type": "json", "value": response_format.model_json_schema()},
+        # Check prompt type
+        if isinstance(prompt, list):
+            # For now, we don't support message-based prompts for HuggingFace
+            raise NotImplementedError("Message-based prompts are not yet supported for the HuggingFace provider")
+        else:
+            prompt_text = prompt
+        
+        # Get schema for the response format
+        schema = response_format.model_json_schema()
+        
+        # Generate response with structure enforcement
+        response = self.client.text_generation(
+            prompt=prompt_text,
+            grammar={"type": "json", "value": schema},
         )
+        
+        # Parse and validate the response against the Pydantic model
+        return response_format.model_validate_json(response)
 
 
 class OllamaProvider(LLMProvider):
     """Ollama provider for structured text generation."""
 
     # No API key needed for local Ollama
-    DEFAULT_MODEL = "llama3:latest"
+    DEFAULT_MODEL = "gemma3:12b"
 
     @property
     def name(self) -> str:
@@ -265,6 +277,7 @@ def create_provider(
         "anthropic": AnthropicProvider,
         "google": GoogleProvider,
         "openai": OpenAIProvider,
+        "huggingface": HuggingFaceProvider,
         "ollama": OllamaProvider,
     }
 
