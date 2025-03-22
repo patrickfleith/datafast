@@ -62,7 +62,7 @@ class TextClassificationRow(BaseModel):
 
 
 class MCQRow(BaseModel):
-    source_text: str
+    source_document: str
     question: str
     correct_answer: str
     incorrect_answer_1: str
