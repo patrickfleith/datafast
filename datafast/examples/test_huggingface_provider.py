@@ -14,7 +14,7 @@ class MovieReview(BaseModel):
 def main():
     # Initialize the HuggingFace provider
     provider = HuggingFaceProvider(
-        model_id="meta-llama/Llama-3.1-8B-Instruct",  # You can change this to your preferred model
+        model_id="meta-llama/Llama-3.3-70B-Instruct",  # You can change this to your preferred model
         api_key=os.getenv("HF_TOKEN")
     )
 
@@ -31,7 +31,7 @@ def main():
         response = provider.generate(prompt, MovieReview)
         # Print the structured response
         print("\nStructured Response:")
-        print(MovieReview.model_validate(json.loads(response.choices[0].message.content.strip())))
+        print(response)
 
     except Exception as e:
         print(f"Error during generation: {str(e)}")

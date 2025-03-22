@@ -4,133 +4,82 @@ from typing import Optional
 from dotenv import load_dotenv
 
 
-# Simple sentiment response model
-class SimpleResponse(BaseModel):
-    sentiment: str = Field(..., description="Sentiment: positive, negative, or neutral")
-    explanation: str = Field(..., description="Explanation of the sentiment")
-    confidence: float = Field(..., description="Confidence score between 0.0 and 1.0")
+# Unified test response model
+class StructuredResponse(BaseModel):
+    """A simple structured response model for testing LLM providers."""
+    answer: str = Field(..., description="Direct answer to the question")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence score between 0 and 1")
+    tags: list[str] = Field(..., description="Tags or categories relevant to the answer")
 
 
-# Complex response model for code analysis
-class CodeIssue(BaseModel):
-    severity: str = Field(..., description="Severity level: low, medium, high")
-    description: str = Field(..., description="Description of the issue")
-    suggestion: str = Field(..., description="Suggested fix")
-
-
-class CodeAnalysis(BaseModel):
-    language_detected: str = Field(..., description="Language detected in the code")
-    main_purpose: str = Field(..., description="Main purpose of the code")
-    potential_issues: list[CodeIssue] = Field(
-        ..., description="Potential issues identified"
-    )
-    complexity_score: float = Field(
-        ..., ge=0, le=10, description="Complexity score between 0.0 and 10.0"
-    )
-    suggested_improvements: list[str] = Field(
-        ...,
-        description="Suggested \
-        improvements",
-    )
-
-
-def test_sentiment(provider_instance, provider_name: str):
-    """Test sentiment analysis capability."""
-    print("\nTesting sentiment analysis...")
+def test_structured_generation(provider_instance, provider_name: str):
+    """Test structured generation capability using a unified prompt."""
+    print(f"\nTesting structured generation with {provider_name}...")
+    
     try:
-        prompt = "Analyze the sentiment of this text: 'I absolutely love this \
-            product! It's amazing!'"
-        response = provider_instance.generate(prompt, SimpleResponse)
-
-        print("\nSentiment Analysis Response:")
-        print(f"Sentiment: {response.sentiment}")
-        print(f"Explanation: {response.explanation}")
-        print(f"Confidence: {response.confidence:.2f}")
+        # Simple question that requires structured thinking
+        prompt = """What would happen if the moon was twice as close to Earth? 
+        Provide a concise answer scientific confidence level.
+        Include relevant tags or categories for your answer."""
+        
+        # Generate structured response
+        response = provider_instance.generate(prompt, StructuredResponse)
+        
+        # Display results in a clean format
+        print("\n📋 Structured Response:")
+        print(f"📌 Answer: {response.answer}")
+        print(f"🎯 Confidence: {response.confidence:.2f}")
+        print(f"🏷️ Tags: {', '.join(response.tags)}")
+        print("✅ Test successful!")
+        
+    except NotImplementedError as e:
+        print(f"⚠️ Feature not implemented for {provider_name}: {str(e)}")
+        
     except Exception as e:
-        print(f"Error testing sentiment analysis: {str(e)}")
-
-
-def test_code_analysis(provider_instance, provider_name: str):
-    """Test code analysis capability."""
-    print("\nTesting code analysis...")
-    try:
-        code_snippet = """
-def calculate_factorial(n):
-    result = 1
-    # Calculate factorial using a loop
-    for i in range(1, n + 1):
-        result = result * i
-    return result
-
-# Get user input
-num = int(input("Enter a number: "))
-if num >= 0:
-    # Calculate factorial
-    fact = calculate_factorial(num)
-    print(f"Factorial of {num} is {fact}")
-"""
-        prompt = f"""Analyze this Python code and provide structured feedback:
-
-{code_snippet}
-
-Provide a detailed analysis including:
-1. The main purpose of the code
-2. Potential issues or bugs
-3. Complexity assessment
-4. Suggested improvements
-
-Focus on both functionality and best practices."""
-
-        response = provider_instance.generate(prompt, CodeAnalysis)
-
-        print("\nCode Analysis Response:")
-        print(f"Language: {response.language_detected}")
-        print(f"Main Purpose: {response.main_purpose}")
-        print("\nPotential Issues:")
-        for issue in response.potential_issues:
-            print(f"- [{issue.severity}] {issue.description}")
-            print(f"  Suggestion: {issue.suggestion}")
-        print(f"\nComplexity Score: {response.complexity_score}/10")
-        print("\nSuggested Improvements:")
-        for improvement in response.suggested_improvements:
-            print(f"- {improvement}")
-    except Exception as e:
-        print(f"Error testing code analysis: {str(e)}")
+        print(f"❌ Error testing with {provider_name}: {str(e)}")
+        print(f"   Error type: {type(e).__name__}")
 
 
 def test_provider(name: str, model_id: Optional[str] = None):
-    """Test a specific provider with multiple capabilities."""
-    print(f"\n{'=' * 50}")
-    print(f"Testing {name} provider...")
-    print(f"Using model: {model_id or 'default'}")
-    print("=" * 50)
+    """Test a specific provider with structured generation."""
+    print(f"\n{'=' * 60}")
+    print(f"🚀 Testing {name.upper()} provider with model: {model_id or 'default'}")
+    print("=" * 60)
 
     try:
         # Create the provider
         provider = create_provider(name, model_id)
-
-        # Test both capabilities
-        test_sentiment(provider, name)
-        test_code_analysis(provider, name)
-
+        
+        # Run the test
+        test_structured_generation(provider, name)
+        
     except Exception as e:
-        print(f"Error setting up {name} provider: {str(e)}")
+        print(f"❌ Error setting up {name} provider: {str(e)}")
 
 
 def main():
     load_dotenv("secrets.env")
 
-    # Test Anthropic (Claude)
-    test_provider("anthropic", "claude-3-5-haiku-latest")
-
-    # Test Google (Gemini)
-    test_provider("google", "gemini-1.5-flash")
-
-    # Test OpenAI (GPT-4)
-    test_provider("openai", "gpt-4o-mini")
+    # List of providers to test with their models
+    providers = [
+        # ("anthropic", "claude-3-5-haiku-latest"),
+        # ("google", "gemini-1.5-flash"),
+        # ("openai", "gpt-4o-mini"),
+        ("ollama", "gemma3:4b"),
+        # ("huggingface", "meta-llama/Llama-3.3-70B-Instruct"),
+    ]
     
-    # Test Ollama (local LLM)
-    test_provider("ollama", "gemma3:4b")
+    print("🧪 STRUCTURED OUTPUT GENERATION TEST")
+    print("Testing all providers with a simple structured generation task")
+    
+    for provider_name, model_id in providers:
+        try:
+            test_provider(provider_name, model_id)
+        except Exception as e:
+            print(f"\n{'=' * 60}")
+            print(f"❌ Error testing {provider_name} provider with model {model_id}:")
+            print(f"{str(e)}")
+            print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":
