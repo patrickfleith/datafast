@@ -141,4 +141,4 @@ Made with ❤️ by [Patrick Fleith](https://www.linkedin.com/in/patrick-fleith/
 
 ## Project Details
 - **Status:** Work in Progress (APIs may change)
-- **License:** [GNU AGPL v3](LICENSE) -> This may change to MIT or Apache 2.0.
+- **License:** [GNU AGPL v3](LICENSE)
