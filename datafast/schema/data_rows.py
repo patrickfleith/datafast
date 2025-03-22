@@ -18,6 +18,13 @@ class TextSource(str, Enum):
     CONSENSUS = "consensus"
 
 
+class MCQSource(str, Enum):
+    SYNTHETIC = "synthetic"
+    VERIFIED = "verified"
+    HUMAN = "human"
+    CONSENSUS = "consensus"
+
+
 LabelType = Union[str, list[str], list[int]]
 
 
@@ -52,3 +59,17 @@ class TextClassificationRow(BaseModel):
     # System and metadata fields
     uuid: UUID = Field(default_factory=uuid4)
     metadata: dict[str, str] = Field(default_factory=dict)
+
+
+class MCQRow(BaseModel):
+    source_text: str
+    question: str
+    correct_answer: str
+    incorrect_answer_1: str
+    incorrect_answer_2: str
+    incorrect_answer_3: str
+    model_id: Optional[str] = None
+    mcq_source: MCQSource = MCQSource.SYNTHETIC
+    uuid: UUID = Field(default_factory=uuid4)
+    metadata: dict[str, str] = Field(default_factory=dict)
+    
