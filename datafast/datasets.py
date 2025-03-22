@@ -3,18 +3,20 @@ import numpy as np
 from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import Any, Optional
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 from huggingface_hub import HfApi
 from datafast.llms import LLMProvider
 from datafast.prompts import (
     classification_prompts,
     question_generation_prompts,
+    mcq_prompts,
     text_prompts,
 )
 from datafast.schema.config import (
     ClassificationConfig,
     TextDatasetConfig,
     UltraChatDatasetConfig,
+    MCQDatasetConfig,
 )
 from datafast.schema.data_rows import (
     ChatRow,
@@ -22,6 +24,8 @@ from datafast.schema.data_rows import (
     LabelSource,
     TextRow,
     TextSource,
+    MCQRow,
+    MCQSource,
 )
 from datafast.expanders import expand_prompts
 import os
@@ -29,6 +33,14 @@ import os
 
 class TextEntries(BaseModel):
     entries: list[str] = Field(..., description="List of generated texts")
+
+
+class QAEntry(BaseModel):
+    question: str = Field(..., description="Question")
+    answer: str = Field(..., description="Answer")
+
+class QAEntries(BaseModel):
+    entries: list[QAEntry] = Field(..., description="List of generated QAs")
 
 
 class UserQuestions(BaseModel):
@@ -526,3 +538,145 @@ class UltraChatDataset(DatasetBase):
 
     def _get_default_user_followup_prompt(self) -> str:
         return question_generation_prompts.USER_FOLLOWUP_PROMPT_TEMPLATE
+
+
+class MCQDataset(DatasetBase):
+    def __init__(self, config: MCQDatasetConfig):
+        super().__init__(config)
+        self.config = config
+
+    def generate(self, llms: list[LLMProvider]) -> "MCQDataset":
+        """
+        Generate multiple choice questions by calling providers for questions and then for incorrect answers.
+        
+        Args:
+            llms: List of LLM providers to use for generation. Must not be empty.
+            
+        Raises:
+            ValueError: If no LLM providers are supplied or if required configuration is missing.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+            
+        # Load the dataset from Hugging Face
+        try:
+            hf_dataset = load_dataset(self.config.hf_dataset_name)
+            # Most datasets have a 'train' split, but fallback to first available split
+            split_names = list(hf_dataset.keys())
+            if not split_names:
+                raise ValueError(f"No splits found in dataset {self.config.hf_dataset_name}")
+                
+            main_split = "train" if "train" in split_names else split_names[0]
+            dataset = hf_dataset[main_split]
+            
+            # Limit the number of samples if specified
+            if self.config.sample_count is not None:
+                dataset = dataset.select(range(min(self.config.sample_count, len(dataset))))
+                
+        except Exception as e:
+            raise ValueError(f"Error loading dataset {self.config.hf_dataset_name}: {e}")
+            
+        # Get languages from config, default to English if not specified
+        languages = self.config.languages or {"en": "English"}
+        
+        # For each document, generate questions and answers
+        for sample in dataset:
+            if self.config.text_column not in sample:
+                print(f"Warning: Column {self.config.text_column} not found in sample, skipping")
+                continue
+                
+            document = sample[self.config.text_column]
+            if not document or len(document.strip()) < self.config.min_document_length:  # Skip very short documents
+                continue
+            if len(document.strip()) > self.config.max_document_length: # Skip very long documents
+                continue
+                
+            for lang_code, language_name in languages.items():
+                # 1. First call: Generate questions and correct answers
+                question_prompts = self.config.prompts or self._get_default_prompts()
+                question_prompts = [
+                    prompt.format(
+                        num_samples=self.config.num_samples_per_prompt,
+                        language_name=language_name,
+                        document=document,
+                    )
+                    for prompt in question_prompts
+                ]
+                
+                # Expand prompts with configured variations
+                question_expansions = expand_prompts(
+                    prompt_templates=question_prompts,
+                    **self.config.expansion.model_dump(),
+                )
+                
+                # Process each expanded prompt
+                for expanded_prompt, meta in question_expansions:
+                    for llm in llms:
+                        # Use the first LLM provider to generate questions and correct answers
+                        try:
+                            # Generate questions with the correct answers
+                            response = llm.generate(expanded_prompt, response_format=QAEntries)
+                            
+                            for qa_entry in response.entries:
+                                # Extract question and correct answer from the QAEntry
+                                try:
+                                    # QAEntry already has question and answer fields
+                                    question_part = qa_entry.question
+                                    correct_answer = qa_entry.answer
+                                    
+                                    # 2. Second call: Generate incorrect answers
+                                    distractor_prompt = self.config.distractor_prompt or self._get_distractor_prompt().format(
+                                        question=question_part,
+                                        correct_answer=correct_answer,
+                                        language_name=language_name,
+                                    )
+                                    
+                                    try:
+                                        # Use TextEntries for the distractor response since we need a list of incorrect answers
+                                        distractor_response = llm.generate(
+                                            distractor_prompt, response_format=TextEntries
+                                        )
+                                        
+                                        # Parse the incorrect answers
+                                        incorrect_answers = []
+                                        for entry in distractor_response.entries:
+                                            incorrect_answers.append(entry.strip())
+                                        
+                                        if len(incorrect_answers) >= 3:
+                                            # Create MCQ row with the question, correct answer, and incorrect answers
+                                            row = MCQRow(
+                                                source_document=document,
+                                                question=question_part,
+                                                correct_answer=correct_answer,
+                                                incorrect_answer_1=incorrect_answers[0],
+                                                incorrect_answer_2=incorrect_answers[1],
+                                                incorrect_answer_3=incorrect_answers[2],
+                                                model_id=llm.model_id,
+                                                mcq_source=MCQSource.SYNTHETIC,
+                                                metadata={
+                                                    "language": lang_code,
+                                                    "source_dataset": self.config.hf_dataset_name,
+                                                },
+                                            )
+                                            self.data_rows.append(row)
+                                        else:
+                                            print(f"Warning: Not enough incorrect answers generated (got {len(incorrect_answers)}, need 3)")
+                                    except Exception as e:
+                                        print(f"Error generating distractors: {e}")
+                                except Exception as e:
+                                    print(f"Error processing entry: {e}")
+                            print(f" Generated total of {len(self.data_rows)} MCQs")
+                        except Exception as e:
+                            print(f"Error with llm provider {llm.name}: {e}")
+        
+        # Final save at the end
+        self.to_jsonl(self.config.output_file)
+        return self
+    
+    def _get_default_prompts(self) -> list[str]:
+        """Return the default prompt templates for MCQ generation."""
+        return mcq_prompts.DEFAULT_TEMPLATES
+    
+    def _get_distractor_prompt(self) -> str:
+        """Return the prompt template for generating incorrect answers."""
+        return mcq_prompts.DISTRACTOR_TEMPLATE
