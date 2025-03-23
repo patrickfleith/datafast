@@ -72,4 +72,31 @@ class MCQRow(BaseModel):
     mcq_source: MCQSource = MCQSource.SYNTHETIC
     uuid: UUID = Field(default_factory=uuid4)
     metadata: dict[str, str] = Field(default_factory=dict)
+
+
+class PreferenceSource(str, Enum):
+    SYNTHETIC = "synthetic"
+    VERIFIED = "verified"
+    HUMAN = "human"
+    CONSENSUS = "consensus"
+
+
+class PreferenceRow(BaseModel):
+    """Row for storing preference data with chosen and rejected responses."""
     
+    input_document: str
+    question: str
+    chosen_response: str
+    rejected_response: str
+    preference_source: PreferenceSource = PreferenceSource.SYNTHETIC
+    chosen_model_id: Optional[str] = None
+    rejected_model_id: Optional[str] = None
+    
+    # Optional judge-related fields
+    chosen_response_score: Optional[int] = None
+    rejected_response_score: Optional[int] = None
+    chosen_response_assessment: Optional[str] = None
+    rejected_response_assessment: Optional[str] = None
+
+    uuid: UUID = Field(default_factory=uuid4)
+    metadata: dict[str, str] = Field(default_factory=dict)

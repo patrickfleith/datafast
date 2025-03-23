@@ -154,25 +154,25 @@ class UltraChatDatasetConfig(BaseModel):
         description="Optional custom prompt templates for question generation",
     )
 
-    persona_question_reformulation_prompt: str = Field(
+    persona_question_reformulation_prompt: Optional[str] = Field(
         default=None,
         description="Optional custom prompt template to reformulate \
                 questions based on personas",
     )
 
-    simulated_assistant_prompt: str = Field(
+    simulated_assistant_prompt: Optional[str] = Field(
         default=None,
         description="Optional custom prompt template for the simulated \
                 assistant",
     )
 
-    user_system_prompt: str = Field(
+    user_system_prompt: Optional[str] = Field(
         default=None,
         description="Optional custom system prompt for the AI to act \
                 as a user",
     )
 
-    user_followup_prompt: str = Field(
+    user_followup_prompt: Optional[str] = Field(
         default=None,
         description="Optional custom prompt template for the user's \
                 follow-up message",
@@ -261,4 +261,83 @@ class MCQDatasetConfig(BaseModel):
     def validate_text_column(cls, v):
         if not v:
             raise ValueError("text_column is required")
+        return v
+
+
+class PreferenceDatasetConfig(BaseModel):
+    dataset_type: str = Field(default="preference_dataset")
+
+    # Input documents
+    input_documents: list[str] = Field(
+        default_factory=list,
+        description="List of input documents from which questions will be generated"
+    )
+    
+    num_samples_per_prompt: int = Field(
+        default=3,
+        description="Number of questions generated per persona/document pair"
+    )
+
+    question_generation_prompts: Optional[list[str]] = Field(
+        default=None,
+        description="Optional custom prompt templates for question generation",
+    )
+
+    chosen_response_generation_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional custom prompt template for generation of the chosen response",
+    )
+
+    rejected_response_generation_prompt: Optional[str] = Field(
+        default=None,
+        description="Optional custom prompt template for generation of the rejected response",
+    )
+
+    output_file: str = Field(
+        default="preference_dataset.jsonl",
+        description="Path to save preference dataset results"
+    )
+
+    # Expansion config
+    expansion: PromptExpansionConfig = PromptExpansionConfig()
+
+    languages: dict[str, str] = Field(
+        default={"en": "English"},
+        description="Language ISO codes and their corresponding names",
+    )
+
+    evol_instruct: bool = Field(
+        default=False,
+        description="Whether to use evolutionary instruction refinement"
+    )
+    
+    llm_as_judge: bool = Field(
+        default=False,
+        description="Whether to use an LLM as judge for preference pairs scoring"
+    )
+    
+    # Conditional fields for evol_instruct
+    evolution_prompt: Optional[str] = Field(
+        default=None,
+        description="Prompt template for evolutionary instruction refinement (required when evol_instruct=True)"
+    )
+    
+    # Conditional fields for llm_as_judge
+    judge_prompt: Optional[str] = Field(
+        default=None,
+        description="Prompt template for the LLM judge (required when llm_as_judge=True)"
+    )
+    
+    @field_validator("evolution_prompt")
+    def validate_evolution_prompt(cls, v, info):
+        values = info.data
+        if values.get("evol_instruct", False) and not v:
+            raise ValueError("evolution_prompt is required when evol_instruct is True")
+        return v
+    
+    @field_validator("judge_prompt")
+    def validate_judge_prompt(cls, v, info):
+        values = info.data
+        if values.get("llm_as_judge", False) and not v:
+            raise ValueError("judge_prompt is required when llm_as_judge is True")
         return v

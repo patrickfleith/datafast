@@ -44,3 +44,15 @@
 - For a few hundred samples it is OK to wait a bit. However, generating thousands of samples should be done Async/Batch as it becomes unacceptable for a user to wait so long.
 - Check what options LiteLLM offers. This is another reason to migrate to LiteLLM.
 
+### Reasoning Dataset
+- Simple DeepSeek distilation?
+- Agentic Generation?
+- We can have a look at CamelAI, but also check how other reasoning dataset are generated.
+
+### Tests
+- There are no proper tests, just some scripts within `examples`.
+- We should add proper tests soon after launch
+
+### EvolInstruct not implemented
+- At the moment EvolInstruct is not implemented in PreferenceDataset Generation.
+- While this is not critical at this stage, it would be great to have it soon.
