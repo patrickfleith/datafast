@@ -17,6 +17,7 @@ from datafast.schema.config import (
     TextDatasetConfig,
     UltraChatDatasetConfig,
     MCQDatasetConfig,
+    PreferenceDatasetConfig,
 )
 from datafast.schema.data_rows import (
     ChatRow,
@@ -26,6 +27,8 @@ from datafast.schema.data_rows import (
     TextSource,
     MCQRow,
     MCQSource,
+    PreferenceRow,
+    PreferenceSource,
 )
 from datafast.expanders import expand_prompts
 import os
@@ -60,6 +63,14 @@ class FollowupQuestion(BaseModel):
         ..., description="Followup question of a user to an AI assistant response."
     )
 
+class EvolveInstructOutput(BaseModel):
+    improved_question: str = Field(...)
+    improved_answer: str = Field(...)
+
+
+class JudgeLLMOutput(BaseModel):
+    assessment: str = Field(...)
+    score: int = Field(..., ge=1, le=10)
 
 class DatasetBase(ABC):
     """Abstract base class for all dataset generators."""
@@ -680,3 +691,326 @@ class MCQDataset(DatasetBase):
     def _get_distractor_prompt(self) -> str:
         """Return the prompt template for generating incorrect answers."""
         return mcq_prompts.DISTRACTOR_TEMPLATE
+
+
+class PreferenceDataset(DatasetBase):
+    def __init__(self, config: PreferenceDatasetConfig):
+        super().__init__(config)
+        self.config = config
+    
+    def generate(self, 
+                question_gen_llm: LLMProvider,
+                chosen_response_gen_llm: LLMProvider,
+                rejected_response_gen_llm: LLMProvider,
+                evolution_llm: LLMProvider = None,
+                judge_llm: LLMProvider = None):
+        """
+        Generate preference data with chosen and rejected responses.
+        
+        Args:
+            question_gen_llm: LLM provider for generating questions/instructions.
+            chosen_response_gen_llm: LLM provider for generating high-quality (chosen) responses.
+            rejected_response_gen_llm: LLM provider for generating lower-quality (rejected) responses.
+            evolution_llm: LLM provider for evolving questions and generating improved responses.
+            judge_llm: LLM provider for scoring responses when llm_as_judge is True.
+            
+        Raises:
+            ValueError: If input_documents are missing in the configuration.
+        """
+        if not self.config.input_documents:
+            raise ValueError("input_documents must be provided in the configuration")
+        
+        # Get languages from config, default to English if not specified
+        languages = self.config.languages or {"en": "English"}
+        
+        # For each language, generate examples
+        for lang_code, language_name in languages.items():
+            # Process each input document
+            for doc in self.config.input_documents:
+                # Generate questions for each document
+                questions = self._generate_questions(doc, question_gen_llm, language_name)
+                
+                # For each question, generate chosen and rejected responses
+                for question in questions:
+                    # Generate chosen response
+                    chosen_response = self._generate_chosen_response(
+                        doc, 
+                        question, 
+                        chosen_response_gen_llm, 
+                        language_name
+                    )
+                    
+                    # Generate rejected response
+                    rejected_response = self._generate_rejected_response(
+                        doc,
+                        question,
+                        rejected_response_gen_llm, 
+                        language_name
+                    )
+
+                    # If evolutionary instruction is enabled, refine the instruction and response
+                    if self.config.evol_instruct and evolution_llm:
+                        raise NotImplementedError
+                        # evol_result = self._evolve_question_and_answer(
+                        #     doc, 
+                        #     question, 
+                        #     chosen_response, 
+                        #     evolution_llm
+                        # )
+                        # question = evol_result.improved_question
+                        # chosen_response = evol_result.improved_answer
+
+                    
+                    # Initialize model IDs and judge-related variables
+                    chosen_model_id = chosen_response_gen_llm.model_id
+                    rejected_model_id = rejected_response_gen_llm.model_id
+                    chosen_response_score = None
+                    rejected_response_score = None
+                    chosen_response_assessment = None
+                    rejected_response_assessment = None
+                    
+                    # If LLM as judge is enabled, use the judge LLM to evaluate the preference pair
+                    if self.config.llm_as_judge and judge_llm:
+                        # Get judge scores for chosen response
+                        chosen_response_result = self._judge_scoring(
+                            doc, question, chosen_response, judge_llm
+                        )
+                        chosen_response_score = chosen_response_result.score
+                        chosen_response_assessment = chosen_response_result.assessment
+
+                        # Get judge scores for rejected response
+                        rejected_response_result = self._judge_scoring(
+                            doc, question, rejected_response, judge_llm
+                        )
+                        rejected_response_score = rejected_response_result.score
+                        rejected_response_assessment = rejected_response_result.assessment
+
+                        # Swap chosen and rejected responses based on scores if needed
+                        # This ensures the higher-scored response is always the chosen one
+                        if rejected_response_score > chosen_response_score:
+                            # Swap responses
+                            chosen_response, rejected_response = rejected_response, chosen_response
+                            # Swap scores
+                            chosen_response_score, rejected_response_score = rejected_response_score, chosen_response_score
+                            # Swap assessments
+                            chosen_response_assessment, rejected_response_assessment = rejected_response_assessment, chosen_response_assessment
+                            # Swap model IDs
+                            chosen_model_id, rejected_model_id = rejected_model_id, chosen_model_id
+                    
+                    # Create and store the preference row
+                    row_data = {
+                        "input_document": doc,
+                        "question": question,
+                        "chosen_response": chosen_response,
+                        "rejected_response": rejected_response,
+                        "preference_source": PreferenceSource.SYNTHETIC,
+                        "chosen_model_id": chosen_model_id,
+                        "rejected_model_id": rejected_model_id,
+                        "metadata": {
+                            "language": lang_code,
+                            "instruction_model": question_gen_llm.model_id,
+                        }
+                    }
+                    
+                    # Add judge-related fields only if we have a judge
+                    if self.config.llm_as_judge and judge_llm:
+                        row_data.update({
+                            "chosen_response_score": chosen_response_score,
+                            "rejected_response_score": rejected_response_score,
+                            "chosen_response_assessment": chosen_response_assessment,
+                            "rejected_response_assessment": rejected_response_assessment
+                        })
+                    
+                    row = PreferenceRow(**row_data)
+
+                    self.data_rows.append(row)
+                
+                # Save intermediate results
+                self.to_jsonl(self.config.output_file)
+            
+        return self
+        
+    def _generate_questions(self, document: str, llm: LLMProvider, language_name: str) -> list[str]:
+        """
+        Generate questions based on the input document.
+        
+        Args:
+            document: The input document text.
+            llm: LLM provider for generating questions.
+            language_name: The language to generate questions in.
+            
+        Returns:
+            List of generated questions.
+        """
+        # Get prompt templates
+        templates = self.config.question_generation_prompts or self._get_default_question_prompts()
+        
+        # Select a template randomly
+        template = np.random.choice(templates)
+        
+        # Format the prompt
+        prompt = template.format(
+            document=document,
+            num_samples=self.config.num_samples_per_prompt,
+            language_name=language_name
+        )
+        
+        # Generate questions using structured output
+        response = llm.generate(
+            prompt=prompt,
+            response_format=UserQuestions
+        )
+        
+        return response.questions
+    
+    def _generate_chosen_response(self, document: str, question: str, llm: LLMProvider, language_name: str) -> str:
+        """
+        Generate a high-quality (chosen) response.
+        
+        Args:
+            document: The input document text.
+            question: The question to answer.
+            llm: LLM provider for generating the response.
+            language_name: The language to generate the response in.
+            
+        Returns:
+            The generated response.
+        """
+        # Get prompt template
+        template = self.config.chosen_response_generation_prompt or self._get_default_chosen_response_prompt()
+        
+        # Format the prompt
+        prompt = template.format(
+            document=document,
+            question=question,
+            language_name=language_name
+        )
+        
+        # Generate response
+        response = llm.generate(
+            prompt=prompt,
+            response_format=Answer
+        )
+        
+        return response.answer
+    
+    def _generate_rejected_response(self, document: str, question: str, llm: LLMProvider, language_name: str) -> str:
+        """
+        Generate a lower-quality (rejected) response.
+        
+        Args:
+            document: The input document text.
+            question: The question to answer.
+            llm: LLM provider for generating the response.
+            language_name: The language to generate the response in.
+            
+        Returns:
+            The generated response.
+        """
+        # Get prompt template
+        template = self.config.rejected_response_generation_prompt or self._get_default_rejected_response_prompt()
+        
+        # Format the prompt
+        prompt = template.format(
+            document=document,
+            question=question,
+            language_name=language_name
+        )
+        
+        # Generate response
+        response = llm.generate(
+            prompt=prompt,
+            response_format=Answer
+        )
+        
+        return response.answer
+    
+    def _evolve_question_and_answer(self, document: str, question: str, answer: str, llm: LLMProvider) -> EvolveInstructOutput:
+        """
+        Evolve the question and answer.
+        
+        Args:
+            document: The input document text.
+            question: The original question.
+            answer: The original answer.
+            llm: LLM provider for evolving the question and answer.
+            
+        Returns:
+            EvolveInstructOutput with improved question and answer.
+        """
+        raise NotImplementedError
+        # # Get prompt template
+        # template = self.config.evolution_prompt or self._get_default_evolution_prompt()
+        
+        # # Format the prompt
+        # prompt = template.format(
+        #     document=document,
+        #     question=question,
+        #     answer=answer
+        # )
+        
+        # # Generate evolved question and answer
+        # response = llm.generate(
+        #     prompt=prompt,
+        #     response_format=EvolveInstructOutput,
+        # )
+        
+        # return response
+    
+    def _judge_scoring(self, document: str, question: str, response: str, llm: LLMProvider) -> JudgeLLMOutput:
+        """
+        Score a response using an LLM judge.
+        
+        Args:
+            document: The input document text.
+            question: The question.
+            response: The response to evaluate.
+            llm: LLM provider for judging.
+            
+        Returns:
+            JudgeLLMOutput with assessment and score.
+        """
+        # Get prompt template
+        template = self.config.judge_prompt or self._get_default_judge_prompt()
+        
+        # Format the prompt
+        prompt = template.format(
+            document=document,
+            question=question,
+            response=response
+        )
+        
+        # Generate score using the judge LLM
+        # The JudgeLLMOutput class handles validation and clipping of scores
+        result = llm.generate(
+            prompt=prompt,
+            response_format=JudgeLLMOutput,
+        )
+        
+        return result
+    
+    def _get_default_question_prompts(self) -> list[str]:
+        """Return the default prompt templates for question generation."""
+        from datafast.prompts import preference_prompts
+        return preference_prompts.QUESTION_GENERATION_TEMPLATES
+    
+    def _get_default_chosen_response_prompt(self) -> str:
+        """Return the default prompt template for chosen response generation."""
+        from datafast.prompts import preference_prompts
+        return preference_prompts.CHOSEN_RESPONSE_TEMPLATE
+    
+    def _get_default_rejected_response_prompt(self) -> str:
+        """Return the default prompt template for rejected response generation."""
+        from datafast.prompts import preference_prompts
+        return preference_prompts.REJECTED_RESPONSE_TEMPLATE
+    
+    def _get_default_evolution_prompt(self) -> str:
+        """Return the default prompt template for evolutionary instruction refinement."""
+        from datafast.prompts import preference_prompts
+        return preference_prompts.EVOLUTION_PROMPT
+    
+    def _get_default_judge_prompt(self) -> str:
+        """Return the default prompt template for LLM judge scoring."""
+        from datafast.prompts import preference_prompts
+        return preference_prompts.JUDGE_PROMPT
+
