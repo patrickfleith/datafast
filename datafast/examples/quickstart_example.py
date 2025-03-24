@@ -1,4 +1,3 @@
-from cmath import polar
 from datafast.datasets import TextClassificationDataset
 from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
 from dotenv import load_dotenv
