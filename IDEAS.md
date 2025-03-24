@@ -8,7 +8,7 @@
 ### StructuredOutput
 - The HuggingFaceProvider and OllamaProvider are currently implemented but very brittle for Structured Output.
 - They often follow the specified JSON schema but not always.
-- Options: remove brittle providers, fix the providers with support from Ollama and HF dev, implement a more robust solution for constraining outputs like outlines (where possible)
+- Options: remove brittle providers, fix the providers with support from Ollama and HF dev, implement a more robust solution for constraining outputs using techniques like outlines (where possible)
 
 ### Include validation of user-defined prompt
 - For each dataset type there are possibly different mandatory variables to inject (and to define)
@@ -26,7 +26,7 @@
 - Right now the dataset is consolidated at the end of the generation process.
 - This is terrible because we have to wait for the end to inspect and save it.
 - With this we lose time, money, and potentially the dataset if something goes wrong.
-- Each line should be written as soon as it is generated.
+- Each data row should be written to the output file as soon as it is generated.
 
 ### Generate sample
 - It might be useful to generate a sample of the dataset to inspect it before the full generation process.
@@ -45,9 +45,10 @@
 - Check what options LiteLLM offers. This is another reason to migrate to LiteLLM.
 
 ### Reasoning Dataset
-- Simple DeepSeek distilation?
+- Simple DeepSeek distillation?
 - Agentic Generation?
 - We can have a look at CamelAI, but also check how other reasoning dataset are generated.
+- First I would like to switch to using LiteLM for inference, and also test some approaches. Then we work on it.
 
 ### Tests
 - There are no proper tests, just some scripts within `examples`.
@@ -56,3 +57,9 @@
 ### EvolInstruct not implemented
 - At the moment EvolInstruct is not implemented in PreferenceDataset Generation.
 - While this is not critical at this stage, it would be great to have it soon.
+
+
+### Need to align on the naming across the codebase
+- `prompt` vs `query` vs `instruction` for instance should be clarified
+- If specifying `Text` in front of `TextClassificationDataset` is relevant, why don't we use similar prefixes with other datasets?
+    - Since datafast will most likely only address Text datasets, we can probably drop the `Text` specifier.
