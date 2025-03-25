@@ -63,3 +63,11 @@
 - `prompt` vs `query` vs `instruction` for instance should be clarified
 - If specifying `Text` in front of `TextClassificationDataset` is relevant, why don't we use similar prefixes with other datasets?
     - Since datafast will most likely only address Text datasets, we can probably drop the `Text` specifier.
+
+### Import HF dataset sample
+- When reusing a dataset from the HF Hub, check if we can just download a random sample of like 100 examples.
+- This would be much faster and more efficient rather than the entire dataset which sometimes is huge.
+
+### Pushing dataset to Argilla for Human Review / Feedback
+- Having human feedback on generated data is important for quality control.
+- It's quite straightfoward to push a dataset to argilla to collect human feedbacks
