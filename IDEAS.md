@@ -22,12 +22,6 @@
 - Google provides quite high rate limits in that we have about 1500 RPD and 15 RPM.
 - We should implement a rate limiter to avoid hitting the limits.
 
-### Progressive Saving
-- Right now the dataset is consolidated at the end of the generation process.
-- This is terrible because we have to wait for the end to inspect and save it.
-- With this we lose time, money, and potentially the dataset if something goes wrong.
-- Each data row should be written to the output file as soon as it is generated.
-
 ### Generate sample
 - It might be useful to generate a sample of the dataset to inspect it before the full generation process.
 - Think of it like a `dataset.generate_sample(providers, num_samples=10)`.

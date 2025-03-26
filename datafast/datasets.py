@@ -92,22 +92,28 @@ class DatasetBase(ABC):
         """Convert self.data_rows to Parquet."""
         raise NotImplementedError
 
-    def to_jsonl(self, filepath: str):
-        """Convert self.data_rows to JSON lines."""
-        self._save_rows(self.data_rows, filepath)
-
-    def _save_rows(self, rows: list[Any], output_file: str):
-        """Save rows to a file based on the file extension."""
-        output_path = Path(output_file)
+    def to_jsonl(self, filepath: str, rows: list[Any] = None, append: bool = False):
+        """Save rows to a JSONL file, either appending or overwriting.
+        
+        Args:
+            filepath: Path to the output file
+            rows: List of rows to save, defaults to all rows in self.data_rows if None
+            append: If True, append to existing file; if False, overwrite
+        """
+        # Use all rows if none specified
+        rows_to_save = rows if rows is not None else self.data_rows
+        
+        if not rows_to_save:
+            return
+            
+        output_path = Path(filepath)
         if not output_path.parent.exists():
             output_path.parent.mkdir(parents=True)
-
-        if output_file.endswith(".jsonl"):
-            with open(output_file, "w") as f:
-                for row in rows:
-                    f.write(row.model_dump_json() + "\n")
-        else:
-            raise ValueError(f"Unsupported output format: {output_file}")
+            
+        mode = "a" if append and output_path.exists() else "w"
+        with open(filepath, mode) as f:
+            for row in rows_to_save:
+                f.write(row.model_dump_json() + "\n")
 
     def push_to_hub(
         self,
@@ -259,25 +265,25 @@ class TextClassificationDataset(DatasetBase):
                                 expanded_prompt, response_format=TextEntries
                             )
 
-                            # Create a row for each generated example
+                            # Create and save rows for each batch
+                            new_rows = []
                             for text in response.entries:
                                 row = TextClassificationRow(
                                     text=text,
                                     label=label["name"],
                                     model_id=llm.model_id,
                                     label_source=LabelSource.SYNTHETIC,
-                                    metadata={
-                                        "language": lang_code
-                                    },  # Store language info
+                                    metadata={"language": lang_code},
                                 )
                                 self.data_rows.append(row)
-                            print(f" Generated total of {len(self.data_rows)} examples")
+                                new_rows.append(row)
+                            
+                            # Save this batch
+                            self.to_jsonl(self.config.output_file, new_rows, append=True)
+                            print(f" Generated and saved {len(self.data_rows)} examples total")
 
                         except Exception as e:
                             print(f"Error with llm provider {llm.name}: {e}")
-
-        # Final save at the end
-        self.to_jsonl(self.config.output_file)
         return self
 
     def _get_default_prompts(self) -> list[str]:
@@ -342,6 +348,7 @@ class TextDataset(DatasetBase):
                                 )
 
                                 # Create a row for each generated example
+                                new_rows = []
                                 for text in response.entries:
                                     row = TextRow(
                                         text=text,
@@ -354,15 +361,15 @@ class TextDataset(DatasetBase):
                                         },
                                     )
                                     self.data_rows.append(row)
-                                print(
-                                    f" Generated total of {len(self.data_rows)} examples"
-                                )
+                                    new_rows.append(row)
+                                
+                                # Save this batch
+                                self.to_jsonl(self.config.output_file, new_rows, append=True)
+                                print(f" Generated and saved {len(self.data_rows)} examples total")
 
                             except Exception as e:
                                 print(f"Error with llm provider {llm.name}: {e}")
 
-        # Final save at the end
-        self.to_jsonl(self.config.output_file)
         return self
 
     def _get_default_prompts(self) -> list[str]:
@@ -518,9 +525,9 @@ class UltraChatDataset(DatasetBase):
                                         persona=random_persona,
                                     )
                                     self.data_rows.append(row)
-                                print(
-                                    f" Generated total of {len(self.data_rows)} examples"
-                                )
+                                    # Save each chat conversation as it's generated
+                                    self.to_jsonl(self.config.output_file, [row], append=True)
+                                    print(f" Generated and saved {len(self.data_rows)} chat conversations total")
 
                             except Exception as e:
                                 import traceback
@@ -530,7 +537,6 @@ class UltraChatDataset(DatasetBase):
                                 if 'reformulated_question' in locals():
                                     print(f"Last reformulated_question: {reformulated_question}")
 
-        self.to_jsonl(self.config.output_file)
         return self
 
     def _get_default_question_generation_prompts(self) -> list[str]:
@@ -670,18 +676,18 @@ class MCQDataset(DatasetBase):
                                                 },
                                             )
                                             self.data_rows.append(row)
+                                            # Save each MCQ as it's generated
+                                            self.to_jsonl(self.config.output_file, [row], append=True)
                                         else:
                                             print(f"Warning: Not enough incorrect answers generated (got {len(incorrect_answers)}, need 3)")
                                     except Exception as e:
                                         print(f"Error generating distractors: {e}")
                                 except Exception as e:
                                     print(f"Error processing entry: {e}")
-                            print(f" Generated total of {len(self.data_rows)} MCQs")
+                            print(f" Generated and saved {len(self.data_rows)} MCQs total")
                         except Exception as e:
                             print(f"Error with llm provider {llm.name}: {e}")
         
-        # Final save at the end
-        self.to_jsonl(self.config.output_file)
         return self
     
     def _get_default_prompts(self) -> list[str]:
@@ -822,11 +828,11 @@ class PreferenceDataset(DatasetBase):
                         })
                     
                     row = PreferenceRow(**row_data)
-
                     self.data_rows.append(row)
-                
-                # Save intermediate results
-                self.to_jsonl(self.config.output_file)
+                    
+                    # Save each preference pair immediately
+                    self.to_jsonl(self.config.output_file, [row], append=True)
+                    print(f" Generated and saved {len(self.data_rows)} preference pairs total")
             
         return self
         

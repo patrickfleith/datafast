@@ -6,7 +6,7 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
 def main():
     # 1. Configure the dataset generation
     config = TextDatasetConfig(
-        document_types=["tech journalism blog", "personal blog", "MSc lecture notes"],
+        document_types=["tech journalism blog", "personal blog"],
         topics=["artificial intelligence", "cybersecurity"],
         num_samples_per_prompt=3,
         output_file="tech_posts.jsonl",
@@ -19,7 +19,7 @@ def main():
         ],
         expansion=PromptExpansionConfig(
             placeholders={
-                "country": ["United States", "Europe", "Japan", "India"]
+                "country": ["United States", "Europe", "India"]
             },
             combinatorial=True,
         )
@@ -28,7 +28,7 @@ def main():
     # 2. Create LLM providers with specific models
     providers = [
         OpenAIProvider(model_id="gpt-4o-mini"),
-        AnthropicProvider(model_id="claude-3-5-haiku-latest"),
+        # AnthropicProvider(model_id="claude-3-5-haiku-latest"),
     ]
 
     # 3. Generate the dataset
