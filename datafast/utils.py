@@ -1,4 +1,4 @@
-from datafast.schema.config import PromptExpansionConfig, ClassificationConfig
+from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig
 from datafast.llms import LLMProvider
 
 def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: PromptExpansionConfig) -> int:
@@ -63,4 +63,27 @@ def _get_classification_num_expected_rows(config: ClassificationConfig, llms: li
         factors["num_classes"] *
         num_expanded_prompts
     )
-    
+
+
+def _get_text_specific_factors(config: TextDatasetConfig) -> dict[str, int]:
+    return {
+        "num_document_types": len(config.document_types),
+        "num_topics": len(config.topics),
+    }
+
+
+def _get_text_num_expected_rows(config: TextDatasetConfig, llms: list[LLMProvider]) -> int:
+    factors = _get_text_specific_factors(config)
+    num_llms = len(llms)
+    if config.prompts is None:
+        num_expanded_prompts = 1
+    else:
+        num_expanded_prompts = calculate_num_prompt_expansions(config.prompts, config.expansion)
+    return (
+        num_llms *
+        len(config.languages or {"en": "English"}) *
+        config.num_samples_per_prompt *
+        factors["num_document_types"] *
+        factors["num_topics"] *
+        num_expanded_prompts
+    )
