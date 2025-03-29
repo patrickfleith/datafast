@@ -29,6 +29,8 @@ def main():
 
     # 3. Generate the dataset
     dataset = MCQDataset(config)
+    num_expected_rows = dataset.get_num_expected_rows(providers, source_data_num_rows=233)
+    print(f"\nExpected number of rows: {num_expected_rows}")
     dataset.generate(providers)
 
     # 4. Print results summary
@@ -36,15 +38,15 @@ def main():
     print(f"Results saved to {config.output_file}")
 
     # 5. Optional: Push to HF hub
-    USERNAME = "patrickfleith"  # <--- Your hugging face username
-    DATASET_NAME = "mcq_test_dataset"  # <--- Your hugging face dataset name
-    url = dataset.push_to_hub(
-        repo_id=f"{USERNAME}/{DATASET_NAME}",
-        train_size=0.7,
-        seed=20250125,
-        shuffle=True,
-    )
-    print(f"\nDataset pushed to Hugging Face Hub: {url}")
+    # USERNAME = "patrickfleith"  # <--- Your hugging face username
+    # DATASET_NAME = "mcq_test_dataset"  # <--- Your hugging face dataset name
+    # url = dataset.push_to_hub(
+    #     repo_id=f"{USERNAME}/{DATASET_NAME}",
+    #     train_size=0.7,
+    #     seed=20250125,
+    #     shuffle=True,
+    # )
+    # print(f"\nDataset pushed to Hugging Face Hub: {url}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig, UltraChatDatasetConfig
+from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig, UltraChatDatasetConfig, MCQDatasetConfig
 from datafast.llms import LLMProvider
 
 def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: PromptExpansionConfig) -> int:
@@ -110,5 +110,26 @@ def _get_ultrachat_num_expected_rows(config: UltraChatDatasetConfig, llms: list[
         len(config.languages or {"en": "English"}) *
         config.num_samples *
         factors["num_topic_subtopic_pairs"] *
+        num_expanded_prompts
+    )
+
+
+def _get_mcq_specific_factors(config: MCQDatasetConfig) -> dict[str, int]:
+    return {"": None} # There are no MCQ specific multipliers. Method here for consistency.
+
+
+def _get_mcq_num_expected_rows(config: MCQDatasetConfig, llms: list[LLMProvider], source_data_num_rows: int) -> int:
+    # factors = _get_mcq_specific_factors(config)  # Not specific factors
+    source_data_num_rows = min(source_data_num_rows, config.sample_count)
+    num_llms = len(llms)
+    if config.prompts is None:
+        num_expanded_prompts = 1
+    else:
+        num_expanded_prompts = calculate_num_prompt_expansions(config.prompts, config.expansion)
+    return (
+        num_llms *
+        len(config.languages or {"en": "English"}) *
+        config.num_samples_per_prompt *
+        source_data_num_rows *
         num_expanded_prompts
     )

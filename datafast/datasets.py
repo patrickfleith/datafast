@@ -604,6 +604,20 @@ class MCQDataset(DatasetBase):
     def __init__(self, config: MCQDatasetConfig):
         super().__init__(config)
         self.config = config
+    
+    def get_num_expected_rows(self, llms: list[LLMProvider], source_data_num_rows: int) -> int:
+        """Calculate the expected number of rows that will be generated.
+        
+        Args:
+            llms: List of LLM providers that will be used for generation.
+            
+        Returns:
+            int: The expected number of rows that will be generated.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+        return utils._get_mcq_num_expected_rows(self.config, llms, source_data_num_rows)
+
 
     def generate(self, llms: list[LLMProvider]) -> "MCQDataset":
         """
