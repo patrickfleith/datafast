@@ -32,6 +32,7 @@ from datafast.schema.data_rows import (
 )
 from datafast.expanders import expand_prompts
 import os
+from datafast import utils
 
 
 class TextEntries(BaseModel):
@@ -213,6 +214,21 @@ class TextClassificationDataset(DatasetBase):
     def __init__(self, config: ClassificationConfig):
         super().__init__(config)
         self.config = config
+    
+    def get_num_expected_rows(self, llms: list[LLMProvider]) -> int:
+        """Calculate the expected number of rows that will be generated.
+        
+        Args:
+            llms: List of LLM providers that will be used for generation.
+            
+        Returns:
+            int: The expected number of rows that will be generated.
+        """
+        if not self.config.classes or not llms:
+            return 0
+            
+        return utils._get_classification_num_expected_rows(self.config, llms)
+    
 
     def generate(self, llms: list[LLMProvider]) -> "TextClassificationDataset":
         """Generate text classification data by calling multiple providers.
@@ -295,6 +311,19 @@ class TextDataset(DatasetBase):
     def __init__(self, config: TextDatasetConfig):
         super().__init__(config)
         self.config = config
+    
+    def get_num_expected_rows(self, llms: list[LLMProvider]) -> int:
+        """Calculate the expected number of rows that will be generated.
+        
+        Args:
+            llms: List of LLM providers that will be used for generation.
+            
+        Returns:
+            int: The expected number of rows that will be generated.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+        return utils._get_text_num_expected_rows(self.config, llms)
 
     def generate(self, llms: list[LLMProvider]) -> "TextDataset":
         """Generate text data by calling multiple providers.
@@ -381,6 +410,20 @@ class UltraChatDataset(DatasetBase):
     def __init__(self, config: UltraChatDatasetConfig):
         super().__init__(config)
         self.config = config
+    
+    def get_num_expected_rows(self, llms: list[LLMProvider]) -> int:
+        """Calculate the expected number of rows that will be generated.
+        
+        Args:
+            llms: List of LLM providers that will be used for generation.
+            
+        Returns:
+            int: The expected number of rows that will be generated.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+        return utils._get_ultrachat_num_expected_rows(self.config, llms)
+
 
     def generate(self, llms: list[LLMProvider]) -> "TextDataset":
         if not llms:
@@ -561,6 +604,20 @@ class MCQDataset(DatasetBase):
     def __init__(self, config: MCQDatasetConfig):
         super().__init__(config)
         self.config = config
+    
+    def get_num_expected_rows(self, llms: list[LLMProvider], source_data_num_rows: int) -> int:
+        """Calculate the expected number of rows that will be generated.
+        
+        Args:
+            llms: List of LLM providers that will be used for generation.
+            
+        Returns:
+            int: The expected number of rows that will be generated.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+        return utils._get_mcq_num_expected_rows(self.config, llms, source_data_num_rows)
+
 
     def generate(self, llms: list[LLMProvider]) -> "MCQDataset":
         """
@@ -703,6 +760,20 @@ class PreferenceDataset(DatasetBase):
     def __init__(self, config: PreferenceDatasetConfig):
         super().__init__(config)
         self.config = config
+    
+
+    def get_num_expected_rows(self, llms: list[LLMProvider]) -> int:
+        """Calculate the expected number of rows that will be generated.
+        
+        Args:
+            llms: List of LLM providers that will be used for generation.
+            
+        Returns:
+            int: The expected number of rows that will be generated.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+        return utils._get_preference_num_expected_rows(self.config, llms)
     
     def generate(self, 
                 question_gen_llm: LLMProvider,
