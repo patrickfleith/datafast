@@ -1,4 +1,4 @@
-from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig, UltraChatDatasetConfig, MCQDatasetConfig
+from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig, UltraChatDatasetConfig, MCQDatasetConfig, PreferenceDatasetConfig
 from datafast.llms import LLMProvider
 
 def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: PromptExpansionConfig) -> int:
@@ -115,7 +115,7 @@ def _get_ultrachat_num_expected_rows(config: UltraChatDatasetConfig, llms: list[
 
 
 def _get_mcq_specific_factors(config: MCQDatasetConfig) -> dict[str, int]:
-    return {"": None} # There are no MCQ specific multipliers. Method here for consistency.
+    return {"": None}  # There are no MCQ specific multipliers. Method here for consistency.
 
 
 def _get_mcq_num_expected_rows(config: MCQDatasetConfig, llms: list[LLMProvider], source_data_num_rows: int) -> int:
@@ -131,5 +131,26 @@ def _get_mcq_num_expected_rows(config: MCQDatasetConfig, llms: list[LLMProvider]
         len(config.languages or {"en": "English"}) *
         config.num_samples_per_prompt *
         source_data_num_rows *
+        num_expanded_prompts
+    )
+
+
+def _get_preference_specific_factors(config: PreferenceDatasetConfig) -> dict[str, int]:
+    return {"": None}  # There are no preference specific multipliers. Method here for consistency.
+
+def _get_preference_num_expected_rows(config: PreferenceDatasetConfig, llms: list[LLMProvider]) -> int:
+    # factors = _get_preference_specific_factors(config)  # Not specific factors
+    num_llms = len(llms)
+    num_docs = len(config.input_documents)
+    num_questions = config.num_samples_per_prompt
+    if config.question_generation_prompts is None:
+        num_expanded_prompts = 1
+    else:
+        num_expanded_prompts = len(config.question_generation_prompts)
+    return (
+        num_llms *
+        num_docs * 
+        len(config.languages or {"en": "English"}) *
+        num_questions *
         num_expanded_prompts
     )

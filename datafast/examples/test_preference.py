@@ -3,8 +3,8 @@ Example script for generating a Preference dataset with chosen and rejected resp
 """
 
 from datafast.schema.config import PreferenceDatasetConfig
-from datafast.datasets import PreferenceDataset
-from datafast.llms import OpenAIProvider, GoogleProvider
+from datafast.datasets import PreferenceDataset 
+from datafast.llms import OpenAIProvider, GoogleProvider, AnthropicProvider
 
 from datafast.examples.test_documents import TEST_DOCUMENTS
 
@@ -12,7 +12,7 @@ from datafast.examples.test_documents import TEST_DOCUMENTS
 def main():
     # 1. Define the configuration
     config = PreferenceDatasetConfig(
-        input_documents=TEST_DOCUMENTS,
+        input_documents=TEST_DOCUMENTS[:2],
         num_samples_per_prompt=2,  # Generate 2 questions per document
         languages={"en": "English", "fr": "French"},  # Generate in multiple languages
         llm_as_judge=True,  # Use LLM to judge and score responses
@@ -23,10 +23,12 @@ def main():
     question_gen_llm = GoogleProvider(model_id="gemini-1.5-flash")
     chosen_response_gen_llm = OpenAIProvider(model_id="gpt-4o-mini")
     rejected_response_gen_llm = GoogleProvider(model_id="gemini-1.5-flash")
-    judge_llm = OpenAIProvider(model_id="gpt-4o-mini")
+    judge_llm = AnthropicProvider(model_id="claude-3-5-haiku-latest")
 
     # 3. Generate the dataset
     dataset = PreferenceDataset(config)
+    num_expected_rows = dataset.get_num_expected_rows(llms=[question_gen_llm])
+    print(f"\nExpected number of rows: {num_expected_rows}")
     dataset.generate(
         question_gen_llm=question_gen_llm,
         chosen_response_gen_llm=chosen_response_gen_llm,

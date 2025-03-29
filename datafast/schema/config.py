@@ -298,8 +298,14 @@ class PreferenceDatasetConfig(BaseModel):
         description="Path to save preference dataset results"
     )
 
-    # Expansion config
+    # Expansion config - Not yet supported for PreferenceDataset
     expansion: PromptExpansionConfig = PromptExpansionConfig()
+    
+    @field_validator('expansion')
+    def expansion_not_supported(cls, v, info):
+        if v and (v.placeholders or v.combinatorial or v.num_random_samples != 0):
+            raise ValueError("Expansion is not yet supported for PreferenceDataset")
+        return v
 
     languages: dict[str, str] = Field(
         default={"en": "English"},
