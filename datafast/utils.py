@@ -1,4 +1,4 @@
-from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig
+from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig, UltraChatDatasetConfig
 from datafast.llms import LLMProvider
 
 def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: PromptExpansionConfig) -> int:
@@ -85,5 +85,30 @@ def _get_text_num_expected_rows(config: TextDatasetConfig, llms: list[LLMProvide
         config.num_samples_per_prompt *
         factors["num_document_types"] *
         factors["num_topics"] *
+        num_expanded_prompts
+    )
+
+
+def _get_ultrachat_specific_factors(config: UltraChatDatasetConfig) -> dict[str, int]:
+    num_topic_subtopic_pairs = 0
+    for _, value in config.topics_and_subtopics.items():
+        num_topic_subtopic_pairs += len(value)
+    return {
+        "num_topic_subtopic_pairs": num_topic_subtopic_pairs,
+    }
+
+
+def _get_ultrachat_num_expected_rows(config: UltraChatDatasetConfig, llms: list[LLMProvider]) -> int:
+    factors = _get_ultrachat_specific_factors(config)
+    num_llms = len(llms)
+    if config.question_generation_prompts is None:
+        num_expanded_prompts = 1
+    else:
+        num_expanded_prompts = calculate_num_prompt_expansions(config.question_generation_prompts, config.expansion)
+    return (
+        num_llms *
+        len(config.languages or {"en": "English"}) *
+        config.num_samples *
+        factors["num_topic_subtopic_pairs"] *
         num_expanded_prompts
     )
