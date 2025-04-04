@@ -18,10 +18,10 @@ class ClassificationConfig(BaseModel):
     dataset_type: str = Field(default="text_classification")
 
     # The text classes with their descriptions
-    classes: list[dict[str, str | int]] = Field(
+    classes: list[dict[str, str]] = Field(
         default_factory=list,
         description="List of classification labels. Each label is a dict with \
-            'label_id' (int), 'name' (str), and 'description' (str)",
+            'name' (str), and 'description' (str)",
     )
 
     # Prompt templates (strings) provided by the user; if empty, use defaults
@@ -46,6 +46,19 @@ class ClassificationConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+    
+    @field_validator("prompts")
+    def validate_prompts(cls, v):
+        if v is not None:
+            required_placeholders = ["{num_samples}", "{language_name}", "{label_name}", "{label_description}"]
+            for i, prompt in enumerate(v):
+                missing_placeholders = [p for p in required_placeholders if p not in prompt]
+                if missing_placeholders:
+                    raise ValueError(
+                        f"Prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                        f"All prompts must contain: {', '.join(required_placeholders)}"
+                    )
+        return v
 
 
 class TextDatasetConfig(BaseModel):
