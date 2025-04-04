@@ -95,6 +95,19 @@ class TextDatasetConfig(BaseModel):
                 UserWarning,
             )
         return v
+    
+    @field_validator("prompts")
+    def validate_prompts(cls, v):
+        if v is not None:
+            required_placeholders = ["{num_samples}", "{language_name}", "{document_type}", "{topic}"]
+            for i, prompt in enumerate(v):
+                missing_placeholders = [p for p in required_placeholders if p not in prompt]
+                if missing_placeholders:
+                    raise ValueError(
+                        f"Prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                        f"All prompts must contain: {', '.join(required_placeholders)}"
+                    )
+        return v
 
     prompts: Optional[list[str]] = Field(
         default=None, description="Optional custom prompt templates"
