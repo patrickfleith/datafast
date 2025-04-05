@@ -81,6 +81,28 @@ class TextDatasetConfig(BaseModel):
             raise ValueError("document_types is required and should be a list[str]")
         return v
 
+    prompts: Optional[list[str]] = Field(
+        default=None, description="Optional custom prompt templates"
+    )
+
+    num_samples_per_prompt: int = (
+        5  # number of samples to generate simultaneously via LLM call.
+    )
+
+    # Where to save the output
+    output_file: str = Field(
+        default="text.jsonl",
+        description="Path to save text results",
+    )
+
+    # Expansion config
+    expansion: PromptExpansionConfig = PromptExpansionConfig()
+
+    languages: dict[str, str] = Field(
+        default={"en": "English"},
+        description="Language ISO codes and their corresponding names",
+    )
+
     @field_validator("topics")
     def validate_topics(cls, v):
         if not v:
@@ -108,28 +130,6 @@ class TextDatasetConfig(BaseModel):
                         f"All prompts must contain: {', '.join(required_placeholders)}"
                     )
         return v
-
-    prompts: Optional[list[str]] = Field(
-        default=None, description="Optional custom prompt templates"
-    )
-
-    num_samples_per_prompt: int = (
-        5  # number of samples to generate simultaneously via LLM call.
-    )
-
-    # Where to save the output
-    output_file: str = Field(
-        default="text.jsonl",
-        description="Path to save text results",
-    )
-
-    # Expansion config
-    expansion: PromptExpansionConfig = PromptExpansionConfig()
-
-    languages: dict[str, str] = Field(
-        default={"en": "English"},
-        description="Language ISO codes and their corresponding names",
-    )
 
 
 class UltraChatDatasetConfig(BaseModel):
@@ -341,6 +341,32 @@ class MCQDatasetConfig(BaseModel):
             raise ValueError("text_column is required")
         return v
 
+    @field_validator("prompts")
+    def validate_prompts(cls, v):
+        if v is not None:
+            required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
+            for i, prompt in enumerate(v):
+                missing_placeholders = [p for p in required_placeholders if p not in prompt]
+                if missing_placeholders:
+                    raise ValueError(
+                        f"Prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                        f"All prompts must contain: {', '.join(required_placeholders)}"
+                    )
+        return v
+        
+    @field_validator("distractor_prompt")
+    def validate_distractor_prompt(cls, v):
+        if v is not None:
+            required_placeholders = ["{language_name}", "{question}", "{correct_answer}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"Distractor prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"Distractor prompt must contain: {', '.join(required_placeholders)}"
+                )
+        return v
+
+
 
 class PreferenceDatasetConfig(BaseModel):
     dataset_type: str = Field(default="preference_dataset")
@@ -389,6 +415,43 @@ class PreferenceDatasetConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+    
+    @field_validator("question_generation_prompts")
+    def validate_question_prompts(cls, v):
+        if v is not None:
+            required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
+            for i, prompt in enumerate(v):
+                missing_placeholders = [p for p in required_placeholders if p not in prompt]
+                if missing_placeholders:
+                    raise ValueError(
+                        f"Question prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                        f"All question prompts must contain: {', '.join(required_placeholders)}"
+                    )
+        return v
+    
+    @field_validator("chosen_response_generation_prompt")
+    def validate_chosen_prompt(cls, v):
+        if v is not None:
+            required_placeholders = ["{language_name}", "{document}", "{question}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"Chosen response prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"Chosen response prompt must contain: {', '.join(required_placeholders)}"
+                )
+        return v
+        
+    @field_validator("rejected_response_generation_prompt")
+    def validate_rejected_prompt(cls, v):
+        if v is not None:
+            required_placeholders = ["{language_name}", "{document}", "{question}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"Rejected response prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"Rejected response prompt must contain: {', '.join(required_placeholders)}"
+                )
+        return v
 
     evol_instruct: bool = Field(
         default=False,
@@ -417,6 +480,15 @@ class PreferenceDatasetConfig(BaseModel):
         values = info.data
         if values.get("evol_instruct", False) and not v:
             raise ValueError("evolution_prompt is required when evol_instruct is True")
+        
+        if v is not None:
+            required_placeholders = ["{document}", "{question}", "{answer}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"Evolution prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"Evolution prompt must contain: {', '.join(required_placeholders)}"
+                )
         return v
     
     @field_validator("judge_prompt")
@@ -424,4 +496,13 @@ class PreferenceDatasetConfig(BaseModel):
         values = info.data
         if values.get("llm_as_judge", False) and not v:
             raise ValueError("judge_prompt is required when llm_as_judge is True")
+            
+        if v is not None:
+            required_placeholders = ["{document}", "{question}", "{response}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"Judge prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"Judge prompt must contain: {', '.join(required_placeholders)}"
+                )
         return v
