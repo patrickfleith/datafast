@@ -3,6 +3,35 @@ from typing import Optional
 import warnings
 
 
+def validate_prompt_placeholders(prompt: str, required_placeholders: list[str], prompt_name: str) -> str:
+    """Validate that a prompt contains all required placeholders.
+    Note: it does not validate optional placeholders for prompt expansion.
+    """
+    if prompt is not None:
+        missing_placeholders = [p for p in required_placeholders if p not in prompt]
+        if missing_placeholders:
+            raise ValueError(
+                f"{prompt_name} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                f"{prompt_name} must contain: {', '.join(required_placeholders)}"
+            )
+    return prompt
+
+
+def validate_prompt_list_placeholders(prompts: list[str], required_placeholders: list[str], list_name: str) -> list[str]:
+    """Validate that each prompt in a list contains all required placeholders.
+    Note: it does not validate optional placeholders for prompt expansion.
+    """
+    if prompts is not None:
+        for i, prompt in enumerate(prompts):
+            missing_placeholders = [p for p in required_placeholders if p not in prompt]
+            if missing_placeholders:
+                raise ValueError(
+                    f"{list_name} at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"All {list_name} must contain: {', '.join(required_placeholders)}"
+                )
+    return prompts
+
+
 class PromptExpansionConfig(BaseModel):
     placeholders: dict[str, list[str]] = {}
     combinatorial: bool = True
@@ -120,16 +149,8 @@ class TextDatasetConfig(BaseModel):
     
     @field_validator("prompts")
     def validate_prompts(cls, v):
-        if v is not None:
-            required_placeholders = ["{num_samples}", "{language_name}", "{document_type}", "{topic}"]
-            for i, prompt in enumerate(v):
-                missing_placeholders = [p for p in required_placeholders if p not in prompt]
-                if missing_placeholders:
-                    raise ValueError(
-                        f"Prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
-                        f"All prompts must contain: {', '.join(required_placeholders)}"
-                    )
-        return v
+        required_placeholders = ["{num_samples}", "{language_name}", "{document_type}", "{topic}"]
+        return validate_prompt_list_placeholders(v, required_placeholders, "prompts")
 
 
 class UltraChatDatasetConfig(BaseModel):
@@ -214,55 +235,25 @@ class UltraChatDatasetConfig(BaseModel):
     )
 
     @field_validator("question_generation_prompts")
-    def validate_prompts(cls, v):
-        if v is not None:
-            required_placeholders = ["{num_samples}", "{language_name}", "{domain}", "{topic}", "{subtopic}"]
-            for i, prompt in enumerate(v):
-                missing_placeholders = [p for p in required_placeholders if p not in prompt]
-                if missing_placeholders:
-                    raise ValueError(
-                        f"Prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
-                        f"All prompts must contain: {', '.join(required_placeholders)}"
-                    )
-        return v
+    def validate_question_generation_prompts(cls, v):
+        required_placeholders = ["{num_samples}", "{language_name}", "{domain}", "{topic}", "{subtopic}"]
+        return validate_prompt_list_placeholders(v, required_placeholders, "question_generation_prompts")
 
     @field_validator("persona_question_reformulation_prompt")
     def validate_persona_question_reformulation_prompt(cls, v):
-        if v is not None:
-            required_placeholders = ["{question}", "{persona}", "{subtopic}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"Persona question reformulation prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"The prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
+        required_placeholders = ["{question}", "{persona}", "{subtopic}"]
+        return validate_prompt_placeholders(v, required_placeholders, "persona_question_reformulation_prompt")
 
     @field_validator("simulated_assistant_prompt")
     def validate_simulated_assistant_prompt(cls, v):
-        if v is not None:
-            required_placeholders = ["{domain}", "{topic}", "{subtopic}", "{question}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"Simulated assistant prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"The prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
+        required_placeholders = ["{domain}", "{topic}", "{subtopic}", "{question}"]
+        return validate_prompt_placeholders(v, required_placeholders, "simulated_assistant_prompt")
 
 
     @field_validator("user_followup_prompt")
     def validate_user_followup_prompt(cls, v):
-        if v is not None:
-            required_placeholders = ["{dialog_summary}", "{persona}", "{domain}", "{subtopic}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"User followup prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"The prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
-    
+        required_placeholders = ["{dialog_summary}", "{persona}", "{domain}", "{subtopic}"]
+        return validate_prompt_placeholders(v, required_placeholders, "user_followup_prompt")
 
 
 class MCQDatasetConfig(BaseModel):
@@ -343,29 +334,13 @@ class MCQDatasetConfig(BaseModel):
 
     @field_validator("prompts")
     def validate_prompts(cls, v):
-        if v is not None:
-            required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
-            for i, prompt in enumerate(v):
-                missing_placeholders = [p for p in required_placeholders if p not in prompt]
-                if missing_placeholders:
-                    raise ValueError(
-                        f"Prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
-                        f"All prompts must contain: {', '.join(required_placeholders)}"
-                    )
-        return v
+        required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
+        return validate_prompt_list_placeholders(v, required_placeholders, "prompts")
         
     @field_validator("distractor_prompt")
     def validate_distractor_prompt(cls, v):
-        if v is not None:
-            required_placeholders = ["{language_name}", "{question}", "{correct_answer}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"Distractor prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"Distractor prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
-
+        required_placeholders = ["{language_name}", "{question}", "{correct_answer}"]
+        return validate_prompt_placeholders(v, required_placeholders, "distractor_prompt")
 
 
 class PreferenceDatasetConfig(BaseModel):
@@ -418,40 +393,18 @@ class PreferenceDatasetConfig(BaseModel):
     
     @field_validator("question_generation_prompts")
     def validate_question_prompts(cls, v):
-        if v is not None:
-            required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
-            for i, prompt in enumerate(v):
-                missing_placeholders = [p for p in required_placeholders if p not in prompt]
-                if missing_placeholders:
-                    raise ValueError(
-                        f"Question prompt at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
-                        f"All question prompts must contain: {', '.join(required_placeholders)}"
-                    )
-        return v
+        required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
+        return validate_prompt_list_placeholders(v, required_placeholders, "Question prompt")
     
     @field_validator("chosen_response_generation_prompt")
     def validate_chosen_prompt(cls, v):
-        if v is not None:
-            required_placeholders = ["{language_name}", "{document}", "{question}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"Chosen response prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"Chosen response prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
+        required_placeholders = ["{language_name}", "{document}", "{question}"]
+        return validate_prompt_placeholders(v, required_placeholders, "Chosen response prompt")
         
     @field_validator("rejected_response_generation_prompt")
     def validate_rejected_prompt(cls, v):
-        if v is not None:
-            required_placeholders = ["{language_name}", "{document}", "{question}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"Rejected response prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"Rejected response prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
+        required_placeholders = ["{language_name}", "{document}", "{question}"]
+        return validate_prompt_placeholders(v, required_placeholders, "Rejected response prompt")
 
     evol_instruct: bool = Field(
         default=False,
@@ -481,15 +434,8 @@ class PreferenceDatasetConfig(BaseModel):
         if values.get("evol_instruct", False) and not v:
             raise ValueError("evolution_prompt is required when evol_instruct is True")
         
-        if v is not None:
-            required_placeholders = ["{document}", "{question}", "{answer}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"Evolution prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"Evolution prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
+        required_placeholders = ["{document}", "{question}", "{answer}"]
+        return validate_prompt_placeholders(v, required_placeholders, "evolution_prompt")
     
     @field_validator("judge_prompt")
     def validate_judge_prompt(cls, v, info):
@@ -497,12 +443,5 @@ class PreferenceDatasetConfig(BaseModel):
         if values.get("llm_as_judge", False) and not v:
             raise ValueError("judge_prompt is required when llm_as_judge is True")
             
-        if v is not None:
-            required_placeholders = ["{document}", "{question}", "{response}"]
-            missing_placeholders = [p for p in required_placeholders if p not in v]
-            if missing_placeholders:
-                raise ValueError(
-                    f"Judge prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
-                    f"Judge prompt must contain: {', '.join(required_placeholders)}"
-                )
-        return v
+        required_placeholders = ["{document}", "{question}", "{response}"]
+        return validate_prompt_placeholders(v, required_placeholders, "judge_prompt")
