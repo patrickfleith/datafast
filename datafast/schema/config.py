@@ -192,6 +192,7 @@ class UltraChatDatasetConfig(BaseModel):
                 assistant",
     )
 
+    # TODO: remove if unused
     user_system_prompt: Optional[str] = Field(
         default=None,
         description="Optional custom system prompt for the AI to act \
@@ -224,6 +225,44 @@ class UltraChatDatasetConfig(BaseModel):
                         f"All prompts must contain: {', '.join(required_placeholders)}"
                     )
         return v
+
+    @field_validator("persona_question_reformulation_prompt")
+    def validate_persona_question_reformulation_prompt(cls, v):
+        if v is not None:
+            required_placeholders = ["{question}", "{persona}", "{subtopic}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"Persona question reformulation prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"The prompt must contain: {', '.join(required_placeholders)}"
+                )
+        return v
+
+    @field_validator("simulated_assistant_prompt")
+    def validate_simulated_assistant_prompt(cls, v):
+        if v is not None:
+            required_placeholders = ["{domain}", "{topic}", "{subtopic}", "{question}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"Simulated assistant prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"The prompt must contain: {', '.join(required_placeholders)}"
+                )
+        return v
+
+
+    @field_validator("user_followup_prompt")
+    def validate_user_followup_prompt(cls, v):
+        if v is not None:
+            required_placeholders = ["{dialog_summary}", "{persona}", "{domain}", "{subtopic}"]
+            missing_placeholders = [p for p in required_placeholders if p not in v]
+            if missing_placeholders:
+                raise ValueError(
+                    f"User followup prompt is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"The prompt must contain: {', '.join(required_placeholders)}"
+                )
+        return v
+    
 
 
 class MCQDatasetConfig(BaseModel):
