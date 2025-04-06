@@ -3,6 +3,89 @@ from typing import Optional
 import warnings
 
 
+def validate_prompt_placeholders(prompt: str, required_placeholders: list[str], prompt_name: str) -> str:
+    """Validate that a prompt contains all required placeholders.
+    Note: it does not validate optional placeholders for prompt expansion.
+    """
+    if prompt is not None:
+        missing_placeholders = [p for p in required_placeholders if p not in prompt]
+        if missing_placeholders:
+            raise ValueError(
+                f"{prompt_name} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                f"{prompt_name} must contain: {', '.join(required_placeholders)}"
+            )
+    return prompt
+
+
+def validate_prompt_list_placeholders(prompts: list[str], required_placeholders: list[str], list_name: str) -> list[str]:
+    """Validate that each prompt in a list contains all required placeholders.
+    Note: it does not validate optional placeholders for prompt expansion.
+    """
+    if prompts is not None:
+        for i, prompt in enumerate(prompts):
+            missing_placeholders = [p for p in required_placeholders if p not in prompt]
+            if missing_placeholders:
+                raise ValueError(
+                    f"{list_name} at index {i} is missing required placeholders: {', '.join(missing_placeholders)}. "
+                    f"All {list_name} must contain: {', '.join(required_placeholders)}"
+                )
+    return prompts
+
+
+def validate_optional_placeholders(prompts: list[str], expansion_config, list_name: str) -> list[str]:
+    """Validate that any optional placeholders (double braces) in prompts have corresponding 
+    entries in expansion_config.placeholders with non-empty lists.
+    
+    Args:
+        prompts: List of prompt strings to validate
+        expansion_config: PromptExpansionConfig object with placeholders dictionary
+        list_name: Name of the list for error messages
+        
+    Returns:
+        The original prompts list if valid
+        
+    Raises:
+        ValueError: If any optional placeholders don't have corresponding entries in expansion_config
+        or if those entries aren't non-empty lists
+    """
+    if not prompts:
+        return prompts
+            
+    # Use default empty expansion config if not provided
+    if not expansion_config or not hasattr(expansion_config, "placeholders"):
+        from datafast.schema.config import PromptExpansionConfig
+        expansion_config = PromptExpansionConfig()
+            
+    # Find all optional placeholders (double braces)
+    import re
+    for i, prompt in enumerate(prompts):
+        # Find all patterns like {{placeholder}}
+        matches = re.findall(r"\{\{(\w+)\}\}", prompt)
+        if not matches:
+            continue
+                
+        # Check that all optional placeholders have entries in expansion config
+        missing_in_config = [p for p in matches if p not in expansion_config.placeholders]
+        if missing_in_config:
+            raise ValueError(
+                f"{list_name} at index {i} contains optional placeholders that are missing from expansion config: "
+                f"{', '.join(missing_in_config)}"
+            )
+                
+        # Check that all placeholder values are non-empty lists
+        empty_placeholders = [p for p in matches 
+                             if p in expansion_config.placeholders and 
+                             (not expansion_config.placeholders[p] or 
+                              not isinstance(expansion_config.placeholders[p], list))]
+        if empty_placeholders:
+            raise ValueError(
+                f"{list_name} at index {i} references placeholders that have empty or non-list values in expansion config: "
+                f"{', '.join(empty_placeholders)}"
+            )
+        
+    return prompts
+
+
 class PromptExpansionConfig(BaseModel):
     placeholders: dict[str, list[str]] = {}
     combinatorial: bool = True
@@ -18,10 +101,10 @@ class ClassificationConfig(BaseModel):
     dataset_type: str = Field(default="text_classification")
 
     # The text classes with their descriptions
-    classes: list[dict[str, str | int]] = Field(
+    classes: list[dict[str, str]] = Field(
         default_factory=list,
         description="List of classification labels. Each label is a dict with \
-            'label_id' (int), 'name' (str), and 'description' (str)",
+            'name' (str), and 'description' (str)",
     )
 
     # Prompt templates (strings) provided by the user; if empty, use defaults
@@ -46,6 +129,16 @@ class ClassificationConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+    
+    @field_validator("prompts")
+    def validate_prompts(cls, prompts, info):
+        # First validate required placeholders
+        required_placeholders = ["{num_samples}", "{language_name}", "{label_name}", "{label_description}"]
+        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
+        
+        # Then validate optional placeholders if expansion config exists
+        expansion_config = info.data.get("expansion")
+        return validate_optional_placeholders(prompts, expansion_config, "prompts")
 
 
 class TextDatasetConfig(BaseModel):
@@ -66,21 +159,6 @@ class TextDatasetConfig(BaseModel):
     def validate_document_types(cls, v):
         if not v:
             raise ValueError("document_types is required and should be a list[str]")
-        return v
-
-    @field_validator("topics")
-    def validate_topics(cls, v):
-        if not v:
-            raise ValueError("topics is required and should be a list[str]")
-        return v
-
-    @field_validator("num_samples_per_prompt")
-    def validate_num_samples(cls, v):
-        if v > 5:
-            warnings.warn(
-                "Values higher than 5 for num_samples_per_prompt are not recommended for raw text generation",
-                UserWarning,
-            )
         return v
 
     prompts: Optional[list[str]] = Field(
@@ -104,6 +182,31 @@ class TextDatasetConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+
+    @field_validator("topics")
+    def validate_topics(cls, v):
+        if not v:
+            raise ValueError("topics is required and should be a list[str]")
+        return v
+
+    @field_validator("num_samples_per_prompt")
+    def validate_num_samples(cls, v):
+        if v > 5:
+            warnings.warn(
+                "Values higher than 5 for num_samples_per_prompt are not recommended for raw text generation",
+                UserWarning,
+            )
+        return v
+    
+    @field_validator("prompts")
+    def validate_prompts(cls, prompts, info):
+        # First validate required placeholders
+        required_placeholders = ["{num_samples}", "{language_name}", "{document_type}", "{topic}"]
+        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
+        
+        # Then validate optional placeholders if expansion config exists
+        expansion_config = info.data.get("expansion")
+        return validate_optional_placeholders(prompts, expansion_config, "prompts")
 
 
 class UltraChatDatasetConfig(BaseModel):
@@ -166,6 +269,7 @@ class UltraChatDatasetConfig(BaseModel):
                 assistant",
     )
 
+    # TODO: remove if unused
     user_system_prompt: Optional[str] = Field(
         default=None,
         description="Optional custom system prompt for the AI to act \
@@ -185,6 +289,32 @@ class UltraChatDatasetConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+
+    @field_validator("question_generation_prompts")
+    def validate_question_generation_prompts(cls, prompts, info):
+        # First validate required placeholders
+        required_placeholders = ["{num_samples}", "{language_name}", "{domain}", "{topic}", "{subtopic}"]
+        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "question_generation_prompts")
+        
+        # Then validate optional placeholders if expansion config exists
+        expansion_config = info.data.get("expansion")
+        return validate_optional_placeholders(prompts, expansion_config, "question_generation_prompts")
+
+    @field_validator("persona_question_reformulation_prompt")
+    def validate_persona_question_reformulation_prompt(cls, v):
+        required_placeholders = ["{question}", "{persona}", "{subtopic}"]
+        return validate_prompt_placeholders(v, required_placeholders, "persona_question_reformulation_prompt")
+
+    @field_validator("simulated_assistant_prompt")
+    def validate_simulated_assistant_prompt(cls, v):
+        required_placeholders = ["{domain}", "{topic}", "{subtopic}", "{question}"]
+        return validate_prompt_placeholders(v, required_placeholders, "simulated_assistant_prompt")
+
+
+    @field_validator("user_followup_prompt")
+    def validate_user_followup_prompt(cls, v):
+        required_placeholders = ["{dialog_summary}", "{persona}", "{domain}", "{subtopic}"]
+        return validate_prompt_placeholders(v, required_placeholders, "user_followup_prompt")
 
 
 class MCQDatasetConfig(BaseModel):
@@ -263,6 +393,21 @@ class MCQDatasetConfig(BaseModel):
             raise ValueError("text_column is required")
         return v
 
+    @field_validator("prompts")
+    def validate_prompts(cls, prompts, info):
+        # First validate required placeholders
+        required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
+        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
+        
+        # Then validate optional placeholders if expansion config exists
+        expansion_config = info.data.get("expansion")
+        return validate_optional_placeholders(prompts, expansion_config, "prompts")
+        
+    @field_validator("distractor_prompt")
+    def validate_distractor_prompt(cls, v):
+        required_placeholders = ["{language_name}", "{question}", "{correct_answer}"]
+        return validate_prompt_placeholders(v, required_placeholders, "distractor_prompt")
+
 
 class PreferenceDatasetConfig(BaseModel):
     dataset_type: str = Field(default="preference_dataset")
@@ -311,6 +456,21 @@ class PreferenceDatasetConfig(BaseModel):
         default={"en": "English"},
         description="Language ISO codes and their corresponding names",
     )
+    
+    @field_validator("question_generation_prompts")
+    def validate_question_prompts(cls, v):
+        required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
+        return validate_prompt_list_placeholders(v, required_placeholders, "Question prompt")
+    
+    @field_validator("chosen_response_generation_prompt")
+    def validate_chosen_prompt(cls, v):
+        required_placeholders = ["{language_name}", "{document}", "{question}"]
+        return validate_prompt_placeholders(v, required_placeholders, "Chosen response prompt")
+        
+    @field_validator("rejected_response_generation_prompt")
+    def validate_rejected_prompt(cls, v):
+        required_placeholders = ["{language_name}", "{document}", "{question}"]
+        return validate_prompt_placeholders(v, required_placeholders, "Rejected response prompt")
 
     evol_instruct: bool = Field(
         default=False,
@@ -339,11 +499,15 @@ class PreferenceDatasetConfig(BaseModel):
         values = info.data
         if values.get("evol_instruct", False) and not v:
             raise ValueError("evolution_prompt is required when evol_instruct is True")
-        return v
+        
+        required_placeholders = ["{document}", "{question}", "{answer}"]
+        return validate_prompt_placeholders(v, required_placeholders, "evolution_prompt")
     
     @field_validator("judge_prompt")
     def validate_judge_prompt(cls, v, info):
         values = info.data
         if values.get("llm_as_judge", False) and not v:
             raise ValueError("judge_prompt is required when llm_as_judge is True")
-        return v
+            
+        required_placeholders = ["{document}", "{question}", "{response}"]
+        return validate_prompt_placeholders(v, required_placeholders, "judge_prompt")
