@@ -1,0 +1,4 @@
+id,text,source
+1,"Artificial Intelligence (AI) is the simulation of human intelligence processes by machines, especially computer systems. These processes include learning (the acquisition of information and rules for using the information), reasoning (using rules to reach approximate or definite conclusions) and self-correction.",AI Basics
+2,"Neural networks are computing systems inspired by the biological neural networks that constitute animal brains. They are a sophisticated form of artificial intelligence that process information in a way that mimics how neurons signal to one another in the human brain.",ML Concepts
+3,"Large Language Models (LLMs) are deep learning models trained on vast amounts of text data, capable of generating human-like text, answering questions, summarizing documents, and more. They have transformed natural language processing by capturing complex patterns in language structure and semantics.",NLP Technologies

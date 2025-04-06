@@ -632,23 +632,64 @@ class MCQDataset(DatasetBase):
         if not llms:
             raise ValueError("At least one LLM provider must be supplied")
             
-        # Load the dataset from Hugging Face
+        # Load the dataset from Hugging Face or local file
         try:
-            hf_dataset = load_dataset(self.config.hf_dataset_name)
-            # Most datasets have a 'train' split, but fallback to first available split
-            split_names = list(hf_dataset.keys())
-            if not split_names:
-                raise ValueError(f"No splits found in dataset {self.config.hf_dataset_name}")
+            if self.config.hf_dataset_name:
+                # Load from Hugging Face
+                hf_dataset = load_dataset(self.config.hf_dataset_name)
+                # Most datasets have a 'train' split, but fallback to first available split
+                split_names = list(hf_dataset.keys())
+                if not split_names:
+                    raise ValueError(f"No splits found in dataset {self.config.hf_dataset_name}")
+                    
+                main_split = "train" if "train" in split_names else split_names[0]
+                dataset = hf_dataset[main_split]
                 
-            main_split = "train" if "train" in split_names else split_names[0]
-            dataset = hf_dataset[main_split]
-            
+            elif self.config.local_file_path:
+                # Load from local file based on extension
+                file_path = self.config.local_file_path
+                file_ext = file_path.lower().split('.')[-1]
+                
+                if file_ext == 'csv':
+                    # Load CSV file
+                    import pandas as pd
+                    df = pd.read_csv(file_path)
+                    dataset = df.to_dict('records')
+                    
+                elif file_ext == 'txt':
+                    # For TXT files, create a dataset with one record per line
+                    # and use the text_column as the key
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        lines = [line.strip() for line in f if line.strip()]
+                    dataset = [{self.config.text_column: line} for line in lines]
+                    
+                elif file_ext == 'parquet':
+                    # Load Parquet file
+                    import pandas as pd
+                    df = pd.read_parquet(file_path)
+                    dataset = df.to_dict('records')
+                    
+                elif file_ext in ['jsonl', 'json']:
+                    # Load JSONL file (one JSON object per line)
+                    import json
+                    dataset = []
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            if line.strip():
+                                dataset.append(json.loads(line))
+                    
+                else:
+                    raise ValueError(f"Unsupported file extension: {file_ext}. Supported extensions are: csv, txt, parquet, jsonl, json")
+            else:
+                raise ValueError("Either hf_dataset_name or local_file_path must be specified")
+                
             # Limit the number of samples if specified
             if self.config.sample_count is not None:
-                dataset = dataset.select(range(min(self.config.sample_count, len(dataset))))
+                dataset = dataset[:min(self.config.sample_count, len(dataset))]
                 
         except Exception as e:
-            raise ValueError(f"Error loading dataset {self.config.hf_dataset_name}: {e}")
+            source = self.config.hf_dataset_name or self.config.local_file_path
+            raise ValueError(f"Error loading data from {source}: {e}")
             
         # Get languages from config, default to English if not specified
         languages = self.config.languages or {"en": "English"}
@@ -729,7 +770,7 @@ class MCQDataset(DatasetBase):
                                                 mcq_source=MCQSource.SYNTHETIC,
                                                 metadata={
                                                     "language": lang_code,
-                                                    "source_dataset": self.config.hf_dataset_name,
+                                                    "source_dataset": self._get_source_dataset_name(),
                                                 },
                                             )
                                             self.data_rows.append(row)
@@ -750,10 +791,31 @@ class MCQDataset(DatasetBase):
     def _get_default_prompts(self) -> list[str]:
         """Return the default prompt templates for MCQ generation."""
         return mcq_prompts.DEFAULT_TEMPLATES
-    
+        
     def _get_distractor_prompt(self) -> str:
         """Return the prompt template for generating incorrect answers."""
         return mcq_prompts.DISTRACTOR_TEMPLATE
+        
+    def _get_source_dataset_name(self) -> str:
+        """Get a source dataset name for metadata.
+        
+        Returns a descriptive name for the dataset source, either from the HF dataset
+        name or derived from the local file path if using a local file.
+        
+        Returns:
+            str: Source dataset name for metadata.
+        """
+        if self.config.hf_dataset_name:
+            return self.config.hf_dataset_name
+        
+        if self.config.local_file_path:
+            # Extract a reasonable name from the file path
+            file_name = self.config.local_file_path.split('/')[-1]
+            return f"local_file:{file_name}"
+        
+        # Fallback if somehow neither is set
+        return "unknown_source"
+        
 
 
 class PreferenceDataset(DatasetBase):

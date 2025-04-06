@@ -11,9 +11,12 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider, Hug
 def main():
     # 1. Define the configuration
     config = MCQDatasetConfig(
-        hf_dataset_name="patrickfleith/space_engineering_environment_effects_texts",  # Stanford Question Answering Dataset
+        # hf_dataset_name="patrickfleith/space_engineering_environment_effects_texts",
+        # local_file_path="datafast/examples/data/mcq/sample.csv",
+        # local_file_path="datafast/examples/data/mcq/sample.txt",
+        local_file_path="datafast/examples/data/mcq/sample.jsonl",
         text_column="text",    # Column containing the text to generate questions from
-        sample_count=3,          # Process only 5 samples for testing
+        sample_count=3,          # Process only 3 samples for testing
         num_samples_per_prompt=2,# Generate 2 questions per document
         min_document_length=100, # Skip documents shorter than 100 chars
         max_document_length=20000,# Skip documents longer than 20000 chars
