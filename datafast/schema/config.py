@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional
 import warnings
 
@@ -319,15 +319,21 @@ class UltraChatDatasetConfig(BaseModel):
 
 class MCQDatasetConfig(BaseModel):
     """
-    Configuration for generating multiple choice questions from text in a Hugging Face dataset.
+    Configuration for generating multiple choice questions from text in a Hugging Face dataset
+    or local file (CSV, TXT, PARQUET, or JSONL).
     Each question has one correct answer and three plausible but incorrect answers.
     """
     dataset_type: str = Field(default="mcq_dataset")
     
-    # Hugging Face dataset information
-    hf_dataset_name: str = Field(
-        ...,  # required field
+    # Dataset source information
+    hf_dataset_name: Optional[str] = Field(
+        default=None,
         description="Name of the Hugging Face dataset to use"
+    )
+    
+    local_file_path: Optional[str] = Field(
+        default=None,
+        description="Path to a local file (CSV, TXT, PARQUET, or JSONL) to use as data source"
     )
     
     text_column: str = Field(
@@ -381,12 +387,6 @@ class MCQDatasetConfig(BaseModel):
         description="Language ISO codes and their corresponding names"
     )
     
-    @field_validator("hf_dataset_name")
-    def validate_dataset_name(cls, v):
-        if not v:
-            raise ValueError("hf_dataset_name is required")
-        return v
-    
     @field_validator("text_column")
     def validate_text_column(cls, v):
         if not v:
@@ -407,6 +407,13 @@ class MCQDatasetConfig(BaseModel):
     def validate_distractor_prompt(cls, v):
         required_placeholders = ["{language_name}", "{question}", "{correct_answer}"]
         return validate_prompt_placeholders(v, required_placeholders, "distractor_prompt")
+    
+
+    @model_validator(mode='after')
+    def validate_data_source_exists(self):
+        if not self.hf_dataset_name and not self.local_file_path:
+            raise ValueError("Either hf_dataset_name or local_file_path must be provided")
+        return self
 
 
 class PreferenceDatasetConfig(BaseModel):
