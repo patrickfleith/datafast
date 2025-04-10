@@ -79,6 +79,10 @@ class LLMProvider:
         env_key = self.ENV_KEYS.get(self.provider)
         if not env_key:
             return ""  # No API key needed or unknown provider
+        
+        # Special case for providers that don't need an API key
+        if env_key == "not_needed":
+            return "not_needed"
             
         api_key = os.getenv(env_key)
         if not api_key:
