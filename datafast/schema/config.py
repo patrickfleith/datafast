@@ -93,7 +93,7 @@ class PromptExpansionConfig(BaseModel):
     max_samples: int = 1000
 
 
-class ClassificationConfig(BaseModel):
+class ClassificationDatasetConfig(BaseModel):
     """
     Configuration for generating a text classification dataset.
     """
@@ -144,7 +144,7 @@ class ClassificationConfig(BaseModel):
         return self
 
 
-class TextDatasetConfig(BaseModel):
+class RawDatasetConfig(BaseModel):
     dataset_type: str = Field(default="text")
 
     # Text generation attributes
@@ -215,7 +215,7 @@ class TextDatasetConfig(BaseModel):
         return self
 
 
-class UltraChatDatasetConfig(BaseModel):
+class UltrachatDatasetConfig(BaseModel):
     dataset_type: str = Field(default="instruction_dataset")
 
     conversation_continuation_prob: float = Field(

@@ -13,9 +13,9 @@ from datafast.prompts import (
     text_prompts,
 )
 from datafast.schema.config import (
-    ClassificationConfig,
-    TextDatasetConfig,
-    UltraChatDatasetConfig,
+    ClassificationDatasetConfig,
+    RawDatasetConfig,
+    UltrachatDatasetConfig,
     MCQDatasetConfig,
     PreferenceDatasetConfig,
 )
@@ -42,11 +42,8 @@ class Example(BaseModel):
 class TextExamples(BaseModel):
     list_of_text_examples: list[Example] = Field(..., description="List of example texts")
 
-#### Model for Text 
-
 class TextEntries(BaseModel):
     entries: list[str] = Field(..., description="List of generated texts")
-
 
 class QAEntry(BaseModel):
     question: str = Field(..., description="Question")
@@ -55,32 +52,23 @@ class QAEntry(BaseModel):
 class QAEntries(BaseModel):
     entries: list[QAEntry] = Field(..., description="List of generated QAs")
 
-
 class UserQuestions(BaseModel):
     questions: list[str] = Field(..., description="List of user questions")
-
 
 class ReformulatedUserQuestion(BaseModel):
     question: str = Field(..., description="Reformulated user question")
 
-
 class Answer(BaseModel):
     answer: str = Field(..., description="Answer to the user question")
-
-
-class FollowupQuestion(BaseModel):
-    question: str = Field(
-        ..., description="Followup question of a user to an AI assistant response."
-    )
 
 class EvolveInstructOutput(BaseModel):
     improved_question: str = Field(...)
     improved_answer: str = Field(...)
 
-
 class JudgeLLMOutput(BaseModel):
     assessment: str = Field(...)
     score: int = Field(..., ge=1, le=10)
+
 
 class DatasetBase(ABC):
     """Abstract base class for all dataset generators."""
@@ -219,8 +207,8 @@ class DatasetBase(ABC):
         return f"https://huggingface.co/datasets/{repo_id}"
 
 
-class TextClassificationDataset(DatasetBase):
-    def __init__(self, config: ClassificationConfig):
+class ClassificationDataset(DatasetBase):
+    def __init__(self, config: ClassificationDatasetConfig):
         super().__init__(config)
         self.config = config
     
@@ -239,7 +227,7 @@ class TextClassificationDataset(DatasetBase):
         return utils._get_classification_num_expected_rows(self.config, llms)
     
 
-    def generate(self, llms: list[LLMProvider]) -> "TextClassificationDataset":
+    def generate(self, llms: list[LLMProvider]) -> "ClassificationDataset":
         """Generate text classification data by calling multiple providers.
 
         Args:
@@ -316,8 +304,8 @@ class TextClassificationDataset(DatasetBase):
         return classification_prompts.DEFAULT_TEMPLATES
 
 
-class TextDataset(DatasetBase):
-    def __init__(self, config: TextDatasetConfig):
+class RawDataset(DatasetBase):
+    def __init__(self, config: RawDatasetConfig):
         super().__init__(config)
         self.config = config
     
@@ -334,7 +322,7 @@ class TextDataset(DatasetBase):
             raise ValueError("At least one LLM provider must be supplied")
         return utils._get_text_num_expected_rows(self.config, llms)
 
-    def generate(self, llms: list[LLMProvider]) -> "TextDataset":
+    def generate(self, llms: list[LLMProvider]) -> "RawDataset":
         """Generate text data by calling multiple providers.
 
         Args:
@@ -415,8 +403,8 @@ class TextDataset(DatasetBase):
         return text_prompts.DEFAULT_TEMPLATES
 
 
-class UltraChatDataset(DatasetBase):
-    def __init__(self, config: UltraChatDatasetConfig):
+class UltrachatDataset(DatasetBase):
+    def __init__(self, config: UltrachatDatasetConfig):
         super().__init__(config)
         self.config = config
     
@@ -434,7 +422,7 @@ class UltraChatDataset(DatasetBase):
         return utils._get_ultrachat_num_expected_rows(self.config, llms)
 
 
-    def generate(self, llms: list[LLMProvider]) -> "TextDataset":
+    def generate(self, llms: list[LLMProvider]) -> "UltrachatDataset":
         if not llms:
             raise ValueError("At least one LLM provider must be supplied")
 
@@ -851,7 +839,7 @@ class PreferenceDataset(DatasetBase):
                 chosen_response_gen_llm: LLMProvider,
                 rejected_response_gen_llm: LLMProvider,
                 evolution_llm: LLMProvider = None,
-                judge_llm: LLMProvider = None):
+                judge_llm: LLMProvider = None) -> "PreferenceDataset":
         """
         Generate preference data with chosen and rejected responses.
         

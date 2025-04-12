@@ -1,19 +1,20 @@
-from datafast.datasets import TextClassificationDataset
-from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
+from datafast.datasets import ClassificationDataset
+from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from dotenv import load_dotenv
 load_dotenv("secrets.env")
 
-config = ClassificationConfig(
+config = ClassificationDatasetConfig(
     classes=[
         {"name": "positive", "description": "Text expressing positive emotions or approval"},
-        {"name": "negative", "description": "Text expressing negative emotions or criticism"}
+        {"name": "negative", "description": "Text expressing negative emotions or criticism"},
+        {"name": "neutral", "description": "Text with neutral emotions or indifference"}
     ],
     num_samples_per_prompt=5,
     output_file="outdoor_activities_sentiments.jsonl",
     languages={
         "en": "English", 
         "fr": "French"
-        },
+    },
     prompts=[
             (
                 "Generate {num_samples} reviews in {language_name} which are diverse "
@@ -31,21 +32,25 @@ config = ClassificationConfig(
     )
 )
 
-from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider
 
 providers = [
     OpenAIProvider(model_id="gpt-4o-mini"),
-    AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-    GoogleProvider(model_id="gemini-1.5-flash")
+    # AnthropicProvider(model_id="claude-3-5-haiku-latest"),
+    # GeminiProvider(model_id="gemini-1.5-flash"),
+    # OllamaProvider(model_id="gemma3:12b")
 ]
 
 # Generate dataset
-dataset = TextClassificationDataset(config)
+dataset = ClassificationDataset(config)
+num_expected_rows = dataset.get_num_expected_rows(providers)
+print(f"Expected number of rows: {num_expected_rows}")
 dataset.generate(providers)
 
-# Optional: Push to Hugging Face Hub
-dataset.push_to_hub(
-    repo_id="YOUR_USERNAME/sentiment-dataset-quickstart",
-    train_size=0.6
-)
-
+# # Optional: Push to Hugging Face Hub
+# USERNAME = "YOUR_USERNAME"  # <--- Your hugging face username
+# DATASET_NAME = "YOUR_DATASET_NAME"  # <--- Your hugging face dataset name
+# dataset.push_to_hub(
+#     repo_id=f"{USERNAME}/{DATASET_NAME}",
+#     train_size=0.6
+# )

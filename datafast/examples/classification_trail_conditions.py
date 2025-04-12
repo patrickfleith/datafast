@@ -1,5 +1,5 @@
-from datafast.datasets import TextClassificationDataset
-from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
+from datafast.datasets import ClassificationDataset
+from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
 from dotenv import load_dotenv
 
@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv("secrets.env")
 
 # Configure dataset
-config = ClassificationConfig(
+config = ClassificationDatasetConfig(
     classes=[
         {
             "name": "trail_obstruction",
@@ -26,7 +26,7 @@ config = ClassificationConfig(
             "description": "Conditions highlighting clear, safe, and enjoyable hiking experiences, including well-maintained trails, reliable infrastructure, clear markers, or scenic features, and other forms of positive conditions."
         }
     ],
-    num_samples_per_prompt=5,
+    num_samples_per_prompt=10,
     output_file="trail_conditions_classification.jsonl",
     languages={
         "en": "English", 
@@ -63,12 +63,14 @@ providers = [
 ]
 
 # Generate dataset
-dataset = TextClassificationDataset(config)
+dataset = ClassificationDataset(config)
 dataset.generate(providers)
 
 # Optional: Push to Hugging Face Hub
+USERNAME = "YOUR_USERNAME"  # <--- Your hugging face username
+DATASET_NAME = "YOUR_DATASET_NAME"  # <--- Your hugging face dataset name
 dataset.push_to_hub(
-    repo_id="patrickfleith/trail-conditions-classification",
+    repo_id=f"{USERNAME}/{DATASET_NAME}",
     train_size=0.8,
     seed=42,
     shuffle=True
