@@ -1,11 +1,11 @@
-from datafast.datasets import TextDataset
-from datafast.schema.config import TextDatasetConfig, PromptExpansionConfig
+from datafast.datasets import RawDataset
+from datafast.schema.config import RawDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
 
 
 def main():
     # 1. Configure the dataset generation
-    config = TextDatasetConfig(
+    config = RawDatasetConfig(
         document_types=[
             "space engineering textbook", 
             "spacecraft design justification document", 
@@ -47,19 +47,21 @@ def main():
     ]
 
     # 3. Generate the dataset
-    dataset = TextDataset(config)
+    dataset = RawDataset(config)
+    num_expected_rows = dataset.get_num_expected_rows(providers)
+    print(f"Expected number of rows: {num_expected_rows}")
     dataset.generate(providers)
 
-    # 4. Push to HF hub (optional)
-    USERNAME = "patrickfleith"
-    DATASET_NAME = "space_engineering_environment_effects_texts"
-    url = dataset.push_to_hub(
-        repo_id=f"{USERNAME}/{DATASET_NAME}",
-        train_size=0.8,  # for a 80/20 train/test split, otherwise omit
-        seed=20250319,
-        shuffle=True,
-    )
-    print(f"\nDataset pushed to Hugging Face Hub: {url}")
+    # # 4. Push to HF hub (optional)
+    # USERNAME = "patrickfleith"
+    # DATASET_NAME = "space_engineering_environment_effects_texts"
+    # url = dataset.push_to_hub(
+    #     repo_id=f"{USERNAME}/{DATASET_NAME}",
+    #     train_size=0.8,  # for a 80/20 train/test split, otherwise omit
+    #     seed=20250319,
+    #     shuffle=True,
+    # )
+    # print(f"\nDataset pushed to Hugging Face Hub: {url}")
 
 
 if __name__ == "__main__":

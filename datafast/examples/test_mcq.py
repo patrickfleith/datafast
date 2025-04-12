@@ -32,7 +32,7 @@ def main():
 
     # 3. Generate the dataset
     dataset = MCQDataset(config)
-    num_expected_rows = dataset.get_num_expected_rows(providers, source_data_num_rows=233)
+    num_expected_rows = dataset.get_num_expected_rows(providers, source_data_num_rows=3)
     print(f"\nExpected number of rows: {num_expected_rows}")
     dataset.generate(providers)
 
