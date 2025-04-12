@@ -34,6 +34,15 @@ from datafast.expanders import expand_prompts
 import os
 from datafast import utils
 
+### Model for Raw Text Examples Generation
+
+class Example(BaseModel):
+    text: str = Field(..., description="Generated text example")
+
+class TextExamples(BaseModel):
+    list_of_text_examples: list[Example] = Field(..., description="List of example texts")
+
+#### Model for Text 
 
 class TextEntries(BaseModel):
     entries: list[str] = Field(..., description="List of generated texts")
@@ -299,7 +308,7 @@ class TextClassificationDataset(DatasetBase):
                             print(f" Generated and saved {len(self.data_rows)} examples total")
 
                         except Exception as e:
-                            print(f"Error with llm provider {llm.name}: {e}")
+                            print(f"Error with llm provider {llm.provider_name}: {e}")
         return self
 
     def _get_default_prompts(self) -> list[str]:
@@ -372,15 +381,21 @@ class TextDataset(DatasetBase):
                         for llm in llms:
                             try:
                                 # Generate multiple examples using the LLM
+                                print(expanded_prompt, '\n')
                                 response = llm.generate(
-                                    expanded_prompt, response_format=TextEntries
+                                    expanded_prompt, response_format=TextExamples
                                 )
+                                print(response, '\n')
+                                print(type(response), '\n')
+                                print(response.list_of_text_examples, '\n')
+                                print(type(response.list_of_text_examples), '\n')
+                                print(len(response.list_of_text_examples))
 
                                 # Create a row for each generated example
                                 new_rows = []
-                                for text in response.entries:
+                                for example in response.list_of_text_examples:
                                     row = TextRow(
-                                        text=text,
+                                        text=example.text,
                                         text_source=TextSource.SYNTHETIC,
                                         model_id=llm.model_id,
                                         metadata={
@@ -397,7 +412,7 @@ class TextDataset(DatasetBase):
                                 print(f" Generated and saved {len(self.data_rows)} examples total")
 
                             except Exception as e:
-                                print(f"Error with llm provider {llm.name}: {e}")
+                                print(f"Error with llm provider {llm.provider_name}: {e}")
 
         return self
 
@@ -575,7 +590,7 @@ class UltraChatDataset(DatasetBase):
                             except Exception as e:
                                 import traceback
                                 error_trace = traceback.format_exc()
-                                print(f"\nError with llm provider {llm.name}:\n{error_trace}")
+                                print(f"\nError with llm provider {llm.provider_name}:\n{error_trace}")
                                 print(f"Error occurred at response type: {response_format.__name__ if 'response_format' in locals() else 'unknown'}")
                                 if 'reformulated_question' in locals():
                                     print(f"Last reformulated_question: {reformulated_question}")
@@ -784,7 +799,7 @@ class MCQDataset(DatasetBase):
                                     print(f"Error processing entry: {e}")
                             print(f" Generated and saved {len(self.data_rows)} MCQs total")
                         except Exception as e:
-                            print(f"Error with llm provider {llm.name}: {e}")
+                            print(f"Error with llm provider {llm.provider_name}: {e}")
         
         return self
     
