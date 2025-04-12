@@ -381,15 +381,9 @@ class TextDataset(DatasetBase):
                         for llm in llms:
                             try:
                                 # Generate multiple examples using the LLM
-                                print(expanded_prompt, '\n')
                                 response = llm.generate(
                                     expanded_prompt, response_format=TextExamples
                                 )
-                                print(response, '\n')
-                                print(type(response), '\n')
-                                print(response.list_of_text_examples, '\n')
-                                print(type(response.list_of_text_examples), '\n')
-                                print(len(response.list_of_text_examples))
 
                                 # Create a row for each generated example
                                 new_rows = []
