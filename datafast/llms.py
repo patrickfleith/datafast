@@ -53,7 +53,7 @@ class LLMProvider(ABC):
         self.temperature = temperature
         self.max_completion_tokens = max_completion_tokens
         self.top_p = top_p
-        self.frequency_penalty = frequency_penalty
+        # self.frequency_penalty = frequency_penalty
         
         # Configure environment with API key if needed
         self._configure_env()
@@ -129,7 +129,7 @@ class LLMProvider(ABC):
                 "temperature": self.temperature,
                 "max_tokens": self.max_completion_tokens,
                 "top_p": self.top_p,
-                "frequency_penalty": self.frequency_penalty,
+                # "frequency_penalty": self.frequency_penalty,
             }
             
             # Add response format if provided
@@ -171,7 +171,7 @@ class OpenAIProvider(LLMProvider):
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
-        frequency_penalty: float | None = None,
+        # frequency_penalty: float | None = None,
     ):
         """Initialize the OpenAI provider.
         
@@ -189,7 +189,7 @@ class OpenAIProvider(LLMProvider):
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
             top_p=top_p,
-            frequency_penalty=frequency_penalty,
+            # frequency_penalty=frequency_penalty,
         )
 
 
@@ -249,7 +249,7 @@ class GeminiProvider(LLMProvider):
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
-        frequency_penalty: float | None = None,
+        # frequency_penalty: float | None = None,
     ):
         """Initialize the Gemini provider.
         
@@ -267,7 +267,7 @@ class GeminiProvider(LLMProvider):
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
             top_p=top_p,
-            frequency_penalty=frequency_penalty,
+            #frequency_penalty=frequency_penalty,
         )
 
 
@@ -299,7 +299,7 @@ class OllamaProvider(LLMProvider):
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
-        frequency_penalty: float | None = None,
+        # frequency_penalty: float | None = None,
         api_base: str | None = None,
     ):
         """Initialize the Ollama provider.
@@ -322,5 +322,5 @@ class OllamaProvider(LLMProvider):
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
             top_p=top_p,
-            frequency_penalty=frequency_penalty,
+            # frequency_penalty=frequency_penalty,
         )

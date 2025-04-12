@@ -1,6 +1,6 @@
 from datafast.datasets import TextDataset
 from datafast.schema.config import TextDatasetConfig
-from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 
 
 def main():
@@ -17,7 +17,7 @@ def main():
     providers = [
         OpenAIProvider(model_id="gpt-4o-mini"),
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-        GoogleProvider(model_id="gemini-1.5-flash"),
+        GeminiProvider(model_id="gemini-1.5-flash"),
     ]
 
     # 3. Generate the dataset

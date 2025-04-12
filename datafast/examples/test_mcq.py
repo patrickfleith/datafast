@@ -5,7 +5,7 @@ Example script for generating a Multiple Choice Question dataset.
 import os
 from datafast.schema.config import MCQDatasetConfig
 from datafast.datasets import MCQDataset
-from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider, HuggingFaceProvider
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 
 
 def main():
@@ -25,9 +25,9 @@ def main():
 
     # 2. Initialize LLM providers
     providers = [
-        # OpenAIProvider(model_id="gpt-4o-mini"),
+        OpenAIProvider(model_id="gpt-4o-mini"),
         # AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-        GoogleProvider(model_id="gemini-2.0-flash"),
+        # GeminiProvider(model_id="gemini-2.0-flash"),
     ]
 
     # 3. Generate the dataset
