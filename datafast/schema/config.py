@@ -93,7 +93,7 @@ class PromptExpansionConfig(BaseModel):
     max_samples: int = 1000
 
 
-class ClassificationConfig(BaseModel):
+class ClassificationDatasetConfig(BaseModel):
     """
     Configuration for generating a text classification dataset.
     """
@@ -132,16 +132,19 @@ class ClassificationConfig(BaseModel):
     
     @field_validator("prompts")
     def validate_prompts(cls, prompts, info):
-        # First validate required placeholders
+        # Only validate required placeholders at field level
         required_placeholders = ["{num_samples}", "{language_name}", "{label_name}", "{label_description}"]
-        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
-        
-        # Then validate optional placeholders if expansion config exists
-        expansion_config = info.data.get("expansion")
-        return validate_optional_placeholders(prompts, expansion_config, "prompts")
+        return validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
+    
+    @model_validator(mode='after')
+    def validate_optional_placeholders_model(self):
+        # Validate optional placeholders after the model is fully constructed
+        if self.prompts:
+            validate_optional_placeholders(self.prompts, self.expansion, "prompts")
+        return self
 
 
-class TextDatasetConfig(BaseModel):
+class RawDatasetConfig(BaseModel):
     dataset_type: str = Field(default="text")
 
     # Text generation attributes
@@ -200,16 +203,19 @@ class TextDatasetConfig(BaseModel):
     
     @field_validator("prompts")
     def validate_prompts(cls, prompts, info):
-        # First validate required placeholders
+        # Only validate required placeholders at field level
         required_placeholders = ["{num_samples}", "{language_name}", "{document_type}", "{topic}"]
-        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
-        
-        # Then validate optional placeholders if expansion config exists
-        expansion_config = info.data.get("expansion")
-        return validate_optional_placeholders(prompts, expansion_config, "prompts")
+        return validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
+    
+    @model_validator(mode='after')
+    def validate_optional_placeholders_model(self):
+        # Validate optional placeholders after the model is fully constructed
+        if self.prompts:
+            validate_optional_placeholders(self.prompts, self.expansion, "prompts")
+        return self
 
 
-class UltraChatDatasetConfig(BaseModel):
+class UltrachatDatasetConfig(BaseModel):
     dataset_type: str = Field(default="instruction_dataset")
 
     conversation_continuation_prob: float = Field(
@@ -292,13 +298,16 @@ class UltraChatDatasetConfig(BaseModel):
 
     @field_validator("question_generation_prompts")
     def validate_question_generation_prompts(cls, prompts, info):
-        # First validate required placeholders
+        # Only validate required placeholders at field level
         required_placeholders = ["{num_samples}", "{language_name}", "{domain}", "{topic}", "{subtopic}"]
-        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "question_generation_prompts")
-        
-        # Then validate optional placeholders if expansion config exists
-        expansion_config = info.data.get("expansion")
-        return validate_optional_placeholders(prompts, expansion_config, "question_generation_prompts")
+        return validate_prompt_list_placeholders(prompts, required_placeholders, "question_generation_prompts")
+    
+    @model_validator(mode='after')
+    def validate_optional_placeholders_model(self):
+        # Validate optional placeholders after the model is fully constructed
+        if self.question_generation_prompts:
+            validate_optional_placeholders(self.question_generation_prompts, self.expansion, "question_generation_prompts")
+        return self
 
     @field_validator("persona_question_reformulation_prompt")
     def validate_persona_question_reformulation_prompt(cls, v):
@@ -395,13 +404,16 @@ class MCQDatasetConfig(BaseModel):
 
     @field_validator("prompts")
     def validate_prompts(cls, prompts, info):
-        # First validate required placeholders
+        # Only validate required placeholders at field level
         required_placeholders = ["{num_samples}", "{language_name}", "{document}"]
-        prompts = validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
-        
-        # Then validate optional placeholders if expansion config exists
-        expansion_config = info.data.get("expansion")
-        return validate_optional_placeholders(prompts, expansion_config, "prompts")
+        return validate_prompt_list_placeholders(prompts, required_placeholders, "prompts")
+    
+    @model_validator(mode='after')
+    def validate_optional_placeholders_model(self):
+        # Validate optional placeholders after the model is fully constructed
+        if self.prompts:
+            validate_optional_placeholders(self.prompts, self.expansion, "prompts")
+        return self
         
     @field_validator("distractor_prompt")
     def validate_distractor_prompt(cls, v):

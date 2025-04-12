@@ -1,288 +1,326 @@
-from .llm_utils import get_messages
-import anthropic
-from pydantic import BaseModel
-import os
-import instructor
-import google.generativeai as genai
-from openai import OpenAI
-from huggingface_hub import InferenceClient
-from abc import ABC, abstractmethod
+"""LLM providers for datafast using LiteLLM.
 
+This module provides classes for different LLM providers (OpenAI, Anthropic, Gemini)
+with a unified interface using LiteLLM under the hood.
+"""
+
+from typing import Any, Type, TypeVar
+from abc import ABC, abstractmethod
+import os
+import traceback
+
+# Pydantic
+from pydantic import BaseModel
+
+# LiteLLM
+import litellm
+from litellm.utils import ModelResponse
+
+# Internal imports
+from .llm_utils import get_messages
+
+# Type aliases for Python 3.10+
+Message = dict[str, str]
+Messages = list[Message]
+T = TypeVar('T', bound=BaseModel)
 
 class LLMProvider(ABC):
-    """Base class for LLM providers."""
-
-    ENV_KEY_NAME: str = ""  # Override in subclasses
-    DEFAULT_MODEL: str = ""  # Override in subclasses
-
-    def __init__(self, model_id: str | None = None, api_key: str | None = None):
-        self.model_id = model_id or self.DEFAULT_MODEL
-        self.api_key = api_key or self._get_api_key()
-        self.client = self._initialize_client()
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Provider name"""
-        pass
-
-    def _get_api_key(self) -> str:
-        """Get API key from environment"""
-        api_key = os.getenv(self.ENV_KEY_NAME)
-        if not api_key:
-            raise ValueError(f"{self.ENV_KEY_NAME} environment variable is not set")
-        return api_key
-
-    @abstractmethod
-    def _initialize_client(self):
-        """Initialize the LLM client"""
-        pass
-
-    def generate(self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]) -> BaseModel:
-        """Generate a structured response from the LLM.
-
-        Args:
-            prompt (str, list[dict[str, str]]): The input prompt to send to the model
-            response_format: A Pydantic model class defining the expected response
-            structure
-
-        Returns:
-            An instance of the response_format model containing the structured
-            response
-
-        Example:
-            class MovieReview(BaseModel):
-                rating: int
-                text: str
-
-            provider = create_provider('anthropic')  # Uses default model
-            review = provider.generate("Review Inception", MovieReview)
-            print(f"Rating: {review.rating}")
-        """
-        try:
-            return self._generate_impl(prompt, response_format)
-        except Exception as e:
-            import traceback
-            error_trace = traceback.format_exc()
-            raise RuntimeError(f"Error generating response with {self.name}:\n{error_trace}")
-
-    @abstractmethod
-    def _generate_impl(
-        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
-    ) -> BaseModel:
-        """Implementation of generate() to be provided by subclasses"""
-        pass
-
-
-class AnthropicProvider(LLMProvider):
-    """Claude provider for structured text generation."""
-
-    ENV_KEY_NAME = "ANTHROPIC_API_KEY"
-    DEFAULT_MODEL = "claude-3-5-haiku-latest"
-
+    """Abstract base class for LLM providers."""
+    
     def __init__(
         self,
-        model_id: str | None = None, # TODO: are these arguments needed?
+        model_id: str,
         api_key: str | None = None,
-        max_tokens: int = 2056,
-        temperature: float = 0.3,
+        temperature: float | None = None,
+        max_completion_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
     ):
-        self.max_tokens = max_tokens
+        """Initialize the LLM provider with common parameters.
+        
+        Args:
+            model_id: The model identifier
+            api_key: API key (if None, will get from environment)
+            temperature: The sampling temperature to be used, between 0 and 2. Higher values like 0.8 produce more random outputs, while lower values like 0.2 make outputs more focused and deterministic
+            max_completion_tokens: An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+        """
+        self.model_id = model_id
+        self.api_key = api_key or self._get_api_key()
+        
+        # Set generation parameters
         self.temperature = temperature
-        super().__init__(model_id, api_key)
-
+        self.max_completion_tokens = max_completion_tokens
+        self.top_p = top_p
+        self.frequency_penalty = frequency_penalty
+        
+        # Configure environment with API key if needed
+        self._configure_env()
+    
     @property
-    def name(self) -> str:
-        return "anthropic"
-
-    def _initialize_client(self):
-        try:
-            anthropic_model = anthropic.Anthropic(api_key=self.api_key)
-            return instructor.from_anthropic(
-                anthropic_model, mode=instructor.Mode.ANTHROPIC_TOOLS
-            )
-        except Exception as e:
-            raise ValueError(f"Error initializing Anthropic client: {str(e)}")
-
-    def _generate_impl(
-        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
-    ) -> BaseModel:
-        return self.client.messages.create(
-            model=self.model_id,
-            max_tokens=self.max_tokens,
-            messages=get_messages(prompt) if isinstance(prompt, str) else prompt,
-            temperature=self.temperature,
-            response_model=response_format,
-        )
-
-
-class GoogleProvider(LLMProvider):
-    """Google Gemini provider for structured text generation."""
-
-    ENV_KEY_NAME = "GOOGLE_API_KEY"
-    DEFAULT_MODEL = "gemini-1.5-flash"
-
+    @abstractmethod
+    def provider_name(self) -> str:
+        """Return the provider name used by LiteLLM."""
+        pass
+    
     @property
-    def name(self) -> str:
-        return "google"
-
-    def _initialize_client(self):
-        try:
-            genai.configure(api_key=self.api_key)
-            google_model = genai.GenerativeModel(model_name=self.model_id)
-            return instructor.from_gemini(
-                client=google_model, mode=instructor.Mode.GEMINI_JSON
-            )
-        except Exception as e:
+    @abstractmethod
+    def env_key_name(self) -> str:
+        """Return the environment variable name for API key."""
+        pass
+    
+    def _get_api_key(self) -> str:
+        """Get API key from environment variables."""
+        api_key = os.getenv(self.env_key_name)
+        if not api_key:
             raise ValueError(
-                f"Invalid model ID or model initialization error: {str(e)}"
+                f"{self.env_key_name} environment variable not set. "
+                f"Please set it or provide an API key when initializing the provider."
             )
+        return api_key
+    
+    def _configure_env(self) -> None:
+        """Configure environment variables for API key."""
+        if self.api_key:
+            os.environ[self.env_key_name] = self.api_key
+    
+    def _get_model_string(self) -> str:
+        """Get the full model string for LiteLLM."""
+        return f"{self.provider_name}/{self.model_id}"
+    
+    def generate(
+        self, 
+        prompt: str | None = None, 
+        messages: Messages | None = None,
+        response_format: Type[T] | None = None
+    ) -> str | T:
+        """Generate a response from the LLM.
 
-    def _generate_impl(
-        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
-    ) -> BaseModel:
-        return self.client.messages.create(
-            messages=get_messages(prompt) if isinstance(prompt, str) else prompt,
-            response_model=response_format,
-        )
+        Args:
+            prompt: Text prompt (use either prompt or messages, not both)
+            messages: List of message dictionaries with role and content (use either prompt or messages, not both)
+            response_format: Optional Pydantic model class for structured output
+
+        Returns:
+            Either a string response or a Pydantic model instance if response_format is provided
+        
+        Raises:
+            ValueError: If neither prompt nor messages is provided, or if both are provided
+            RuntimeError: If there's an error during generation
+        """
+        # Validate inputs
+        if prompt is None and messages is None:
+            raise ValueError("Either prompt or messages must be provided")
+        if prompt is not None and messages is not None:
+            raise ValueError("Provide either prompt or messages, not both")
+        
+        try:
+            # Convert string prompt to messages if needed
+            if prompt is not None:
+                messages_to_send = get_messages(prompt)
+            else:
+                messages_to_send = messages
+            
+            # Prepare completion parameters
+            completion_params = {
+                "model": self._get_model_string(),
+                "messages": messages_to_send,
+                "temperature": self.temperature,
+                "max_tokens": self.max_completion_tokens,
+                "top_p": self.top_p,
+                "frequency_penalty": self.frequency_penalty,
+            }
+            
+            # Add response format if provided
+            if response_format is not None:
+                completion_params["response_format"] = response_format
+            
+            # Call LiteLLM completion
+            response: ModelResponse = litellm.completion(**completion_params)
+            
+            # Extract content from response
+            content = response.choices[0].message.content
+            
+            # Parse and validate if response_format is provided
+            if response_format is not None:
+                return response_format.model_validate_json(content)
+            else:
+                return content
+                
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            raise RuntimeError(f"Error generating response with {self.provider_name}:\n{error_trace}")
 
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI provider for structured text generation."""
-
-    ENV_KEY_NAME = "OPENAI_API_KEY"
-    DEFAULT_MODEL = "gpt-4o-mini"
-
-    @property
-    def name(self) -> str:
-        return "openai"
-
-    def _initialize_client(self):
-        try:
-            openai_model = OpenAI(api_key=self.api_key)
-            return instructor.from_openai(
-                client=openai_model, mode=instructor.Mode.JSON
-            )
-        except Exception as e:
-            raise ValueError(f"Error initializing OpenAI client: {str(e)}")
-
-    def _generate_impl(
-        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
-    ) -> BaseModel:
-        return self.client.chat.completions.create(
-            model=self.model_id,
-            messages=get_messages(prompt) if isinstance(prompt, str) else prompt,
-            response_model=response_format,
-        )
-
-
-class HuggingFaceProvider(LLMProvider):
-    """Hugging Face provider for structured text generation."""
-
-    ENV_KEY_NAME = "HF_TOKEN"
-    DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct"
-
-    @property
-    def name(self) -> str:
-        return "huggingface"
-
-    def _initialize_client(self):
-        try:
-            return InferenceClient(model=self.model_id, api_key=self.api_key)
-        except ImportError as e:
-            raise ImportError(f"huggingface_hub package not installed. Install it with 'pip install huggingface_hub': {str(e)}")
-        except Exception as e:
-            raise ValueError(f"Error initializing Hugging Face client: {str(e)}")
+    """OpenAI provider using litellm."""
     
-    def _generate_impl(self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]) -> BaseModel:
-        # Check prompt type
-        if isinstance(prompt, list):
-            # For now, we don't support message-based prompts for HuggingFace
-            raise NotImplementedError("Message-based prompts are not yet supported for the HuggingFace provider")
-        else:
-            prompt_text = prompt
+    @property
+    def provider_name(self) -> str:
+        return "openai"
+    
+    @property
+    def env_key_name(self) -> str:
+        return "OPENAI_API_KEY"
+    
+    def __init__(
+        self,
+        model_id: str = "gpt-4o-mini",
+        api_key: str | None = None,
+        temperature: float | None = None,
+        max_completion_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
+    ):
+        """Initialize the OpenAI provider.
         
-        # Get schema for the response format
-        schema = response_format.model_json_schema()
-        
-        # Generate response with structure enforcement
-        response = self.client.text_generation(
-            prompt=prompt_text,
-            grammar={"type": "json", "value": schema},
+        Args:
+            model_id: The model ID (defaults to gpt-4o-mini)
+            api_key: API key (if None, will get from environment)
+            temperature: The sampling temperature to be used, between 0 and 2. Higher values like 0.8 produce more random outputs, while lower values like 0.2 make outputs more focused and deterministic
+            max_completion_tokens: An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+        """
+        super().__init__(
+            model_id=model_id,
+            api_key=api_key,
+            temperature=temperature,
+            max_completion_tokens=max_completion_tokens,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
         )
+
+
+class AnthropicProvider(LLMProvider):
+    """Anthropic provider using litellm."""
+    
+    @property
+    def provider_name(self) -> str:
+        return "anthropic"
+    
+    @property
+    def env_key_name(self) -> str:
+        return "ANTHROPIC_API_KEY"
+    
+    def __init__(
+        self,
+        model_id: str = "claude-3-5-haiku-latest",
+        api_key: str | None = None,
+        temperature: float | None = None,
+        max_completion_tokens: int | None = None,
+        top_p: float | None = None,
+        # frequency_penalty: float | None = None,  # Not supported by anthropic
+    ):
+        """Initialize the Anthropic provider.
         
-        # Parse and validate the response against the Pydantic model
-        return response_format.model_validate_json(response)
+        Args:
+            model_id: The model ID (defaults to claude-3-5-haiku-latest)
+            api_key: API key (if None, will get from environment)
+            temperature: Temperature for generation (0.0 to 1.0)
+            max_completion_tokens: Maximum tokens to generate
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+        """
+        super().__init__(
+            model_id=model_id,
+            api_key=api_key,
+            temperature=temperature,
+            max_completion_tokens=max_completion_tokens,
+            top_p=top_p,
+        )
+
+
+class GeminiProvider(LLMProvider):
+    """Google Gemini provider using litellm."""
+    
+    @property
+    def provider_name(self) -> str:
+        return "gemini"
+    
+    @property
+    def env_key_name(self) -> str:
+        return "GEMINI_API_KEY"
+    
+    def __init__(
+        self,
+        model_id: str = "gemini-1.5-flash",
+        api_key: str | None = None,
+        temperature: float | None = None,
+        max_completion_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
+    ):
+        """Initialize the Gemini provider.
+        
+        Args:
+            model_id: The model ID (defaults to gemini-1.5-flash)
+            api_key: API key (if None, will get from environment)
+            temperature: Temperature for generation (0.0 to 1.0)
+            max_completion_tokens: Maximum tokens to generate
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+        """
+        super().__init__(
+            model_id=model_id,
+            api_key=api_key,
+            temperature=temperature,
+            max_completion_tokens=max_completion_tokens,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+        )
 
 
 class OllamaProvider(LLMProvider):
-    """Ollama provider for structured text generation."""
-
-    # No API key needed for local Ollama
-    DEFAULT_MODEL = "gemma3:12b"
-
-    @property
-    def name(self) -> str:
-        return "ollama"
-        
-    def _get_api_key(self) -> str:
-        """Override _get_api_key since Ollama doesn't need an API key"""
-        return "not_needed"  # Return a dummy value
-
-    def _initialize_client(self):
-        try:
-            import ollama
-            return ollama
-        except ImportError as e:
-            raise ImportError(f"Ollama package not installed. Install it with 'pip install ollama': {str(e)}")
-        except Exception as e:
-            raise ValueError(f"Error initializing Ollama client: {str(e)}")
-
-    def _generate_impl(
-        self, prompt: str | list[dict[str, str]], response_format: type[BaseModel]
-    ) -> BaseModel:
-        # Convert prompt to messages format if it's a string
-        messages = get_messages(prompt) if isinstance(prompt, str) else prompt
-        
-        # Get schema for the response format
-        schema = response_format.model_json_schema()
-        
-        # Call the Ollama chat API
-        response = self.client.chat(
-            messages=messages,
-            model=self.model_id,
-            format=schema,
-        )
-        
-        # Parse the response content and validate against the Pydantic model
-        # Unlike other providers that use instructor and return the parsed model directly,
-        # we need to manually parse the JSON response here
-        return response_format.model_validate_json(response.message.content)
-
-
-def create_provider(
-    provider: str, model_id: str | None = None, **kwargs
-) -> LLMProvider:
-    """Create an LLM provider for structured text generation.
-
-    Args:
-        provider: Provider name ('anthropic', 'google', 'openai', 'ollama')
-        model_id: Optional model identifier. If not provided, uses provider's default
-        **kwargs: Additional provider-specific arguments
-
-    Returns:
-        An initialized LLM provider
+    """Ollama provider using litellm.
+    
+    Note: Ollama typically doesn't require an API key as it's usually run locally.
     """
-    provider_map = {
-        "anthropic": AnthropicProvider,
-        "google": GoogleProvider,
-        "openai": OpenAIProvider,
-        "huggingface": HuggingFaceProvider,
-        "ollama": OllamaProvider,
-    }
-
-    provider_class = provider_map.get(provider.lower())
-    if not provider_class:
-        raise ValueError(f"Unknown provider: {provider}")
-
-    return provider_class(model_id=model_id, **kwargs)
+    
+    @property
+    def provider_name(self) -> str:
+        return "ollama_chat"
+    
+    @property
+    def env_key_name(self) -> str:
+        return "OLLAMA_API_BASE"
+    
+    def _get_api_key(self) -> str:
+        """Override to handle Ollama not requiring an API key.
+        
+        Returns an empty string since Ollama typically doesn't need an API key.
+        OLLAMA_API_BASE can be used to set a custom base URL.
+        """
+        return ""
+    
+    def __init__(
+        self,
+        model_id: str = "gemma3:4b",
+        temperature: float | None = None,
+        max_completion_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
+        api_base: str | None = None,
+    ):
+        """Initialize the Ollama provider.
+        
+        Args:
+            model_id: The model ID (defaults to llama3)
+            temperature: Temperature for generation (0.0 to 1.0)
+            max_completion_tokens: Maximum tokens to generate
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+            api_base: Base URL for Ollama API (e.g., "http://localhost:11434")
+        """
+        # Set API base URL if provided
+        if api_base:
+            os.environ["OLLAMA_API_BASE"] = api_base
+            
+        super().__init__(
+            model_id=model_id,
+            api_key="",  # Pass empty string since parent class requires this parameter
+            temperature=temperature,
+            max_completion_tokens=max_completion_tokens,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+        )

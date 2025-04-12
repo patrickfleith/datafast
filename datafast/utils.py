@@ -1,4 +1,4 @@
-from datafast.schema.config import PromptExpansionConfig, ClassificationConfig, TextDatasetConfig, UltraChatDatasetConfig, MCQDatasetConfig, PreferenceDatasetConfig
+from datafast.schema.config import PromptExpansionConfig, ClassificationDatasetConfig, RawDatasetConfig, UltrachatDatasetConfig, MCQDatasetConfig, PreferenceDatasetConfig
 from datafast.llms import LLMProvider
 
 def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: PromptExpansionConfig) -> int:
@@ -44,12 +44,12 @@ def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: P
     return num_expanded_prompts
 
 
-def _get_classficiation_specific_factors(config: ClassificationConfig) -> dict[str, int]:
+def _get_classficiation_specific_factors(config: ClassificationDatasetConfig) -> dict[str, int]:
     return {
         "num_classes": len(config.classes),
     }
 
-def _get_classification_num_expected_rows(config: ClassificationConfig, llms: list[LLMProvider]) -> int:
+def _get_classification_num_expected_rows(config: ClassificationDatasetConfig, llms: list[LLMProvider]) -> int:
     factors = _get_classficiation_specific_factors(config)
     num_llms = len(llms)
     if config.prompts is None:
@@ -65,14 +65,14 @@ def _get_classification_num_expected_rows(config: ClassificationConfig, llms: li
     )
 
 
-def _get_text_specific_factors(config: TextDatasetConfig) -> dict[str, int]:
+def _get_text_specific_factors(config: RawDatasetConfig) -> dict[str, int]:
     return {
         "num_document_types": len(config.document_types),
         "num_topics": len(config.topics),
     }
 
 
-def _get_text_num_expected_rows(config: TextDatasetConfig, llms: list[LLMProvider]) -> int:
+def _get_text_num_expected_rows(config: RawDatasetConfig, llms: list[LLMProvider]) -> int:
     factors = _get_text_specific_factors(config)
     num_llms = len(llms)
     if config.prompts is None:
@@ -89,7 +89,7 @@ def _get_text_num_expected_rows(config: TextDatasetConfig, llms: list[LLMProvide
     )
 
 
-def _get_ultrachat_specific_factors(config: UltraChatDatasetConfig) -> dict[str, int]:
+def _get_ultrachat_specific_factors(config: UltrachatDatasetConfig) -> dict[str, int]:
     num_topic_subtopic_pairs = 0
     for _, value in config.topics_and_subtopics.items():
         num_topic_subtopic_pairs += len(value)
@@ -98,7 +98,7 @@ def _get_ultrachat_specific_factors(config: UltraChatDatasetConfig) -> dict[str,
     }
 
 
-def _get_ultrachat_num_expected_rows(config: UltraChatDatasetConfig, llms: list[LLMProvider]) -> int:
+def _get_ultrachat_num_expected_rows(config: UltrachatDatasetConfig, llms: list[LLMProvider]) -> int:
     factors = _get_ultrachat_specific_factors(config)
     num_llms = len(llms)
     if config.question_generation_prompts is None:

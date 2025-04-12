@@ -1,11 +1,11 @@
-from datafast.datasets import TextClassificationDataset
-from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
+from datafast.datasets import ClassificationDataset
+from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider
 
 
 def main():
     # 1. Configure dataset generation with prompt expansion
-    config = ClassificationConfig(
+    config = ClassificationDatasetConfig(
         classes=[
             {
                 "name": "positive",
@@ -55,7 +55,9 @@ def main():
     ]
 
     # 3. Generate the dataset
-    dataset = TextClassificationDataset(config)
+    dataset = ClassificationDataset(config)
+    num_expected_rows = dataset.get_num_expected_rows(providers)
+    print(f"Expected number of rows: {num_expected_rows}")
 
     dataset.generate(providers)
 

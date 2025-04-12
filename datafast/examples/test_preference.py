@@ -4,7 +4,7 @@ Example script for generating a Preference dataset with chosen and rejected resp
 
 from datafast.schema.config import PreferenceDatasetConfig
 from datafast.datasets import PreferenceDataset 
-from datafast.llms import OpenAIProvider, GoogleProvider, AnthropicProvider
+from datafast.llms import OpenAIProvider, GeminiProvider, AnthropicProvider
 
 from datafast.examples.test_documents import TEST_DOCUMENTS
 
@@ -20,9 +20,9 @@ def main():
     )
 
     # 2. Initialize LLM providers
-    question_gen_llm = GoogleProvider(model_id="gemini-1.5-flash")
+    question_gen_llm = GeminiProvider(model_id="gemini-1.5-flash")
     chosen_response_gen_llm = OpenAIProvider(model_id="gpt-4o-mini")
-    rejected_response_gen_llm = GoogleProvider(model_id="gemini-1.5-flash")
+    rejected_response_gen_llm = GeminiProvider(model_id="gemini-1.5-flash")
     judge_llm = AnthropicProvider(model_id="claude-3-5-haiku-latest")
 
     # 3. Generate the dataset

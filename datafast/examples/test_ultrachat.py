@@ -1,10 +1,10 @@
-from datafast.datasets import UltraChatDataset, ChatRow
-from datafast.schema.config import UltraChatDatasetConfig
+from datafast.datasets import UltrachatDataset
+from datafast.schema.config import UltrachatDatasetConfig
 from datafast.llms import OpenAIProvider
 from dotenv import load_dotenv
 
 def main():
-    config = UltraChatDatasetConfig(
+    config = UltrachatDatasetConfig(
         domain="Materials Science",
         topics_and_subtopics={
             "Polymers" : ["Design", "Testing"],
@@ -24,7 +24,9 @@ def main():
     ]
 
     # 3. Generate the dataset
-    dataset = UltraChatDataset(config)
+    dataset = UltrachatDataset(config)
+    num_expected_rows = dataset.get_num_expected_rows(providers)
+    print(f"\nExpected number of rows: {num_expected_rows}")
     dataset.generate(providers)
 
 
