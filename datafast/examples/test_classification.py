@@ -37,8 +37,8 @@ def main():
     dataset.generate(providers)
 
     # 4. Push to HF hub
-    USERNAME = "patrickfleith"  # <--- Your hugging face username
-    DATASET_NAME = "concise_vs_verbose_litellm"  # <--- Your hugging face dataset name
+    USERNAME = "YOUR_USERNAME"  # <--- Your hugging face username
+    DATASET_NAME = "YOUR_DATASET_NAME"  # <--- Your hugging face dataset name
     url = dataset.push_to_hub(
         repo_id=f"{USERNAME}/{DATASET_NAME}",
         train_size=0.7,
