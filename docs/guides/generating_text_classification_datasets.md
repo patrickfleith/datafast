@@ -21,8 +21,8 @@ Generating a dataset with `datafast` requires 3 types of imports:
 * LLM Providers
 
 ```python
-from datafast.datasets import TextClassificationDataset
-from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
+from datafast.datasets import ClassificationDataset
+from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
 ```
 
@@ -37,14 +37,15 @@ load_dotenv("secrets.env")
 Make sure you have created a `secrets.env` file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depends on which LLM providers you use. In our example, we use OpenAI and Anthropic.
 
 ```
+GEMINI_API_KEY=XXXX
 OPENAI_API_KEY=sk-XXXX
-ANTHROPIC_API_KEY=XXXXX
-HF_TOKEN=XXXXX
+ANTHROPIC_API_KEY=sk-ant-XXXXX
+HF_TOKEN=hf_XXXXX
 ```
 
 ## Step 2: Configure Your Dataset
 
-The `ClassificationConfig` class defines all parameters for your text classification dataset.
+The `ClassificationDatasetConfig` class defines all parameters for your text classification dataset.
 
 - **`classes`**: List of dictionaries defining your classification labels. Each dictionary represent a class and should include:
     - `name`: Label identifier (required)
@@ -63,7 +64,7 @@ The `ClassificationConfig` class defines all parameters for your text classifica
     - You can use any language code and name you want. However, make sure that the underlying LLM provider you'll be using supports the language you're using.
 
 - **`prompts`**: (Optional, but highly recommended) Custom prompt templates.
-    - **Mandatory placeholders**: When providing a custom prompt for `ClassificationConfig`, you must always include the following variable placeholders in your prompt, using **single curly braces**:
+    - **Mandatory placeholders**: When providing a custom prompt for `ClassificationDatasetConfig`, you must always include the following variable placeholders in your prompt, using **single curly braces**:
         - `{num_samples}`: it uses the `num_samples_per_prompt` parameter defined above)
         - `{language_name}`: it uses the `languages` parameter defined above)
         - `{label_name}`: it comes from the `classes` parameter defined above)
@@ -73,7 +74,7 @@ The `ClassificationConfig` class defines all parameters for your text classifica
         - `{{trail_type}}`: In our example we want to generate reports about different types of trails
 
 ```python
-config = ClassificationConfig(
+config = ClassificationDatasetConfig(
     # Define your classification classes
     classes=[
         {
@@ -134,7 +135,7 @@ You can use different variables depending on your actual use case. For example, 
 Datafast's `PromptExpansionConfig` allows you to generate diverse examples by creating variations of your base prompts:
 
 ```python
-config = ClassificationConfig(
+config = ClassificationDatasetConfig(
     # Basic configuration as above
     # ...
     
@@ -194,7 +195,7 @@ Now you can create and generate your dataset:
 
 ```python
 # Initialize dataset with your configuration
-dataset = TextClassificationDataset(config)
+dataset = ClassificationDataset(config)
 
 # Generate examples using configured providers
 dataset.generate(providers)
@@ -232,8 +233,8 @@ This automatically splits your dataset into training and test sets and uploads i
 Here's a complete example for creating a trail conditions classification dataset:
 
 ```python
-from datafast.datasets import TextClassificationDataset
-from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
+from datafast.datasets import ClassificationDataset
+from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
 from dotenv import load_dotenv
 
@@ -241,7 +242,7 @@ from dotenv import load_dotenv
 load_dotenv("secrets.env")
 
 # Configure dataset
-config = ClassificationConfig(
+config = ClassificationDatasetConfig(
     classes=[
         {
             "name": "trail_obstruction",
@@ -278,11 +279,11 @@ config = ClassificationConfig(
             "trail_type": [
                 "mountain trail",
                 "coastal path",
-                "forest walk"
+                "forest walk",
             ],
             "style": [
                 "brief social media post",
-                "detailed trail review"
+                "trail review"
             ]
         },
         combinatorial=True,  # Generate all combinations
@@ -297,7 +298,7 @@ providers = [
 ]
 
 # Generate dataset
-dataset = TextClassificationDataset(config)
+dataset = ClassificationDataset(config)
 dataset.generate(providers)
 
 # Optional: Push to Hugging Face Hub
