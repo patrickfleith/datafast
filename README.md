@@ -8,7 +8,7 @@ Create high-quality and diverse synthetic text datasets in minutes, not weeks.
 - Experiment and test quickly LLM-based application PoCs
 - Make your own datasets to fine-tune and evaluate language models for your application.
 
-⭐️ Star me if this is something you like! 🌟
+🌟 Star this repo if you find this useful! 
 
 ## Supported Dataset Types
 
@@ -120,8 +120,7 @@ Check out our guides for different dataset types (coming soon):
 
 * How to Generate a Text Classification Dataset
 * How to Create a Raw Text Dataset
-* Visit our GitHub repository for the latest updates
-
+* Star and watch this github repo to get updates 🌟
 
 ## Key Features
 
@@ -148,6 +147,11 @@ Check out our guides for different dataset types (coming soon):
 ## Creator
 
 Made with ❤️ by [Patrick Fleith](https://www.linkedin.com/in/patrick-fleith/).
+
+<hr> 
+
+This is volunteer work, star this repo to show your support! 🙏
+
 
 ## Project Details
 - **Status:** Work in Progress (APIs may change)
