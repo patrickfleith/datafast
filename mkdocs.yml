@@ -59,6 +59,7 @@ nav:
     - Text Classification: guides/generating_text_classification_datasets.md
     - Text Generation: guides/generating_text_datasets.md
     - Multiple Choice Question: guides/generating_mcq_datasets.md
+    - Instruction Dataset: guides/generating_ultrachat_datasets.md
   - API Reference: api.md
 
 # Plugins
