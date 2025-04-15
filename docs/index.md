@@ -131,18 +131,17 @@ Check out our guides for different dataset types (coming soon):
 
 ## Roadmap:
 
-- [] RAG datasets
-- [] Integrate personas
-- [] Integrate seeds
-- [] More types of instructions datasets (not just ultrachat)
-- [] More LLM providers
-- [] Deduplication, filtering
-- [] Dataset cards generation
+- RAG datasets
+- Integrate personas
+- Integrate seeds
+- More types of instructions datasets (not just ultrachat)
+- More LLM providers
+- Deduplication, filtering
+- Dataset cards generation
+
+## License:
+[Apache 2.0](LICENSE)
 
 ## Creator
 
 Made with ❤️ by [Patrick Fleith](https://www.linkedin.com/in/patrick-fleith/).
-
-## Project Details
-- **Status:** Work in Progress (APIs may change)
-- **License:** [Apache 2.0](LICENSE)
