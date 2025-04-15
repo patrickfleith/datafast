@@ -66,8 +66,8 @@ class EvolveInstructOutput(BaseModel):
     improved_answer: str = Field(...)
 
 class JudgeLLMOutput(BaseModel):
-    assessment: str = Field(...)
-    score: int = Field(..., ge=1, le=10)
+    assessment: str = Field(..., description="Assessment of the response")
+    score: int = Field(..., description="Score between 1 and 10")
 
 
 class DatasetBase(ABC):
