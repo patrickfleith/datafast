@@ -1,25 +1,25 @@
 # How to Create an Ultrachat Dataset
 
 !!! example "Use Case"
-    Let's say you work as a data engineer at a large Wind Turbine Manufacturer. You want to **fine-tune a conversational AI model on the specific domain of materials science**. You decide to create an *Ultrachat Instruction Dataset* with synthetic conversations spanning multiple topics and subtopics. This dataset will have realistic back-and-forth exchanges based on your company's user personas.
+    Suppose you are a data engineer at a large wind turbine manufacturer. You want to **fine-tune a conversational AI model on the specific domain of materials science**. You decide to create an *Ultrachat Instruction Dataset* with synthetic conversations spanning multiple topics and subtopics. This dataset will contain realistic back-and-forth exchanges based on your company's user personas.
 
 **The process:**
 
-1. Defines a domain (Materials Science), topics, and subtopics for conversation generation
-2. Creates a pool of user personas to simulate different types of users
+1. Define a domain (Materials Science), topics, and subtopics for conversation generation.
+2. Create a pool of user personas to simulate different types of users.
 3. For each topic-subtopic pair:
-   - Generates initial questions
-   - Reformulates them based on random personas
-   - Simulates assistant responses
-   - Optionally continues the conversation with follow-up exchanges for multi-turn conversations.
-4. Saves the dataset to the specified output file
+   - Generate initial questions.
+   - Reformulate them based on random personas.
+   - Simulate assistant responses.
+   - Optionally, continue the conversation with follow-up exchanges for multi-turn conversations.
+4. Save the dataset to the specified output file
 
 !!! note
-    What is an Ultrachat instruction dataset? It is a regular instruction dataset consisting of conversations between a user and an assistant. The main difference is that the conversations are generated based on a domain, topics, and subtopics inspired by the [Ultrachat method](https://arxiv.org/abs/2305.14233).
+    What is an Ultrachat instruction dataset? It is a standard instruction dataset consisting of conversations between a user and an assistant. The term `Ultrachat` refers to previous from which this method is inspired. Conversations are generated based on a domain, topics, and subtopics [Ultrachat method](https://arxiv.org/abs/2305.14233).
 
 ## Step 1: Import Required Modules
 
-Generating an Ultrachat dataset with `datafast` requires 3 types of imports:
+Generating an Ultrachat dataset with `datafast` requires three types of imports:
 
 * Dataset
 * Configs
@@ -31,7 +31,7 @@ from datafast.schema.config import UltrachatDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 ```
 
-In addition, we'll use `dotenv` to load environment variables containing API keys.
+In addition, use `dotenv` to load environment variables containing API keys:
 ```python
 from dotenv import load_dotenv
 
@@ -39,7 +39,7 @@ from dotenv import load_dotenv
 load_dotenv("secrets.env")
 ```
 
-Make sure you have created a `secrets.env` file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depend on which LLM providers you use.
+Make sure you have created a `secrets.env` file with your API keys. A Hugging Face token (HF_TOKEN) is needed if you want to push the dataset to your HF hub. Other keys depend on which LLM providers you use.
 
 ```
 GEMINI_API_KEY=XXXX
@@ -66,9 +66,10 @@ This structure helps generate focused, coherent conversations about particular s
 To generate realistic conversations, you need to define a list of user personas. These personas will be used to reformulate generic questions into more contextual, persona-specific inquiries relevant to your wind turbine manufacturing company.
 
 Good personas for your use case might include:
-- "Junior Engineer with 2 years of experience in the technical department"
-- "Senior Materials Scientist specializing in durability under extreme conditions"
-- "R&D Director evaluating materials for next-generation products"
+
+- *Junior Engineer with 2 years of experience in the technical department*
+- *Senior Materials Scientist specializing in durability under extreme conditions*
+- *R&D Director evaluating materials for next-generation products*
 
 ## Step 4: Configure Your Dataset
 
@@ -128,7 +129,7 @@ You can customize the prompts used for generating questions and responses in the
 
 ### Question Generation Prompts
 
-When providing custom prompts for the `question_generation_prompts` parameter, you must include these **mandatory placeholders**:
+When providing custom prompts for the `question_generation_prompts` parameter, you **must include these mandatory placeholders**:
 
 - `{num_samples}`: Number of questions to generate per topic-subtopic pair
 - `{language_name}`: Language to generate questions in
@@ -173,16 +174,17 @@ The number of conversations will be calculated as:
 
 - Number of topics × Number of subtopics × Number of languages × Number of LLM providers × Number of initial questions per topic-subtopic pair
 
-For our wind turbine materials example with:
+For our wind turbine materials example:
+
 - 3 topics (Composite Materials, Metal Alloys, Polymers)
-- 3 subtopics per topic (9 subtopics total)
+- 3 subtopics per topic (so a total of 9 topic-subtopic pairs)
 - 1 language (English)
 - 1 LLM provider (Claude)
-- 3 questions per topic-subtopic pair
+- 3 questions generated for each topic-subtopic pair
 
 You'd get: 3 × 3 × 1 × 1 × 3 = 27 initial conversations in the dataset.
 
-However, since we set `max_turns=3` and `conversation_continuation_prob=0.25`, some conversations will continue with follow-up exchanges. The actual number of conversational turns will vary based on the random continuation probability. A multi-turnb conversation is still one single row in the dataset.
+However, since we set `max_turns=3` and `conversation_continuation_prob=0.25`, some conversations will continue with follow-up exchanges. The actual number of conversational turns will vary based on the random continuation probability. A multi-turn conversation is still one single row in the dataset.
 
 ## Step 9: Generate the Dataset
 
@@ -205,8 +207,10 @@ print(f"Results saved to {config.output_file}")
 After generating your dataset, you can push it to the Hugging Face Hub for sharing:
 
 ```python
+YOUR_USERNAME = "your-username"
+DATASET_NAME = "your-dataset-name"
 url = dataset.push_to_hub(
-    repo_id="YOUR_USERNAME/your-Ultrachat-dataset-name",
+    repo_id=f"{YOUR_USERNAME}/{DATASET_NAME}",
     train_size=0.8,  # Split 80% for training
     seed=42,         # Set seed for split reproducibility
     shuffle=True     # Shuffle before splitting
