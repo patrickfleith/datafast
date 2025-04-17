@@ -42,7 +42,7 @@ def main():
 
     # 2. Create LLM providers with specific models
     providers = [
-        OpenAIProvider(model_id="gpt-4o-mini"), # You may want to use stronger models
+        OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"), # You may want to use stronger models
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
     ]
 

@@ -19,9 +19,9 @@ def test_get_num_expected_rows():
     )
     
     providers = [
-        OpenAIProvider(model_id="gpt-4o-mini"),
+        OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-        GoogleProvider(model_id="gemini-1.5-flash"),
+        GoogleProvider(model_id="gemini-2.0-flash"),
     ]
     
     dataset1 = TextClassificationDataset(config1)
@@ -116,9 +116,9 @@ def main():
     
     # Create LLM providers (using the models specified in user rules)
     providers = [
-        OpenAIProvider(model_id="gpt-4o-mini"),
+        OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-        GoogleProvider(model_id="gemini-1.5-flash"),
+        GoogleProvider(model_id="gemini-2.0-flash"),
     ]
     
     # Calculate expected rows before generation

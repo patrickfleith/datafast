@@ -166,7 +166,7 @@ class OpenAIProvider(LLMProvider):
     
     def __init__(
         self,
-        model_id: str = "gpt-4o-mini",
+        model_id: str = "gpt-4.1-mini-2025-04-14",
         api_key: str | None = None,
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
@@ -176,7 +176,7 @@ class OpenAIProvider(LLMProvider):
         """Initialize the OpenAI provider.
         
         Args:
-            model_id: The model ID (defaults to gpt-4o-mini)
+            model_id: The model ID (defaults to gpt-4.1-mini-2025-04-14)
             api_key: API key (if None, will get from environment)
             temperature: The sampling temperature to be used, between 0 and 2. Higher values like 0.8 produce more random outputs, while lower values like 0.2 make outputs more focused and deterministic
             max_completion_tokens: An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
@@ -244,7 +244,7 @@ class GeminiProvider(LLMProvider):
     
     def __init__(
         self,
-        model_id: str = "gemini-1.5-flash",
+        model_id: str = "gemini-2.0-flash",
         api_key: str | None = None,
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
@@ -254,7 +254,7 @@ class GeminiProvider(LLMProvider):
         """Initialize the Gemini provider.
         
         Args:
-            model_id: The model ID (defaults to gemini-1.5-flash)
+            model_id: The model ID (defaults to gemini-2.0-flash)
             api_key: API key (if None, will get from environment)
             temperature: Temperature for generation (0.0 to 1.0)
             max_completion_tokens: Maximum tokens to generate

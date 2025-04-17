@@ -90,9 +90,9 @@ config = ClassificationDatasetConfig(
 ```python
 # Create LLM providers
 providers = [
-    OpenAIProvider(model_id="gpt-4o-mini"),
+    OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
     AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-    GeminiProvider(model_id="gemini-1.5-flash")
+    GeminiProvider(model_id="gemini-2.0-flash")
 ]
 ```
 

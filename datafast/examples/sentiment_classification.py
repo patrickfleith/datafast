@@ -51,7 +51,7 @@ def main():
 
     # 2. Create LLM providers with recommended models
     providers = [
-        OpenAIProvider(model_id="gpt-4o-mini"),
+        OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
     ]
 
     # 3. Generate the dataset
