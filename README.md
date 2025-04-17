@@ -4,8 +4,8 @@ Create high-quality and diverse synthetic text datasets in minutes, not weeks.
 
 ## Intended use cases
 - Get initial evaluation text data instead of starting your LLM project blind.
-- Increase diversity and coverage of another dataset by generating additional data.
-- Experiment and test quickly LLM-based application PoCs
+- Increase diversity and coverage of an existing dataset by generating more data.
+- Experiment and test quickly LLM-based application PoCs.
 - Make your own datasets to fine-tune and evaluate language models for your application.
 
 🌟 Star this repo if you find this useful! 
@@ -26,7 +26,7 @@ Currently we support the following LLM providers:
 - ✔︎ OpenAI
 - ✔︎ Anthropic
 - ✔︎ Google Gemini
-- ✔︎ Ollama
+- ✔︎ Ollama (local LLM server)
 - ⏳ more to come...
 
 ## Installation
@@ -95,9 +95,9 @@ config = ClassificationDatasetConfig(
 ```python
 # Create LLM providers
 providers = [
-    OpenAIProvider(model_id="gpt-4o-mini"),
+    OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
     AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-    GeminiProvider(model_id="gemini-1.5-flash")
+    GeminiProvider(model_id="gemini-2.0-flash")
 ]
 ```
 
