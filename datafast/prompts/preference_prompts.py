@@ -11,7 +11,7 @@ QUESTION_GENERATION_TEMPLATES = [
 
 # Prompt template for generating high-quality (chosen) responses
 CHOSEN_RESPONSE_TEMPLATE = """You are an expert AI assistant known for providing exceptionally helpful, accurate, and comprehensive responses.
-Given the document and question below, provide a detailed, well-structured and concise answer in {language_name}:
+Given the document and question below, provide a concise and well-structured answer in {language_name}:
 
 DOCUMENT:
 {document}

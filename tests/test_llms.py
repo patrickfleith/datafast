@@ -185,7 +185,7 @@ def test_openai_messages_with_structured_output():
 def test_openai_with_all_parameters():
     """Test OpenAI provider with all optional parameters specified."""
     provider = OpenAIProvider(
-        model_id="gpt-4o-mini",
+        model_id="gpt-4.1-mini-2025-04-14",
         temperature=0.2,
         max_completion_tokens=100,
         top_p=0.9,
@@ -260,7 +260,7 @@ def test_anthropic_with_all_parameters():
 def test_gemini_with_all_parameters():
     """Test Gemini provider with all optional parameters specified."""
     provider = GeminiProvider(
-        model_id="gemini-1.5-flash",
+        model_id="gemini-2.0-flash",
         temperature=0.4,
         max_completion_tokens=150,
         top_p=0.85,

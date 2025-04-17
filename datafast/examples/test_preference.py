@@ -2,28 +2,52 @@
 Example script for generating a Preference dataset with chosen and rejected responses.
 """
 
+import json
+from pathlib import Path
+
 from datafast.schema.config import PreferenceDatasetConfig
 from datafast.datasets import PreferenceDataset 
 from datafast.llms import OpenAIProvider, GeminiProvider, AnthropicProvider
 
-from datafast.examples.test_documents import TEST_DOCUMENTS
+
+def load_documents_from_jsonl(jsonl_path: str | Path) -> list[str]:
+    """
+    Load documents from a JSONL file where the document text is stored in the 'text' key.
+    
+    Args:
+        jsonl_path: Path to the JSONL file
+    
+    Returns:
+        List of document strings
+    """
+    documents = []
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            data = json.loads(line.strip())
+            if 'text' in data:
+                documents.append(data['text'])
+    return documents
 
 
 def main():
+    # Load documents from JSONL file
+    jsonl_path = Path(__file__).parent / 'data/preferences/nasa_lsi_sample.jsonl'
+    documents = load_documents_from_jsonl(jsonl_path)
+    
     # 1. Define the configuration
     config = PreferenceDatasetConfig(
-        input_documents=TEST_DOCUMENTS[:2],
-        num_samples_per_prompt=2,  # Generate 2 questions per document
-        languages={"en": "English", "fr": "French"},  # Generate in multiple languages
+        input_documents=documents,
+        num_samples_per_prompt=3,  # Generate 3 questions per document
+        languages={"en": "English"},  # Generate in English
         llm_as_judge=True,  # Use LLM to judge and score responses
-        output_file="preference_test_dataset.jsonl",
+        output_file="nasa_lessons_learned_dataset.jsonl",
     )
 
     # 2. Initialize LLM providers
-    question_gen_llm = GeminiProvider(model_id="gemini-1.5-flash")
-    chosen_response_gen_llm = OpenAIProvider(model_id="gpt-4o-mini")
-    rejected_response_gen_llm = GeminiProvider(model_id="gemini-1.5-flash")
-    judge_llm = AnthropicProvider(model_id="claude-3-5-haiku-latest")
+    question_gen_llm = OpenAIProvider(model_id="gpt-4.1-mini")
+    chosen_response_gen_llm = AnthropicProvider(model_id="claude-3-7-sonnet-latest")
+    rejected_response_gen_llm = GeminiProvider(model_id="gemini-2.0-flash")
+    judge_llm = OpenAIProvider(model_id="gpt-4.1")
 
     # 3. Generate the dataset
     dataset = PreferenceDataset(config)

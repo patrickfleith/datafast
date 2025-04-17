@@ -26,9 +26,9 @@ Generating a dataset with `datafast` requires 3 types of imports:
 * LLM Providers
 
 ```python
-from datafast.datasets import TextDataset
-from datafast.schema.config import TextDatasetConfig, PromptExpansionConfig
-from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
+from datafast.datasets import RawDataset
+from datafast.schema.config import RawDatasetConfig, PromptExpansionConfig
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 ```
 
 In addition, we'll use `dotenv` to load environment variables containing API keys.
@@ -39,18 +39,18 @@ from dotenv import load_dotenv
 load_dotenv("secrets.env")
 ```
 
-Make sure you have created a secrets.env file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depend on which LLM providers you use. In our example, we use Google, OpenAI, and Anthropic.
+Make sure you have created a secrets.env file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depend on which LLM providers you use. In our example, we use OpenAI and Anthropic.
 
 ```
-GOOGLE_API_KEY=XXXX
+GEMINI_API_KEY=XXXX
 OPENAI_API_KEY=sk-XXXX
-ANTHROPIC_API_KEY=XXXXX
-HF_TOKEN=XXXXX
+ANTHROPIC_API_KEY=sk-ant-XXXXX
+HF_TOKEN=hf_XXXXX
 ```
 
 ## Step 2: Configure Your Dataset
 
-The `TextDatasetConfig` class defines all parameters for your text generation dataset.
+The `RawDatasetConfig` class defines all parameters for your text generation dataset.
 
 - **`document_types`**: List of document types to generate (e.g., "tech journalism blog", "personal blog", "MSc lecture notes").
 
@@ -68,7 +68,7 @@ The `TextDatasetConfig` class defines all parameters for your text generation da
     - You can use any language code and name you want. However, make sure that the underlying LLM provider you'll be using supports the language you're requesting.
 
 - **`prompts`**: (Optional) Custom prompt templates.
-    - **Mandatory placeholders**: When providing a custom prompt for `TextDatasetConfig`, you must always include the following variable placeholders in your prompt, using **single curly braces**:
+    - **Mandatory placeholders**: When providing a custom prompt for `RawDatasetConfig`, you must always include the following variable placeholders in your prompt, using **single curly braces**:
         - `{num_samples}`: it uses the `num_samples_per_prompt` parameter defined above
         - `{language_name}`: it uses the `languages` parameter defined above
         - `{document_type}`: it comes from the `document_types` parameter defined above
@@ -78,7 +78,7 @@ The `TextDatasetConfig` class defines all parameters for your text generation da
 Here's a basic configuration example:
 
 ```python
-config = TextDatasetConfig(
+config = RawDatasetConfig(
     # Types of documents to generate
     document_types=[
         "space engineering textbook", 
@@ -124,7 +124,7 @@ For example, we added one optional placeholder using double curly braces:
 You can configure prompt expansion like this:
 
 ```python
-config = TextDatasetConfig(
+config = RawDatasetConfig(
     # Basic configuration as above
     # ...
     
@@ -156,7 +156,7 @@ Configure one or more LLM providers to generate your dataset:
 
 ```python
 providers = [
-    OpenAIProvider(model_id="gpt-4o-mini"), # You may want to use stronger models
+    OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"), # You may want to use stronger models
     AnthropicProvider(model_id="claude-3-5-haiku-latest"),
 ]
 ```
@@ -189,7 +189,11 @@ Now you can create and generate your dataset:
 
 ```python
 # Initialize dataset with your configuration
-dataset = TextDataset(config)
+dataset = RawDataset(config)
+
+# Get expected number of rows (useful to know before generating)
+num_expected_rows = dataset.get_num_expected_rows(providers)
+print(f"Expected number of rows: {num_expected_rows}")
 
 # Generate examples using configured providers
 dataset.generate(providers)
@@ -232,14 +236,14 @@ Make sure you have set your `HF_TOKEN` in the environment variables.
 Here's a complete example script that generates a text dataset across multiple document types, topics, and languages:
 
 ```python
-from datafast.datasets import TextDataset
-from datafast.schema.config import TextDatasetConfig, PromptExpansionConfig
+from datafast.datasets import RawDataset
+from datafast.schema.config import RawDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
 
 
 def main():
     # 1. Configure the dataset generation
-    config = TextDatasetConfig(
+    config = RawDatasetConfig(
         document_types=[
             "space engineering textbook", 
             "spacecraft design justification document", 
@@ -276,12 +280,14 @@ def main():
 
     # 2. Create LLM providers with specific models
     providers = [
-        OpenAIProvider(model_id="gpt-4o-mini"), # You may want to use stronger models
+        OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"), # You may want to use stronger models
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
     ]
 
     # 3. Generate the dataset
-    dataset = TextDataset(config)
+    dataset = RawDataset(config)
+    num_expected_rows = dataset.get_num_expected_rows(providers)
+    print(f"Expected number of rows: {num_expected_rows}")
     dataset.generate(providers)
 
     # 4. Push to HF hub (optional)
