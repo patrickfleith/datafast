@@ -116,10 +116,13 @@ dataset.push_to_hub(
 
 ## Next Steps
 
-Check out our guides for different dataset types (coming soon):
+Check out our guides for different dataset types:
 
-* How to Generate a Text Classification Dataset
-* How to Create a Raw Text Dataset
+* [How to Generate a Text Classification Dataset](https://patrickfleith.github.io/datafast/guides/generating_text_classification_datasets/)
+* [How to Create a Raw Text Dataset](https://patrickfleith.github.io/datafast/guides/generating_text_datasets/)
+* [How to Create a Preference Dataset](https://patrickfleith.github.io/datafast/guides/generating_preference_datasets/)
+* [How to Create a Multiple Choice Question (MCQ) Dataset](https://patrickfleith.github.io/datafast/guides/generating_mcq_datasets/)
+* [How to Create an Instruction (Ultrachat) Dataset](https://patrickfleith.github.io/datafast/guides/generating_ultrachat_datasets/)
 * Star and watch this github repo to get updates 🌟
 
 ## Key Features
