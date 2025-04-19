@@ -178,3 +178,6 @@ secrets.env
 
 *.jsonl
 .DS_Store
+
+# Include specific directories
+!datafast/examples/data/*
