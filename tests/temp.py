@@ -1,6 +1,6 @@
-from datafast.datasets import TextClassificationDataset
-from datafast.schema.config import ClassificationConfig, PromptExpansionConfig
-from datafast.llms import OpenAIProvider, AnthropicProvider, GoogleProvider
+from datafast.datasets import ClassificationDataset
+from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 from datafast import utils
 
 
@@ -9,7 +9,7 @@ def test_get_num_expected_rows():
     print("\n=== Testing get_num_expected_rows ===\n")
     
     # Test 1: Basic configuration with default prompts
-    config1 = ClassificationConfig(
+    config1 = ClassificationDatasetConfig(
         classes=[
             {"name": "concise", "description": "Concise text description"},
             {"name": "verbose", "description": "Verbose text description"},
@@ -21,10 +21,10 @@ def test_get_num_expected_rows():
     providers = [
         OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-        GoogleProvider(model_id="gemini-2.0-flash"),
+        GeminiProvider(model_id="gemini-2.0-flash"),
     ]
     
-    dataset1 = TextClassificationDataset(config1)
+    dataset1 = ClassificationDataset(config1)
     expected_rows1 = dataset1.get_num_expected_rows(providers)
     print(f"Test 1 - Basic config with default prompts:")
     print(f"  - Classes: {len(config1.classes)}")
@@ -34,7 +34,7 @@ def test_get_num_expected_rows():
     print(f"  - Expected rows: {expected_rows1}\n")
     
     # Test 2: With custom prompts
-    config2 = ClassificationConfig(
+    config2 = ClassificationDatasetConfig(
         classes=[
             {"name": "concise", "description": "Concise text description"},
             {"name": "verbose", "description": "Verbose text description"},
@@ -47,14 +47,14 @@ def test_get_num_expected_rows():
         languages={"en": "English"},
     )
     
-    dataset2 = TextClassificationDataset(config2)
+    dataset2 = ClassificationDataset(config2)
     expected_rows2 = dataset2.get_num_expected_rows(providers)
     print(f"Test 2 - With custom prompts:")
     print(f"  - Custom prompts: {len(config2.prompts)}")
     print(f"  - Expected rows: {expected_rows2}\n")
     
     # Test 3: With prompt expansions
-    config3 = ClassificationConfig(
+    config3 = ClassificationDatasetConfig(
         classes=[
             {"name": "concise", "description": "Concise text description"},
             {"name": "verbose", "description": "Verbose text description"},
@@ -74,7 +74,7 @@ def test_get_num_expected_rows():
         languages={"en": "English"},
     )
     
-    dataset3 = TextClassificationDataset(config3)
+    dataset3 = ClassificationDataset(config3)
     expected_rows3 = dataset3.get_num_expected_rows(providers)
     print(f"Test 3 - With prompt expansions:")
     print(f"  - Base prompts: {len(config3.prompts)}")
@@ -94,7 +94,7 @@ def main():
     test_get_num_expected_rows()
     
     # Original dataset generation code
-    config = ClassificationConfig(
+    config = ClassificationDatasetConfig(
         classes=[
             {
                 "name": "concise",
@@ -118,11 +118,11 @@ def main():
     providers = [
         OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
         AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-        GoogleProvider(model_id="gemini-2.0-flash"),
+        GeminiProvider(model_id="gemini-2.0-flash"),
     ]
     
     # Calculate expected rows before generation
-    dataset = TextClassificationDataset(config)
+    dataset = ClassificationDataset(config)
     expected_rows = dataset.get_num_expected_rows(providers)
     print(f"\nMain dataset - Expected number of rows: {expected_rows}")
     
