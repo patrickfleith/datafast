@@ -14,6 +14,7 @@ def providers():
     return [Mock(), Mock(), Mock()]
 
 def test_basic_expected_rows_formula(providers):
+    # Test the expected rows calculation with default prompts, multiple classes, and languages.
     config = ClassificationDatasetConfig(
         classes=[
             {"name": "concise", "description": "Concise text description"},
@@ -33,6 +34,7 @@ def test_basic_expected_rows_formula(providers):
     assert dataset.get_num_expected_rows(providers) == expected
 
 def test_custom_prompts_expected_rows_numeric(providers):
+    # Test the expected rows calculation when custom prompts are provided.
     config = ClassificationDatasetConfig(
         classes=[
             {"name": "concise", "description": "Concise text description"},
@@ -50,6 +52,7 @@ def test_custom_prompts_expected_rows_numeric(providers):
     assert dataset.get_num_expected_rows(providers) == 60
 
 def test_prompt_expansions_expected_rows_numeric(providers):
+    # Test the expected rows calculation when prompt expansion (random sampling) is used.
     config = ClassificationDatasetConfig(
         classes=[
             {"name": "concise", "description": "Concise text description"},
@@ -73,6 +76,7 @@ def test_prompt_expansions_expected_rows_numeric(providers):
     assert dataset.get_num_expected_rows(providers) == 90
 
 def test_direct_utility_consistency(providers):
+    # Test that the dataset method returns the same result as the direct utility function.
     config = ClassificationDatasetConfig(
         classes=[
             {"name": "concise", "description": "Concise text description"},
