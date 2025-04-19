@@ -1,19 +1,5 @@
 # Future Work and Ideas
 
-### Migration with LiteLLM
-- Would reduce the burden of maintaining the providers
-- Would also allow us to support more providers
-- Would also allow us to support more features related to cost, tracking and monitoring.
-
-### StructuredOutput
-- The HuggingFaceProvider and OllamaProvider are currently implemented but very brittle for Structured Output.
-- They often follow the specified JSON schema but not always.
-- Options: remove brittle providers, fix the providers with support from Ollama and HF dev, implement a more robust solution for constraining outputs using techniques like outlines (where possible)
-
-### Include validation of user-defined prompt
-- For each dataset type there are possibly different mandatory variables to inject (and to define)
-- It would be helpful to validate the user-defined prompt against the mandatory variables and provide a helpful message to the user
-
 ### MCQDataset
 - Should work with a local dataset (.txt, .csv, .jsonl for instance as well)
 - Should wrap the dataset download function from HF into a utility
@@ -45,18 +31,12 @@
 - First I would like to switch to using LiteLM for inference, and also test some approaches. Then we work on it.
 
 ### Tests
-- There are no proper tests, just some scripts within `examples`.
-- We should add proper tests soon after launch
+- Improve the test suite
 
 ### EvolInstruct not implemented
 - At the moment EvolInstruct is not implemented in PreferenceDataset Generation.
 - While this is not critical at this stage, it would be great to have it soon.
 
-
-### Need to align on the naming across the codebase
-- `prompt` vs `query` vs `instruction` for instance should be clarified
-- If specifying `Text` in front of `TextClassificationDataset` is relevant, why don't we use similar prefixes with other datasets?
-    - Since datafast will most likely only address Text datasets, we can probably drop the `Text` specifier.
 
 ### Import HF dataset sample
 - When reusing a dataset from the HF Hub, check if we can just download a random sample of like 100 examples.
