@@ -1,7 +1,12 @@
 """Datafast - A Python package for synthetic text dataset generation"""
 
-# This version should match the one in pyproject.toml
-__version__ = "0.0.7"
+import importlib.metadata
+
+try:
+    __version__ = importlib.metadata.version("datafast")
+except importlib.metadata.PackageNotFoundError:
+    # package is not installed
+    pass
 
 def get_version():
     """Return the current version of the datafast package."""
