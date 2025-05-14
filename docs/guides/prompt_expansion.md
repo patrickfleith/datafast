@@ -1,10 +1,10 @@
 # Prompt Expansion
 
-Prompt expansion is a powerful technique in datafast that enables the generation of diverse and varied outputs by creating multiple versions of prompt templates. This document explains how to use prompt expansion effectively across different dataset types.
+Prompt expansion is a powerful technique in datafast to generate diverse outputs by creating multiple versions of prompts. This page explains how to use prompt expansion effectively across different dataset types.
 
 ## What is Prompt Expansion?
 
-Prompt expansion allows you to create multiple variants of your base prompts by substituting placeholders with different values. Instead of writing dozens of similar prompts manually, you can define a template with placeholders and automatically expand it into many unique prompts.
+Prompt expansion means creating multiple variants of your base prompts template by substituting placeholders with different values. Instead of writing dozens of similar prompts manually, you can define a template with placeholders and automatically expand it into many unique prompts.
 
 For example, a single template like:
 
@@ -16,7 +16,9 @@ Could expand to prompts like:
 - "Explain how to use Python for web development"
 - "Explain how to use Python for data analysis"
 - "Explain how to use JavaScript for web development"
-- "Explain how to use JavaScript for mobile development"
+- "Explain how to use JavaScript for data analysis"
+
+With two values for programming language and two values for application type, we get four different prompts!
 
 This dramatically increases the diversity of your generated data with minimal configuration.
 
@@ -26,9 +28,12 @@ This dramatically increases the diversity of your generated data with minimal co
 
 Datafast supports two types of placeholders:
 
-1. **Mandatory Placeholders** (`{single_curly_braces}`): These are required placeholders specific to each dataset type and are filled in automatically by datafast based on your configuration.
+1. **Mandatory Placeholders** (`{mandatory_placeholder}`): These are required placeholders specific to each dataset type and are filled in automatically by datafast based on your configuration. You must include them if you choose to use custom prompt template.
 
-2. **Optional Placeholders** (`{{double_curly_braces}}`): These are user-defined placeholders that expand into multiple variants based on your expansion configuration.
+2. **Optional Placeholders** (`{{optional_placeholder}}`): These are user-defined placeholders that expand into multiple variants based on your expansion configuration.
+
+!!! note
+    You don't need to create a `PromptExpansionConfig` for mandatory placeholders. However, you need to create one for optional placeholders.
 
 ### Expansion Modes
 
@@ -48,8 +53,8 @@ from datafast.schema.config import PromptExpansionConfig
 expansion_config = PromptExpansionConfig(
     # Dictionary mapping placeholder names to lists of possible values
     placeholders={
-        "difficulty_level": ["beginner", "intermediate", "advanced"],
-        "topic_area": ["theory", "application", "history"]
+        "programming_language": ["python", "javascript", "C++"],
+        "application_type": ["web development", "data analysis", "machine learning"]
     },
     # Whether to generate all combinations (True) or random samples (False)
     combinatorial=True,
@@ -62,7 +67,7 @@ expansion_config = PromptExpansionConfig(
 
 ## Mandatory Placeholders by Dataset Type
 
-Each dataset type in datafast requires specific mandatory placeholders to be included in your prompts:
+Each dataset type in datafast requires specific mandatory placeholders to be included in the dataset prompt templates:
 
 ### RawDataset
 
@@ -70,6 +75,17 @@ Each dataset type in datafast requires specific mandatory placeholders to be inc
 - `{language_name}`: Language to generate content in
 - `{document_type}`: Type of document to generate
 - `{topic}`: Topic to generate content about
+
+You don't need to create a prompt expansion config for mandatory placeholders since `datfast` will automatically expand them based on your dataset configuration. However, the mandatory placeholders should be included in any custom prompt templates you define.
+
+!!! info
+    For instance, our default prompt template for the `RawDataset` is:
+
+    ```
+    I need {num_samples} text examples written in \
+    {language_name} that could have been written in a {document_type} related to {topic}.
+    Make sure to properly format your response in valid JSON.
+    ```
 
 ### MCQDataset
 
@@ -79,7 +95,7 @@ Each dataset type in datafast requires specific mandatory placeholders to be inc
 
 ### UltraChatDataset
 
-- `{num_samples}`: Number of conversations to generate
+- `{num_samples}`: Number of conversations to generate for that topic
 - `{language_name}`: Language to generate conversations in
 - `{topic}`: Topic for the generated conversations
 
@@ -123,7 +139,7 @@ config = RawDatasetConfig(
 )
 ```
 
-This configuration would generate 18 different prompt variations (2 document types × 2 topics × 3 tones × 3 audiences) which would then be used to generate the dataset.
+This configuration would generate 36 different prompt variations (2 document types × 2 topics × 3 tones × 3 audiences) which would then be used to generate a dataset for 36 rows.
 
 ### Random Sampling Example with MCQDataset
 
@@ -141,6 +157,9 @@ expansion_config = PromptExpansionConfig(
     num_random_samples=100  # Generate 100 random combinations
 )
 ```
+
+This will not generate all possible combinations, but only 100 random combinations. This is useful
+as the number of possible combinations can explode rapidly.
 
 ## How Many Outputs Will Be Generated?
 
@@ -164,9 +183,8 @@ Total questions = source_documents × num_samples_per_prompt × languages × num
 
 Keep these tips in mind when using prompt expansion:
 
-- **Memory Usage**: Large combinatorial expansions can consume significant memory
 - **API Costs**: More expansions mean more API calls to LLM providers
-- **Safety Limits**: The `max_samples` parameter prevents accidental generation of too many prompts
+- **Safety Limits**: The `max_samples` parameter prevents accidental generation of too many prompts. By default, it is set to 1000.
 - **Prefer Random Sampling**: For very large expansion spaces, use random sampling instead of combinatorial expansion
 
 ## Under the Hood: The `expand_prompts` Function
@@ -210,9 +228,9 @@ Each expansion returns both the expanded prompt and metadata about which values 
 
 ## Common Pitfalls
 
-- **Too Many Combinations**: Avoid creating too many combinations which can lead to memory issues or excessive API costs
+- **Too Many Combinations**: Avoid creating too many combinations which can lead to excessive API costs
 - **Missing Mandatory Placeholders**: Ensure all required placeholders for your dataset type are included
 - **Inconsistent Placeholder Format**: Use single curly braces for mandatory placeholders and double for optional ones
 - **Unclear Expansions**: Having too many placeholders can make it hard to interpret the results
+- **Conflicting Placeholders**: Be careful with prompt expansion as some combinations may lead to nonsense!
 
-By using prompt expansion effectively, you can generate diverse, high-quality datasets that better represent the variety of real-world data, leading to more robust model training and evaluation.
