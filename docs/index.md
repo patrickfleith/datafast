@@ -111,11 +111,17 @@ dataset.push_to_hub(
 
 ## Next Steps
 
-Check out our guides for different dataset types (coming soon):
+Check out our comprehensive guides for different dataset types:
 
-* How to Generate a Text Classification Dataset
-* How to Create a Raw Text Dataset
-* Star this package to send positive vibes and support 🌟
+- [Text Classification](guides/generating_text_classification_datasets.md) - Generate labeled datasets for text classification tasks
+- [Text Generation](guides/generating_text_datasets.md) - Create datasets for general text generation tasks
+- [Multiple Choice Questions](guides/generating_mcq_datasets.md) - Build datasets with multiple choice questions and answers
+- [Instruction Following](guides/generating_ultrachat_datasets.md) - Develop instruction-following conversation datasets
+- [Preference Pairs](guides/generating_preference_datasets.md) - Generate datasets for preference-based learning
+
+To understand the core concepts behind Datafast, visit our [Concepts](concepts.md) page.
+
+Star this package to send positive vibes and support 🌟
 
 ## Key Features
 
