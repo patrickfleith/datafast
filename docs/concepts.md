@@ -72,9 +72,9 @@ The datafast workflow follows a consistent pattern across all dataset types:
 2. **Prompt Design**: Create base prompts with mandatory and optional placeholders
 3. **Provider Setup**: Initialize one or more LLM providers
 4. **Generation**: Execute the generation process, which:
-   - Expands prompts based on configuration
-   - Distributes generation across providers
-   - Collects and processes responses
+    - Expands prompts based on configuration
+    - Distributes generation across providers
+    - Collects and processes responses
 5. **Output**: Save the resulting dataset to a file and optionally push to Hugging Face Hub
 
 ## Dataset Diversity Mechanisms

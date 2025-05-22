@@ -69,6 +69,7 @@ nav:
         - Instruction: guides/generating_ultrachat_datasets.md
         - Preference: guides/generating_preference_datasets.md
   - Concepts:
+      - Core Concepts: concepts.md
       - Prompt Expansion: guides/prompt_expansion.md
       - LLM Providers: llms.md
   - API: api.md

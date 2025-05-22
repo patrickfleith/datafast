@@ -135,7 +135,7 @@ Star this package to send positive vibes and support 🌟
 !!! warning
     This library is in its early stages of development and might change significantly.
 
-## Roadmap:
+## Roadmap
 
 - RAG datasets
 - Integrate personas
@@ -145,7 +145,8 @@ Star this package to send positive vibes and support 🌟
 - Deduplication, filtering
 - Dataset cards generation
 
-## License:
+## License
+
 [Apache 2.0](LICENSE)
 
 ## Creator
