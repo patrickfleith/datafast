@@ -1,6 +1,8 @@
-# Welcome to Datafast
-
-Create high-quality and diverse synthetic text datasets in minutes, not weeks.
+<div align="left">
+  <img src="./assets/Datafast Logo.png" alt="Datafast Logo" width="300px">
+</div>
+    
+> *Generate high-quality and diverse synthetic text datasets in minutes, not weeks.*
 
 ## Intended use cases
 - Get initial evaluation text data instead of starting your LLM project blind.
