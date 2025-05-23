@@ -29,7 +29,8 @@ dependencies = [
     "python-dotenv",
     "anthropic",
     "openai",
-    "pydantic"
+    "pydantic",
+    "litellm",
 ]
 
 [project.optional-dependencies]
