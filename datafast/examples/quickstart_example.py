@@ -48,8 +48,8 @@ print(f"Expected number of rows: {num_expected_rows}")
 dataset.generate(providers)
 
 # Optional: Push to Hugging Face Hub
-USERNAME = "patrickfleith"  # <--- Your hugging face username
-DATASET_NAME = "outdoor_activities_sentiments"  # <--- Your hugging face dataset name
+USERNAME = "username"  # <--- Your hugging face username
+DATASET_NAME = "dataset_name"  # <--- Your hugging face dataset name
 dataset.push_to_hub(
     repo_id=f"{USERNAME}/{DATASET_NAME}",
     train_size=0.6
