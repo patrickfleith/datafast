@@ -9,7 +9,7 @@ config = ClassificationDatasetConfig(
         {"name": "negative", "description": "Text expressing negative emotions or criticism"},
         {"name": "neutral", "description": "Text with neutral emotions or indifference"}
     ],
-    num_samples_per_prompt=5,
+    num_samples_per_prompt=3,
     output_file="outdoor_activities_sentiments.jsonl",
     languages={
         "en": "English", 
@@ -47,10 +47,10 @@ num_expected_rows = dataset.get_num_expected_rows(providers)
 print(f"Expected number of rows: {num_expected_rows}")
 dataset.generate(providers)
 
-# # Optional: Push to Hugging Face Hub
-# USERNAME = "YOUR_USERNAME"  # <--- Your hugging face username
-# DATASET_NAME = "YOUR_DATASET_NAME"  # <--- Your hugging face dataset name
-# dataset.push_to_hub(
-#     repo_id=f"{USERNAME}/{DATASET_NAME}",
-#     train_size=0.6
-# )
+# Optional: Push to Hugging Face Hub
+USERNAME = "patrickfleith"  # <--- Your hugging face username
+DATASET_NAME = "outdoor_activities_sentiments"  # <--- Your hugging face dataset name
+dataset.push_to_hub(
+    repo_id=f"{USERNAME}/{DATASET_NAME}",
+    train_size=0.6
+)
