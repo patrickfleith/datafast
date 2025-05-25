@@ -33,13 +33,21 @@ jobs:
       id: version_bump
       run: |
         # Extract current version from pyproject.toml
-        CURRENT_VERSION=$(grep -oP '(?<=version = ")[^"]*' pyproject.toml)
-        echo "Current version: $CURRENT_VERSION"
+        CURRENT_VERSION=$(awk -F'"' '/^version =/ {print $4}' pyproject.toml)
+        # Trim any whitespace
+        CURRENT_VERSION=$(echo "$CURRENT_VERSION" | xargs)
+        echo "Current version: '$CURRENT_VERSION'"
+        
+        # Validate version format
+        if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid version format: $CURRENT_VERSION"
+          exit 1
+        fi
         
         # Get latest tag version (if any)
         LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
         TAG_VERSION=${LATEST_TAG#v}
-        echo "Latest tag version: $TAG_VERSION"
+        echo "Latest tag version: '$TAG_VERSION'"
         
         # Compare versions to detect manual change
         if [ "$CURRENT_VERSION" = "$TAG_VERSION" ]; then
@@ -55,11 +63,17 @@ jobs:
           
           # Update pyproject.toml with new version
           sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
-          echo "Incremented version to: $NEW_VERSION"
+          echo "Incremented version to: '$NEW_VERSION'"
         else
           # Manual version change detected
           NEW_VERSION="$CURRENT_VERSION"
-          echo "Manual version change detected. Keeping version: $NEW_VERSION"
+          echo "Manual version change detected. Keeping version: '$NEW_VERSION'"
+        fi
+        
+        # Validate final version
+        if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Invalid final version format: $NEW_VERSION"
+          exit 1
         fi
         
         # Set output for later steps
