@@ -13,20 +13,19 @@ config = ClassificationDatasetConfig(
     output_file="outdoor_activities_sentiments.jsonl",
     languages={
         "en": "English", 
-        "fr": "French"
+        # "fr": "French"
     },
     prompts=[
             (
                 "Generate {num_samples} reviews in {language_name} which are diverse "
                 "and representative of a '{label_name}' sentiment class. "
-                "{label_description}. The reviews should be {{style}} and in the "
+                "{label_description}. The reviews should be brief and in the "
                 "context of {{context}}."
             )
         ],
     expansion=PromptExpansionConfig(
         placeholders={
             "context": ["hike review", "speedboat tour review", "outdoor climbing experience"],
-            "style": ["brief", "detailed"]
         },
         combinatorial=True
     )
