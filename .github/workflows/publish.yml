@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:  # Allows manual triggering
 
+# Required permissions for the workflow to function properly
+permissions:
+  contents: write # Needed to push version bump commit and tags
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -32,8 +36,8 @@ jobs:
     - name: Bump version
       id: version_bump
       run: |
-        # Extract current version from pyproject.toml
-        CURRENT_VERSION=$(awk -F'"' '/^version =/ {print $4}' pyproject.toml)
+        # Extract current version from pyproject.toml - more robust pattern
+        CURRENT_VERSION=$(grep -o 'version = "[0-9]*\.[0-9]*\.[0-9]*"' pyproject.toml | grep -o '[0-9]*\.[0-9]*\.[0-9]*')
         # Trim any whitespace
         CURRENT_VERSION=$(echo "$CURRENT_VERSION" | xargs)
         echo "Current version: '$CURRENT_VERSION'"
@@ -41,6 +45,9 @@ jobs:
         # Validate version format
         if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
           echo "Error: Invalid version format: $CURRENT_VERSION"
+          cat pyproject.toml  # Debug: print the file contents
+          echo "---"
+          grep "version" pyproject.toml  # Debug: check for version line
           exit 1
         fi
         
