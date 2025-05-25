@@ -3,8 +3,21 @@ name: Deploy Documentation
 on:
   push:
     branches: [main]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'datafast/**'
+      - '.github/workflows/deploy-docs.yml'
+    paths-ignore:
+      - 'pyproject.toml'  # Skip version bump commits
   pull_request:
     branches: [main]
+  workflow_dispatch:  # For manual triggers
+
+# Add concurrency group to cancel in-progress jobs
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -13,6 +26,8 @@ permissions:
 
 jobs:
   deploy:
+    # Skip if commit message contains [skip docs]
+    if: "!contains(github.event.head_commit.message, '[skip docs]')"
     runs-on: ubuntu-latest
     environment:
       name: github-pages

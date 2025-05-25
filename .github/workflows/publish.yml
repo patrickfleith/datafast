@@ -94,7 +94,7 @@ jobs:
         git add pyproject.toml
         # Only commit if there are changes to commit
         if ! git diff --cached --quiet; then
-          git commit -m "Bump version to ${{ steps.version_bump.outputs.new_version }} [skip ci]"
+          git commit -m "Bump version to ${{ steps.version_bump.outputs.new_version }} [skip docs] [skip ci]"
         else
           echo "No version changes to commit"
         fi
