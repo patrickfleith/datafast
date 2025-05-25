@@ -8,8 +8,7 @@ on:
       - 'mkdocs.yml'
       - 'datafast/**'
       - '.github/workflows/deploy-docs.yml'
-    paths-ignore:
-      - 'pyproject.toml'  # Skip version bump commits
+    # Note: pyproject.toml changes will be ignored via the [skip docs] tag
   pull_request:
     branches: [main]
   workflow_dispatch:  # For manual triggers
