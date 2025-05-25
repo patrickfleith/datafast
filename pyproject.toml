@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datafast"
-version = "0.0.8"
+version = "0.0.9"
 description = "A Python package for synthetic text dataset generation"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -23,7 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "datasets",
+    "datasets>=3.0",
     "instructor",
     "google-generativeai",
     "python-dotenv",
