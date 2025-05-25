@@ -23,7 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "datasets",
+    "datasets>=3.0",
     "instructor",
     "google-generativeai",
     "python-dotenv",
