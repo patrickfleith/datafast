@@ -31,6 +31,12 @@ Currently we support the following LLM providers:
 - ✔︎ Ollama (local LLM server)
 - ⏳ more to come...
 
+
+Try it in Colab: 
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/patrickfleith/datapipes/blob/main/notebooks/Datafast_Quickstart_Text_Classification.ipynb)
+
+
 ## Installation
 ```bash
 pip install datafast
