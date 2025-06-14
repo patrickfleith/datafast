@@ -73,7 +73,7 @@ def _generate_and_upload_dataset_card(
     The dataset card includes:
     1. Pipeline subset descriptions based on enabled stages
     2. Full sanitized configuration for reproducibility
-    3. YourBench version and other metadata
+    3. Datafast version and other metadata
     4. Preserved dataset_info from the existing card for proper configuration display
     
     Args:
@@ -112,7 +112,7 @@ def _generate_and_upload_dataset_card(
         # Create DatasetCardData with our metadata
         card_data = DatasetCardData(**card_data_kwargs)
 
-        # Get YourBench version
+        # Get datafast version
         from importlib.metadata import version, PackageNotFoundError
 
         try:
