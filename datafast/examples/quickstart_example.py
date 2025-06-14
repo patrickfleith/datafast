@@ -7,7 +7,7 @@ config = ClassificationDatasetConfig(
     classes=[
         {"name": "positive", "description": "Text expressing positive emotions or approval"},
         {"name": "negative", "description": "Text expressing negative emotions or criticism"},
-        {"name": "neutral", "description": "Text with neutral emotions or indifference"}
+        # {"name": "neutral", "description": "Text with neutral emotions or indifference"}
     ],
     num_samples_per_prompt=3,
     output_file="outdoor_activities_sentiments.jsonl",
@@ -34,7 +34,7 @@ config = ClassificationDatasetConfig(
 from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider
 
 providers = [
-    OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
+    OpenAIProvider(model_id="gpt-4.1-nano"),
     # AnthropicProvider(model_id="claude-3-5-haiku-latest"),
     # GeminiProvider(model_id="gemini-2.0-flash"),
     # OllamaProvider(model_id="gemma3:12b")
