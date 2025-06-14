@@ -116,12 +116,13 @@ class DatasetBase(ABC):
     def push_to_hub(
         self,
         repo_id: str,
-        token: Optional[str] = None,
+        token: str | None = None,
         private: bool = False,
-        commit_message: Optional[str] = None,
-        train_size: Optional[float] = None,
-        seed: Optional[int] = None,
-        shuffle: Optional[bool] = True,
+        commit_message: str | None = None,
+        train_size: float | None = None,
+        seed: int | None = None,
+        shuffle: bool | None = True,
+        upload_card: bool = True,
     ) -> str:
         """Push the dataset to Hugging Face Hub.
 
@@ -134,6 +135,7 @@ class DatasetBase(ABC):
             (e.g., 0.8 for 80% train)
             seed: Optional random seed for train_test_split
             shuffle: Optional boolean to shuffle the data for train_test_split
+            upload_card: Whether to automatically upload a dataset card after pushing
 
         Returns:
             str: URL of the dataset on the Hub
@@ -203,6 +205,16 @@ class DatasetBase(ABC):
                     "are of supported types. Original error: {str(e)}"
                 )
             raise
+
+        # Upload dataset card if requested
+        if upload_card:
+            try:
+                from datafast.card_utils import upload_dataset_card
+                upload_dataset_card(repo_id=repo_id, token=token)
+                print("Dataset card uploaded successfully")
+            except Exception as e:
+                print(f"Warning: Failed to upload dataset card: {e}")
+                # Continue even if card upload fails
 
         return f"https://huggingface.co/datasets/{repo_id}"
 
