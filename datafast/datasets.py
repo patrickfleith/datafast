@@ -71,11 +71,129 @@ class JudgeLLMOutput(BaseModel):
 
 
 class DatasetBase(ABC):
-    """Abstract base class for all dataset generators."""
+    """
+    Abstract base class for all dataset generators.
+
+    Methods
+    -------
+    inspect():
+        Launch a Gradio app to visually browse the dataset (self.data_rows).
+        Requires gradio to be installed (pip install gradio).
+        Provides Next/Previous navigation through dataset examples.
+    """
 
     def __init__(self, config):
         self.config = config
         self.data_rows = []
+
+    def inspect(self, random: bool = False) -> None:
+        """
+        Launch an interactive Gradio app to visually inspect the generated dataset.
+        
+        This method redirects to specialized inspectors in datafast.inspectors module,
+        which provide tailored visualization for each dataset type.
+        
+        Args:
+            random: If True, examples will be shown in random order instead of sequential order.
+                   Default is False (sequential order).
+        
+        Raises:
+            ImportError: If gradio is not installed.
+            ValueError: If the dataset type is not supported by any specialized inspector.
+        """
+        import warnings
+        from importlib import import_module
+        
+        try:
+            # Test if Gradio is installed
+            import gradio as gr
+        except ImportError as e:
+            raise ImportError("Gradio is required for .inspect(). Install with 'pip install gradio'.") from e
+
+        if not self.data_rows:
+            raise ValueError("No data rows to inspect. Generate or load data first.")
+            
+        try:
+            # Import inspectors dynamically to prevent import cycles
+            inspectors = import_module('datafast.inspectors')
+            
+            # Get the class name without module prefix and convert CamelCase to snake_case
+            class_name = self.__class__.__name__
+            
+            # Convert CamelCase to snake_case (e.g., ClassificationDataset -> classification_dataset)
+            import re
+            snake_case = re.sub(r'(?<!^)(?=[A-Z])', '_', class_name).lower()
+            inspector_name = f"inspect_{snake_case}"
+            
+            if hasattr(inspectors, inspector_name):
+                # Call the appropriate specialized inspector
+                inspector_func = getattr(inspectors, inspector_name)
+                inspector_func(self, random=random)
+            else:
+                # Fall back to generic JSON display with a warning
+                warnings.warn(
+                    f"No specialized inspector found for {class_name}. "
+                    "Using generic inspector. Consider adding a specialized inspector "
+                    "in datafast.inspectors module.", 
+                    UserWarning
+                )
+                self._generic_inspect(random=random)
+        except Exception as e:
+            # If there's any error in the process, fall back to generic inspector
+            warnings.warn(f"Error using specialized inspector: {e}. Falling back to generic inspector.")
+            self._generic_inspect(random=random)
+            
+    def _generic_inspect(self, random: bool = False) -> None:
+        """Generic inspector that displays dataset rows as JSON.
+        
+        Args:
+            random: If True, examples will be shown in random order instead of sequential. Default is False.
+        """
+        import gradio as gr
+        import numpy as np
+        
+        # Convert data rows to dicts for display
+        examples = [row.model_dump() if hasattr(row, 'model_dump') else row.dict() if hasattr(row, 'dict') else row for row in self.data_rows]
+        total = len(examples)
+        
+        # Generate random order indices if random is True
+        if random and total > 1:
+            import numpy as np
+            # Create a permutation of indices
+            random_indices = np.random.permutation(total)
+            display_order = list(random_indices)
+            ordering_label = "(Random Order)" 
+        else:
+            # Sequential order
+            display_order = list(range(total))
+            ordering_label = ""
+            
+        def show_example(idx: int) -> tuple[str, dict]:
+            idx = max(0, min(idx, total - 1))
+            # Get the actual example based on the display order
+            example_idx = display_order[idx]
+            return f"Example {idx+1} / {total} {ordering_label}", examples[example_idx]
+
+        with gr.Blocks() as demo:
+            idx_state = gr.State(0)
+            gr.Markdown("# Dataset Inspector (Generic)")
+            idx_label = gr.Markdown()
+            data_view = gr.JSON()
+            with gr.Row():
+                prev_btn = gr.Button("Previous")
+                next_btn = gr.Button("Next")
+
+            def update_example(idx):
+                label, example = show_example(idx)
+                return label, example, idx
+
+            prev_btn.click(lambda idx: max(0, idx-1), idx_state, idx_state).then(update_example, idx_state, [idx_label, data_view, idx_state])
+            next_btn.click(lambda idx: min(total-1, idx+1), idx_state, idx_state).then(update_example, idx_state, [idx_label, data_view, idx_state])
+
+            # Initial display
+            demo.load(update_example, idx_state, [idx_label, data_view, idx_state])
+
+        demo.launch()
 
     @abstractmethod
     def generate(self, llms=None):
