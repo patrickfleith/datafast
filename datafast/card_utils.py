@@ -4,6 +4,20 @@ from pathlib import Path
 from huggingface_hub import HfApi, DatasetCard, DatasetCardData
 from huggingface_hub.file_download import hf_hub_download
 
+# Default template string embedded directly in code
+# This eliminates the need to read from a file
+DEFAULT_CARD_TEMPLATE = """---
+{{ card_data }}
+{{ config_data }}
+---
+[<img src="https://raw.githubusercontent.com/patrickfleith/datafast/main/assets/datafast-badge-web.png"
+     alt="Built with Datafast" />](https://github.com/patrickfleith/datafast)
+
+# {{ pretty_name }}
+
+This dataset was generated using Datafast (v{{ datafast_version }}), an open-source package to generate high-quality and diverse synthetic text datasets for LLMs.
+"""
+
 def extract_readme_metadata(repo_id: str, token: str | None = None) -> str:
     """Extracts the metadata from the README.md file of the dataset repository.
     We have to download the previous README.md file in the repo, extract the metadata from it.
@@ -61,8 +75,7 @@ def extract_dataset_info(repo_id: str, token: str | None = None) -> str:
 
 def _generate_and_upload_dataset_card(
     repo_id: str,
-    token: str | None = None,
-    template_path: str | None = None
+    token: str | None = None
 ) -> None:
     """
     Internal implementation that generates and uploads a dataset card to Hugging Face Hub.
@@ -75,24 +88,12 @@ def _generate_and_upload_dataset_card(
     2. Full sanitized configuration for reproducibility
     3. Datafast version and other metadata
     4. Preserved dataset_info from the existing card for proper configuration display
-    
-    Args:
-        template_path: Optional custom template path
     """
 
     try:
-        # Load template
-        if not template_path:
-            # Try to find template in utils directory
-            current_dir = os.path.dirname(__file__)
-            template_path = os.path.join(current_dir, "datafast_card_template.md")
-        
-        if not os.path.exists(template_path):
-            print(f"Template file not found: {template_path}")
-            return
-
-        with open(template_path, "r", encoding="utf-8") as f:
-            template_str = f.read()
+        # Use the built-in template string
+        template_str = DEFAULT_CARD_TEMPLATE
+        print(f"Using built-in template, length: {len(template_str)} characters")
 
         # Get HF token
         if not token:
@@ -152,7 +153,7 @@ def _generate_and_upload_dataset_card(
         print("Full traceback:")
 
 
-def upload_dataset_card(repo_id: str, token: str | None = None, template_path: str | None = None) -> None:
+def upload_dataset_card(repo_id: str, token: str | None = None) -> None:
     """
     Public interface to generate and upload a dataset card to Hugging Face Hub.
     
@@ -163,15 +164,13 @@ def upload_dataset_card(repo_id: str, token: str | None = None, template_path: s
     Args:
         repo_id: The ID of the repository to push to
         token: The token to authenticate with the Hugging Face Hub
-        template_path: Optional custom template path
     """
     try:
 
         print(f"Uploading dataset card to repository: {repo_id}")
         _generate_and_upload_dataset_card(
             repo_id=repo_id,
-            token=token,
-            template_path=template_path
+            token=token
         )
 
     except Exception as e:
