@@ -68,18 +68,19 @@ def main():
     # 6. Cleanup temporary file
     os.remove(filtered_file_path)
     print(f"Cleaned up temporary file {filtered_file_path}")
-    # 5. Optional: Push to HF hub
-    USERNAME = "patrickfleith"  # <--- Your hugging face username
-    DATASET_NAME = "mcq_ar6_contextual_dataset"  # <--- Your hugging face dataset name
-    url = dataset.push_to_hub(
-        repo_id=f"{USERNAME}/{DATASET_NAME}",
-        train_size=0.7,
-        shuffle=True,
-        upload_card=True,
-    )
-    print(f"\nDataset pushed to Hugging Face Hub: {url}")
+    # # 5. Optional: Push to HF hub
+    # USERNAME = "your_username"  # <--- Your hugging face username
+    # DATASET_NAME = "your_dataset_name"  # <--- Your hugging face dataset name
+    # url = dataset.push_to_hub(
+    #     repo_id=f"{USERNAME}/{DATASET_NAME}",
+    #     train_size=0.7,
+    #     shuffle=True,
+    #     upload_card=True,
+    # )
+    # print(f"\nDataset pushed to Hugging Face Hub: {url}")
 
-    dataset.inspect()
+    ## Uncomment to inspect the dataset in a gradio app
+    # dataset.inspect()
 
 if __name__ == "__main__":
     main()
