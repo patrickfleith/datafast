@@ -79,8 +79,7 @@ def main():
     # )
     # print(f"\nDataset pushed to Hugging Face Hub: {url}")
 
-    ## Uncomment to inspect the dataset in a gradio app
-    # dataset.inspect()
+    dataset.inspect()
 
 if __name__ == "__main__":
     main()
