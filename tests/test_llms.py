@@ -66,7 +66,22 @@ def test_gemini_provider():
     response = provider.generate(prompt="What is the capital of France? Answer in one word.")
     assert "Paris" in response
 
-
+@pytest.mark.slow
+@pytest.mark.integration
+def test_gemini_rpm_limit_real():
+    """Test GeminiProvider RPM limit (15 requests/minute) is enforced with real waiting."""
+    import time
+    prompts_count = 17
+    rpm = 15
+    provider = GeminiProvider(model_id="gemini-2.5-flash-lite-preview-06-17", rpm_limit=rpm)
+    prompts = [f"Test request {i}" for i in range(prompts_count)]
+    start = time.monotonic()
+    for prompt in prompts:
+        provider.generate(prompt=prompt)
+    elapsed = time.monotonic() - start
+    # 17 requests, rpm=15, donc on doit attendre au moins ~60s pour les 2 requêtes au-delà de la limite
+    assert elapsed >= 59, f"Elapsed time too short for RPM limit: {elapsed:.2f}s for {prompts_count} requests with rpm={rpm}"
+    
 @pytest.mark.integration
 def test_openai_structured_output():
     """Test the OpenAI provider with structured output."""

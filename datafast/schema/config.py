@@ -350,6 +350,12 @@ class MCQDatasetConfig(BaseModel):
         description="Column name containing the text to generate questions from"
     )
     
+    context_column: str | None = Field(
+        default=None,
+        description="Optional column name containing contextual information to enhance question generation. \
+                When provided, questions will be generated with this contextual information."
+    )
+    
     # MCQ Generation parameters
     num_samples_per_prompt: int = Field(
         default=3,

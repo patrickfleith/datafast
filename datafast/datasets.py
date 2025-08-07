@@ -833,17 +833,37 @@ class MCQDataset(DatasetBase):
             if len(document.strip()) > self.config.max_document_length: # Skip very long documents
                 continue
                 
+            # Check if context_column exists and extract context if available
+            context = None
+            if self.config.context_column and self.config.context_column in sample:
+                context = sample[self.config.context_column]
+
             for lang_code, language_name in languages.items():
                 # 1. First call: Generate questions and correct answers
-                question_prompts = self.config.prompts or self._get_default_prompts()
-                question_prompts = [
-                    prompt.format(
-                        num_samples=self.config.num_samples_per_prompt,
-                        language_name=language_name,
-                        document=document,
-                    )
-                    for prompt in question_prompts
-                ]
+                if context and isinstance(context, str):
+                    # Use contextualized templates if context is available
+                    from datafast.prompts.mcq_prompts import CONTEXTUALISED_TEMPLATES
+                    question_prompts = self.config.prompts or CONTEXTUALISED_TEMPLATES
+                    question_prompts = [
+                        prompt.format(
+                            num_samples=self.config.num_samples_per_prompt,
+                            language_name=language_name,
+                            document=document,
+                            context=context
+                        )
+                        for prompt in question_prompts
+                    ]
+                else:
+                    # Use default templates if no context is available
+                    question_prompts = self.config.prompts or self._get_default_prompts()
+                    question_prompts = [
+                        prompt.format(
+                            num_samples=self.config.num_samples_per_prompt,
+                            language_name=language_name,
+                            document=document,
+                        )
+                        for prompt in question_prompts
+                    ]
                 
                 # Expand prompts with configured variations
                 question_expansions = expand_prompts(
