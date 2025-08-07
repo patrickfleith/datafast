@@ -7,6 +7,7 @@ with a unified interface using LiteLLM under the hood.
 from typing import Any, Type, TypeVar
 from abc import ABC, abstractmethod
 import os
+import time
 import traceback
 
 # Pydantic
@@ -35,6 +36,7 @@ class LLMProvider(ABC):
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
         frequency_penalty: float | None = None,
+        rpm_limit: int | None = None,
     ):
         """Initialize the LLM provider with common parameters.
         
@@ -54,6 +56,10 @@ class LLMProvider(ABC):
         self.max_completion_tokens = max_completion_tokens
         self.top_p = top_p
         self.frequency_penalty = frequency_penalty
+
+        # Rate limiting
+        self.rpm_limit = rpm_limit
+        self._request_timestamps: list[float] = []
         
         # Configure environment with API key if needed
         self._configure_env()
@@ -88,6 +94,23 @@ class LLMProvider(ABC):
     def _get_model_string(self) -> str:
         """Get the full model string for LiteLLM."""
         return f"{self.provider_name}/{self.model_id}"
+
+    def _respect_rate_limit(self) -> None:
+        """Block execution to ensure we do not exceed the rpm_limit."""
+        if self.rpm_limit is None:
+            return
+        current = time.monotonic()
+        # Keep only timestamps within the last minute
+        self._request_timestamps = [ts for ts in self._request_timestamps if current - ts < 60]
+        if len(self._request_timestamps) < self.rpm_limit:
+            return
+        # Need to wait until the earliest request is outside the 60-second window
+        earliest = self._request_timestamps[0]
+        # Add a 1s margin to avoid accidental rate limit exceedance
+        sleep_time = 61 - (current - earliest)
+        if sleep_time > 0:
+            print("Waiting for rate limit...")
+            time.sleep(sleep_time)
     
     def generate(
         self, 
@@ -122,6 +145,8 @@ class LLMProvider(ABC):
             else:
                 messages_to_send = messages
             
+            # Enforce rate limit if set
+            self._respect_rate_limit()
             # Prepare completion parameters
             completion_params = {
                 "model": self._get_model_string(),
@@ -138,6 +163,9 @@ class LLMProvider(ABC):
             
             # Call LiteLLM completion
             response: ModelResponse = litellm.completion(**completion_params)
+            # Record timestamp for rate limiting
+            if self.rpm_limit is not None:
+                self._request_timestamps.append(time.monotonic())
             
             # Extract content from response
             content = response.choices[0].message.content
@@ -172,7 +200,7 @@ class OpenAIProvider(LLMProvider):
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
         frequency_penalty: float | None = None,
-    ):
+    ): 
         """Initialize the OpenAI provider.
         
         Args:
@@ -212,7 +240,7 @@ class AnthropicProvider(LLMProvider):
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
         # frequency_penalty: float | None = None,  # Not supported by anthropic
-    ):
+    ): 
         """Initialize the Anthropic provider.
         
         Args:
@@ -250,7 +278,8 @@ class GeminiProvider(LLMProvider):
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
         frequency_penalty: float | None = None,
-    ):
+        rpm_limit: int | None = None, 
+    ): 
         """Initialize the Gemini provider.
         
         Args:
@@ -268,6 +297,7 @@ class GeminiProvider(LLMProvider):
             max_completion_tokens=max_completion_tokens,
             top_p=top_p,
             frequency_penalty=frequency_penalty,
+            rpm_limit=rpm_limit,
         )
 
 
@@ -301,7 +331,8 @@ class OllamaProvider(LLMProvider):
         top_p: float | None = None,
         frequency_penalty: float | None = None,
         api_base: str | None = None,
-    ):
+        rpm_limit: int | None = None,
+    ): 
         """Initialize the Ollama provider.
         
         Args:
@@ -323,4 +354,5 @@ class OllamaProvider(LLMProvider):
             max_completion_tokens=max_completion_tokens,
             top_p=top_p,
             frequency_penalty=frequency_penalty,
+            rpm_limit=rpm_limit,
         )

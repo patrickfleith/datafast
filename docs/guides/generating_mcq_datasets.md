@@ -72,6 +72,7 @@ The `MCQDatasetConfig` class defines all parameters for your MCQ dataset generat
 - **`hf_dataset_name`**: (Optional) Name of a Hugging Face dataset to use as source material
 - **`local_file_path`**: (Optional) Path to a local file to use as source material
 - **`text_column`**: (Required) Column name containing the text to generate questions from
+- **`context_column`**: (Optional) Column name containing contextual information to enhance question generation with domain-specific context
 - **`num_samples_per_prompt`**: Number of questions to generate for each text document
 - **`sample_count`**: (Optional) Number of samples to process from the source text dataset (useful for testing)
 - **`min_document_length`**: Minimum text length (in characters) for processing (skips shorter documents)
@@ -295,6 +296,7 @@ def main():
     #     train_size=0.7,
     #     seed=42,
     #     shuffle=True,
+    #     upload_card=True,
     # )
     # print(f"\nDataset pushed to Hugging Face Hub: {url}")
 
@@ -322,3 +324,4 @@ Each generated question is stored as an `MCQRow` with these properties:
 3. **Model Selection**: Larger, more capable models generally produce better questions and answers.
 4. **Validation**: Review a sample of the generated questions to ensure quality and accuracy, then edit prompt.
 5. **Start Small**: Begin with a small sample_count to test the configuration before scaling up.
+6. **Use Context**: When available, use the `context_column` parameter to provide additional domain-specific context that helps generate more self-contained questions. Good contexts include document summaries, topic descriptions.
