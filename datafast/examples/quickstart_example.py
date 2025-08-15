@@ -25,7 +25,7 @@ config = ClassificationDatasetConfig(
         ],
     expansion=PromptExpansionConfig(
         placeholders={
-            "context": ["hike review", "speedboat tour review", "outdoor climbing experience"],
+            "context": ["hike review", "speedboat tour review"],
         },
         combinatorial=True
     )
@@ -34,7 +34,7 @@ config = ClassificationDatasetConfig(
 from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider
 
 providers = [
-    OpenAIProvider(model_id="gpt-4.1-nano"),
+    OpenAIProvider(model_id="gpt-5-nano-2025-08-07"),
     # AnthropicProvider(model_id="claude-3-5-haiku-latest"),
     # GeminiProvider(model_id="gemini-2.0-flash"),
     # OllamaProvider(model_id="gemma3:12b")
@@ -47,9 +47,9 @@ print(f"Expected number of rows: {num_expected_rows}")
 dataset.generate(providers)
 
 # Optional: Push to Hugging Face Hub
-USERNAME = "username"  # <--- Your hugging face username
-DATASET_NAME = "dataset_name"  # <--- Your hugging face dataset name
+USERNAME = "patrickfleith"  # <--- Your hugging face username
+DATASET_NAME = "datafast_quickstart_no_train_test_split"  # <--- Your hugging face dataset name
 dataset.push_to_hub(
     repo_id=f"{USERNAME}/{DATASET_NAME}",
-    train_size=0.6
+    # train_size=0.6
 )
