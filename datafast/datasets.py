@@ -416,7 +416,7 @@ class ClassificationDataset(DatasetBase):
                                     label=label["name"],
                                     model_id=llm.model_id,
                                     label_source=LabelSource.SYNTHETIC,
-                                    metadata={"language": lang_code},
+                                    language=lang_code,
                                 )
                                 self.data_rows.append(row)
                                 new_rows.append(row)
@@ -510,8 +510,8 @@ class RawDataset(DatasetBase):
                                         text=example.text,
                                         text_source=TextSource.SYNTHETIC,
                                         model_id=llm.model_id,
+                                        language=lang_code,
                                         metadata={
-                                            "language": lang_code,
                                             "document_type": document_type,
                                             "topic": topic,
                                         },
@@ -686,8 +686,8 @@ class UltrachatDataset(DatasetBase):
                                         opening_question=messages[0]["content"],
                                         messages=messages,
                                         model_id=llm.model_id,
+                                        language=lang_code,
                                         metadata={
-                                            "language": lang_code,
                                             "domain": self.config.domain,
                                             "topic": topic,
                                             "subtopic": subtopic,
@@ -915,8 +915,8 @@ class MCQDataset(DatasetBase):
                                                 incorrect_answer_3=incorrect_answers[2],
                                                 model_id=llm.model_id,
                                                 mcq_source=MCQSource.SYNTHETIC,
+                                                language=lang_code,
                                                 metadata={
-                                                    "language": lang_code,
                                                     "source_dataset": self._get_source_dataset_name(),
                                                 },
                                             )
@@ -1092,8 +1092,8 @@ class PreferenceDataset(DatasetBase):
                         "preference_source": PreferenceSource.SYNTHETIC,
                         "chosen_model_id": chosen_model_id,
                         "rejected_model_id": rejected_model_id,
+                        "language": lang_code,
                         "metadata": {
-                            "language": lang_code,
                             "instruction_model": question_gen_llm.model_id,
                         }
                     }
