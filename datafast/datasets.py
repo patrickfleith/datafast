@@ -235,7 +235,7 @@ class DatasetBase(ABC):
         self,
         repo_id: str,
         token: str | None = None,
-        private: bool = False,
+        private: bool = True,
         commit_message: str | None = None,
         train_size: float | None = None,
         seed: int | None = None,
