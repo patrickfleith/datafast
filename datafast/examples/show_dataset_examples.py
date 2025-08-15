@@ -38,7 +38,7 @@ classification_row = TextClassificationRow(
     text="The trail is blocked by a fallen tree.",
     label="trail_obstruction",
     model_id="gpt-4.1-nano",
-    metadata={"language": "en"},
+    language="en",
 )
 classification_dataset = ClassificationDataset(
     ClassificationDatasetConfig(classes=[{"name": "trail_obstruction", "description": "Obstruction on the trail."}])
@@ -47,7 +47,7 @@ classification_row2 = TextClassificationRow(
     text="The trail is well maintained and easy to follow.",
     label="positive_conditions",
     model_id="claude-3-5-haiku-latest",
-    metadata={"language": "en"},
+    language="en",
 )
 classification_dataset.data_rows = [classification_row, classification_row2]
 
@@ -60,7 +60,7 @@ mcq_row = MCQRow(
     incorrect_answer_2="Berlin",
     incorrect_answer_3="Rome",
     model_id="gemini-2.0-flash",
-    metadata={"language": "en"},
+    language="en",
 )
 mcq_config = MCQDatasetConfig(
     text_column="source_document",
@@ -75,7 +75,7 @@ mcq_row2 = MCQRow(
     incorrect_answer_2="Yangtze River",
     incorrect_answer_3="Mississippi River",
     model_id="gpt-4.1-nano",
-    metadata={"language": "en"},
+    language="en",
 )
 mcq_dataset.data_rows = [mcq_row, mcq_row2]
 
@@ -91,7 +91,7 @@ preference_row = PreferenceRow(
     rejected_response_score=3,
     chosen_response_assessment="Accurate and detailed.",
     rejected_response_assessment="Too generic.",
-    metadata={"language": "en"},
+    language="en",
 )
 preference_dataset = PreferenceDataset(PreferenceDatasetConfig(input_documents=["Describe a recent Mars mission."]))
 preference_row2 = PreferenceRow(
@@ -105,7 +105,7 @@ preference_row2 = PreferenceRow(
     rejected_response_score=2,
     chosen_response_assessment="Factually correct and detailed.",
     rejected_response_assessment="Incorrect mission.",
-    metadata={"language": "en"},
+    language="en",
 )
 preference_dataset.data_rows = [preference_row, preference_row2]
 
@@ -134,20 +134,21 @@ ultrachat_row1 = ChatRow(
     persona="space policy expert",
     messages=[{"role": "user", "content": "What are current efforts to clean up space debris?"}, {"role": "assistant", "content": "There are several ongoing projects, such as RemoveDEBRIS and ClearSpace-1."}],
     model_id="gpt-4.1-nano",
-    metadata={"language": "en"}
+    language="en"
 )
 ultrachat_row2 = ChatRow(
     opening_question="What is the importance of the Moon missions?",
     persona="lunar geologist",
     messages=[{"role": "user", "content": "Why do we keep returning to the Moon?"}, {"role": "assistant", "content": "The Moon offers scientific insights and is a stepping stone for Mars exploration."}],
     model_id="gemini-2.0-flash",
-    metadata={"language": "en"}
+    language="en"
 )
 ultrachat_config = UltrachatDatasetConfig()
 ultrachat_dataset = UltrachatDataset(ultrachat_config)
 ultrachat_dataset.data_rows = [ultrachat_row1, ultrachat_row2]
 
 if __name__ == "__main__":
+    # pass
     # print("Showing ClassificationDataset example...")
     # inspect_classification_dataset(classification_dataset)
     # print("Showing MCQDataset example...")
@@ -156,5 +157,5 @@ if __name__ == "__main__":
     # inspect_preference_dataset(preference_dataset)
     # print("Showing RawDataset example...")
     # inspect_raw_dataset(raw_dataset)
-    # print("Showing UltrachatDataset example...")
-    # inspect_ultrachat_dataset(ultrachat_dataset)
+    print("Showing UltrachatDataset example...")
+    inspect_ultrachat_dataset(ultrachat_dataset)
