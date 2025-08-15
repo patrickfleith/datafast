@@ -353,8 +353,8 @@ class UltrachatInspector(BaseInspector['UltrachatDataset']):
     def show_example(self, idx: int) -> Tuple[str, str, str, Dict]:
         """Extract data from the example to display."""
         row = self.get_example(idx)
-        conversation = row.get("conversation", [])
-        formatted_convo = self.format_conversation(conversation)
+        messages = row.get("messages", [])
+        formatted_convo = self.format_conversation(messages)
         return (
             self.get_index_label(idx),
             formatted_convo,
