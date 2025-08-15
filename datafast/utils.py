@@ -120,7 +120,8 @@ def _get_mcq_specific_factors(config: MCQDatasetConfig) -> dict[str, int]:
 
 def _get_mcq_num_expected_rows(config: MCQDatasetConfig, llms: list[LLMProvider], source_data_num_rows: int) -> int:
     # factors = _get_mcq_specific_factors(config)  # Not specific factors
-    source_data_num_rows = min(source_data_num_rows, config.sample_count)
+    if config.sample_count is not None:
+        source_data_num_rows = min(source_data_num_rows, config.sample_count)
     num_llms = len(llms)
     if config.prompts is None:
         num_expanded_prompts = 1
