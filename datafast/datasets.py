@@ -18,6 +18,7 @@ from datafast.schema.config import (
     UltrachatDatasetConfig,
     MCQDatasetConfig,
     PreferenceDatasetConfig,
+    GenericPipelineDatasetConfig,
 )
 from datafast.schema.data_rows import (
     ChatRow,
@@ -29,10 +30,13 @@ from datafast.schema.data_rows import (
     MCQSource,
     PreferenceRow,
     PreferenceSource,
+    GenericPipelineRow,
+    GenericPipelineSource,
 )
 from datafast.expanders import expand_prompts
 import os
 from datafast import utils
+
 
 ### Model for Raw Text Examples Generation
 
@@ -759,60 +763,14 @@ class MCQDataset(DatasetBase):
         if not llms:
             raise ValueError("At least one LLM provider must be supplied")
             
-        # Load the dataset from Hugging Face or local file
+        # Load the dataset using shared utility
         try:
-            if self.config.hf_dataset_name:
-                # Load from Hugging Face
-                hf_dataset = load_dataset(self.config.hf_dataset_name)
-                # Most datasets have a 'train' split, but fallback to first available split
-                split_names = list(hf_dataset.keys())
-                if not split_names:
-                    raise ValueError(f"No splits found in dataset {self.config.hf_dataset_name}")
-                    
-                main_split = "train" if "train" in split_names else split_names[0]
-                dataset = hf_dataset[main_split]
-                
-            elif self.config.local_file_path:
-                # Load from local file based on extension
-                file_path = self.config.local_file_path
-                file_ext = file_path.lower().split('.')[-1]
-                
-                if file_ext == 'csv':
-                    # Load CSV file
-                    import pandas as pd
-                    df = pd.read_csv(file_path)
-                    dataset = df.to_dict('records')
-                    
-                elif file_ext == 'txt':
-                    # For TXT files, create a dataset with one record per line
-                    # and use the text_column as the key
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        lines = [line.strip() for line in f if line.strip()]
-                    dataset = [{self.config.text_column: line} for line in lines]
-                    
-                elif file_ext == 'parquet':
-                    # Load Parquet file
-                    import pandas as pd
-                    df = pd.read_parquet(file_path)
-                    dataset = df.to_dict('records')
-                    
-                elif file_ext in ['jsonl', 'json']:
-                    # Load JSONL file (one JSON object per line)
-                    import json
-                    dataset = []
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        for line in f:
-                            if line.strip():
-                                dataset.append(json.loads(line))
-                    
-                else:
-                    raise ValueError(f"Unsupported file extension: {file_ext}. Supported extensions are: csv, txt, parquet, jsonl, json")
-            else:
-                raise ValueError("Either hf_dataset_name or local_file_path must be specified")
-                
-            # Limit the number of samples if specified
-            if self.config.sample_count is not None:
-                dataset = dataset[:min(self.config.sample_count, len(dataset))]
+            dataset = utils.load_dataset_from_source(
+                hf_dataset_name=self.config.hf_dataset_name,
+                local_file_path=self.config.local_file_path,
+                sample_count=self.config.sample_count,
+                text_column=self.config.text_column
+            )
                 
         except Exception as e:
             source = self.config.hf_dataset_name or self.config.local_file_path
@@ -1300,3 +1258,143 @@ class PreferenceDataset(DatasetBase):
         from datafast.prompts import preference_prompts
         return preference_prompts.JUDGE_PROMPT
 
+
+class GenericPipelineDataset(DatasetBase):
+    def __init__(self, config: GenericPipelineDatasetConfig):
+        super().__init__(config)
+        self.config = config
+    
+    def get_num_expected_rows(self, llms: list[LLMProvider]) -> int:
+        """Calculate the expected number of rows that will be generated.
+        
+        Args:
+            llms: List of LLM providers that will be used for generation.
+            
+        Returns:
+            int: The expected number of rows that will be generated.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+        return utils._get_generic_pipeline_num_expected_rows(self.config, llms)
+    
+    def _load_source_dataset(self):
+        """Load dataset from Hugging Face or local file using shared utility."""
+        return utils.load_dataset_from_source(
+            hf_dataset_name=self.config.hf_dataset_name,
+            local_file_path=self.config.local_file_path,
+            sample_count=self.config.sample_count
+        )
+    
+    def generate(self, llms: list[LLMProvider]) -> "GenericPipelineDataset":
+        """Generate data by processing source dataset through custom prompts.
+        
+        Args:
+            llms: List of LLM providers to use for generation.
+            
+        Returns:
+            Self for method chaining.
+        """
+        if not llms:
+            raise ValueError("At least one LLM provider must be supplied")
+        
+        # Load source dataset
+        source_dataset = self._load_source_dataset()
+        print(f"Loaded source dataset with {len(source_dataset)} rows")
+        
+        # Apply sample limit if specified
+        if self.config.sample_count:
+            source_dataset = source_dataset[:min(self.config.sample_count, len(source_dataset))]
+            print(f"Limited to {len(source_dataset)} rows")
+        
+        # Get languages from config
+        languages = self.config.languages or {"en": "English"}
+        
+        # Process each row in the source dataset
+        for row_idx, source_row in enumerate(source_dataset):
+            # Apply skip function if provided
+            if self.config.skip_function and self.config.skip_function(source_row):
+                print(f"Skipping row {row_idx} due to skip_function")
+                continue
+            
+            # Extract input data based on input_columns
+            input_data = {col: str(source_row.get(col, "")) for col in self.config.input_columns}
+            
+            # Extract forward data if specified
+            forward_data = {}
+            if self.config.forward_columns:
+                forward_data = {col: str(source_row.get(col, "")) for col in self.config.forward_columns}
+            
+            # Process for each language
+            for lang_code, language_name in languages.items():
+                # Process each prompt
+                for prompt_idx, prompt_template in enumerate(self.config.prompts):
+                    # Format prompt with input data and required placeholders
+                    formatted_prompt = prompt_template.format(
+                        num_samples=self.config.num_samples_per_prompt,
+                        language=language_name,
+                        **input_data
+                    )
+                    
+                    # Expand prompts with configured variations
+                    expansions = expand_prompts(
+                        prompt_templates=[formatted_prompt],
+                        **self.config.expansion.model_dump()
+                    )
+                    
+                    # Process each expanded prompt
+                    for expanded_prompt, meta in expansions:
+                        # Process with each LLM
+                        for llm in llms:
+                            try:
+                                # Create dynamic response model based on output_columns configuration
+                                response_model = utils.create_response_model(self.config)
+                                
+                                # Create dynamic row model based on output_columns configuration
+                                row_model = utils.create_generic_pipeline_row_model(self.config)
+                                
+                                # Generate response using the LLM with proper response format
+                                response = llm.generate(expanded_prompt, response_format=response_model)
+                                
+                                # Create rows for each generated sample
+                                new_rows = []
+                                for entry in response.entries:
+                                    # Prepare row data with all columns as separate top-level fields
+                                    row_data = {
+                                        "model_id": llm.model_id,
+                                        "pipeline_source": GenericPipelineSource.SYNTHETIC,
+                                        "language": lang_code,
+                                        "metadata": {
+                                            "prompt_index": str(prompt_idx),
+                                            "source_row_index": str(row_idx),
+                                        }
+                                    }
+                                    
+                                    # Add input data as individual top-level fields
+                                    for column, value in input_data.items():
+                                        row_data[column] = value
+                                    
+                                    # Add forward data as individual top-level fields
+                                    for column, value in forward_data.items():
+                                        row_data[column] = value
+                                    
+                                    # Add each output column as a separate field
+                                    if self.config.output_columns:
+                                        for column in self.config.output_columns:
+                                            row_data[column] = getattr(entry, column, "")
+                                    else:
+                                        row_data["generated_text"] = getattr(entry, "generated_text", "")
+                                    
+                                    # Create the dynamic row
+                                    row = row_model(**row_data)
+                                    self.data_rows.append(row)
+                                    new_rows.append(row)
+                                
+                                # Save this batch
+                                self.to_jsonl(self.config.output_file, new_rows, append=True)
+                                print(f"Generated and saved {len(self.data_rows)} examples total")
+                                
+                            except Exception as e:
+                                print(f"Error with llm provider {llm.provider_name} on row {row_idx}: {e}")
+                                continue
+        
+        return self
