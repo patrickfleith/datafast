@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional
+from typing import Optional, Callable, Any
 import warnings
 
 
@@ -536,3 +536,139 @@ class PreferenceDatasetConfig(BaseModel):
             
         required_placeholders = ["{document}", "{question}", "{response}"]
         return validate_prompt_placeholders(v, required_placeholders, "judge_prompt")
+
+
+class GenericPipelineDatasetConfig(BaseModel):
+    """
+    Configuration for generic pipeline dataset generation.
+    
+    This config allows processing any dataset with custom prompts and flexible column mapping.
+    Supports both Hugging Face datasets and local files (CSV, TXT, PARQUET, JSONL).
+    """
+    dataset_type: str = Field(default="generic_pipeline_dataset")
+    
+    # Dataset source information
+    hf_dataset_name: str | None = Field(
+        default=None,
+        description="Name of a Hugging Face dataset to use as data source"
+    )
+    
+    local_file_path: str | None = Field(
+        default=None,
+        description="Path to a local file (CSV, TXT, PARQUET, or JSONL) to use as data source"
+    )
+
+    input_columns: list[str] = Field(
+        description="List of column names to use as input for the processing pipeline"
+    )
+
+    forward_columns: list[str] | None = Field(
+        default=None,
+        description="List of column names to forward to the output"
+    )
+
+    output_columns: list[str] | None = Field(
+        default=None,
+        description="List of column names to use as output for the pipeline"
+    )
+    
+    prompts: list[str] = Field(
+        description="List of custom prompt templates"
+    )
+
+    num_samples_per_prompt: int = Field(
+        default=1,
+        description="Number of samples to generate for each input"
+    )
+    
+    # Where to save the output
+    output_file: str = Field(
+        default="generic_pipeline_dataset.jsonl",
+        description="Path to save generic pipeline dataset results"
+    )
+
+    skip_function: Callable[[dict[str, Any]], bool] | None = Field(
+        default=None,
+        description="Optional function that takes a dataset row and returns True if the row should be skipped"
+    )
+    
+    sample_count: int | None = Field(
+        default=None,
+        description="Optional number of samples to process from the dataset"
+    )
+    
+    # Standard config options
+    expansion: PromptExpansionConfig = PromptExpansionConfig()
+    
+    languages: dict[str, str] = Field(
+        default={"en": "English"},
+        description="Language ISO codes and their corresponding names"
+    )
+
+
+    @field_validator("input_columns")
+    def validate_input_columns(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError("input_columns must contain at least one column name")
+        return v
+
+
+    @field_validator("num_samples_per_prompt")
+    def validate_num_samples_per_prompt(cls, v):
+        if v > 10:
+            warnings.warn(
+                f"num_samples_per_prompt is set to {v}. Values above 10 are generally not recommended "
+                "as they may lead to excessive API costs and processing time, and reduced overall quality of the output."
+            )
+        return v
+    
+
+    @field_validator("prompts")
+    def validate_prompts(cls, prompts, info):
+        # Get input_columns from the validation context
+        input_columns = info.data.get('input_columns', [])
+        
+        for i, prompt in enumerate(prompts):
+            # Check for required placeholders
+            required_placeholders = ["{num_samples}", "{language}"]
+            missing_required = [p for p in required_placeholders if p not in prompt]
+            if missing_required:
+                raise ValueError(
+                    f"Prompt at index {i} is missing required placeholders: {', '.join(missing_required)}. "
+                    f"All prompts must contain: {', '.join(required_placeholders)}"
+                )
+            
+            # Check that at least one input_column is used as placeholder
+            input_column_placeholders = [f"{{{col}}}" for col in input_columns]
+            used_input_columns = [p for p in input_column_placeholders if p in prompt]
+            
+            if not used_input_columns:
+                raise ValueError(
+                    f"Prompt at index {i} must contain at least one column for processing from input_columns: "
+                    f"{', '.join(input_column_placeholders)}"
+                )
+            
+            # Warn about unused input columns
+            unused_input_columns = [p for p in input_column_placeholders if p not in prompt]
+            if unused_input_columns:
+                warnings.warn(
+                    f"Prompt at index {i} does not use the following input_columns as placeholders: "
+                    f"{', '.join(unused_input_columns)}"
+                )
+        
+        return prompts
+    
+
+    @model_validator(mode='after')
+    def validate_optional_placeholders_model(self):
+        # Validate optional placeholders after the model is fully constructed
+        if self.prompts:
+            validate_optional_placeholders(self.prompts, self.expansion, "prompts")
+        return self
+    
+
+    @model_validator(mode='after')
+    def validate_data_source_exists(self):
+        if not self.hf_dataset_name and not self.local_file_path:
+            raise ValueError("Either hf_dataset_name or local_file_path must be provided")
+        return self
