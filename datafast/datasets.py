@@ -36,6 +36,7 @@ from datafast.schema.data_rows import (
 from datafast.expanders import expand_prompts
 import os
 from datafast import utils
+from loguru import logger
 
 
 ### Model for Raw Text Examples Generation
@@ -1391,10 +1392,10 @@ class GenericPipelineDataset(DatasetBase):
                                 
                                 # Save this batch
                                 self.to_jsonl(self.config.output_file, new_rows, append=True)
-                                print(f"Generated and saved {len(self.data_rows)} examples total")
+                                logger.success(f"Generated and saved {len(self.data_rows)} examples total")
                                 
                             except Exception as e:
-                                print(f"Error with llm provider {llm.provider_name} on row {row_idx}: {e}")
+                                logger.error(f"Error with llm provider {llm.provider_name} on row {row_idx}: {e}")
                                 continue
         
         return self
