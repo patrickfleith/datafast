@@ -1,5 +1,7 @@
-from datafast.schema.config import PromptExpansionConfig, ClassificationDatasetConfig, RawDatasetConfig, UltrachatDatasetConfig, MCQDatasetConfig, PreferenceDatasetConfig
+from datafast.schema.config import PromptExpansionConfig, ClassificationDatasetConfig, RawDatasetConfig, UltrachatDatasetConfig, MCQDatasetConfig, PreferenceDatasetConfig, GenericPipelineDatasetConfig
 from datafast.llms import LLMProvider
+from datasets import Dataset, load_dataset
+from pydantic import BaseModel, Field, create_model
 
 def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: PromptExpansionConfig) -> int:
     """Calculate the number of prompt expansions based on the expansion configuration.
@@ -155,3 +157,143 @@ def _get_preference_num_expected_rows(config: PreferenceDatasetConfig, llms: lis
         num_questions *
         num_expanded_prompts
     )
+
+
+def load_dataset_from_source(hf_dataset_name: str | None = None, 
+                            local_file_path: str | None = None,
+                            sample_count: int | None = None,
+                            text_column: str = "text") -> list[dict]:
+    """Shared utility to load dataset from Hugging Face or local file.
+    
+    Args:
+        hf_dataset_name: Name of HuggingFace dataset
+        local_file_path: Path to local file
+        sample_count: Optional limit on number of samples
+        text_column: Column name for text files (used by MCQDataset)
+        
+    Returns:
+        List of dictionaries representing dataset rows
+    """
+    try:
+        if hf_dataset_name:
+            # Load from Hugging Face
+            hf_dataset = load_dataset(hf_dataset_name)
+            # Most datasets have a 'train' split, but fallback to first available split
+            split_names = list(hf_dataset.keys())
+            if not split_names:
+                raise ValueError(f"No splits found in dataset {hf_dataset_name}")
+                
+            main_split = "train" if "train" in split_names else split_names[0]
+            dataset = hf_dataset[main_split]
+            # Convert to list of dicts for consistent interface
+            dataset = [dict(row) for row in dataset]
+            
+        elif local_file_path:
+            # Load from local file based on extension
+            file_ext = local_file_path.lower().split('.')[-1]
+            
+            if file_ext == 'csv':
+                import pandas as pd
+                df = pd.read_csv(local_file_path)
+                dataset = df.to_dict('records')
+                
+            elif file_ext == 'txt':
+                # For TXT files, use provided text_column name
+                with open(local_file_path, 'r', encoding='utf-8') as f:
+                    lines = [line.strip() for line in f if line.strip()]
+                dataset = [{text_column: line} for line in lines]
+                
+            elif file_ext == 'parquet':
+                import pandas as pd
+                df = pd.read_parquet(local_file_path)
+                dataset = df.to_dict('records')
+                
+            elif file_ext in ['jsonl', 'json']:
+                import json
+                dataset = []
+                with open(local_file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip():
+                            dataset.append(json.loads(line))
+                
+            else:
+                raise ValueError(f"Unsupported file extension: {file_ext}. Supported extensions are: csv, txt, parquet, jsonl, json")
+        else:
+            raise ValueError("Either hf_dataset_name or local_file_path must be specified")
+            
+        # Limit the number of samples if specified
+        if sample_count is not None:
+            dataset = dataset[:min(sample_count, len(dataset))]
+            
+        return dataset
+        
+    except Exception as e:
+        raise ValueError(f"Error loading dataset: {str(e)}")
+
+
+def _get_generic_pipeline_specific_factors(config: GenericPipelineDatasetConfig) -> dict[str, int]:
+    return {"": None}  # There are no generic pipeline specific multipliers. Method here for consistency.
+
+
+def _get_generic_pipeline_num_expected_rows(config: GenericPipelineDatasetConfig, llms: list[LLMProvider]) -> int:
+    """Calculate expected rows for GenericPipelineDataset including prompt expansions."""
+    # Load source dataset to get row count
+    source_dataset = load_dataset_from_source(
+        hf_dataset_name=config.hf_dataset_name,
+        local_file_path=config.local_file_path,
+        sample_count=config.sample_count
+    )
+    source_data_num_rows = len(source_dataset)
+    # Note: sample_count limit already applied in load_dataset_from_source()
+    num_llms = len(llms)
+    
+    # Calculate prompt expansions
+    if config.prompts is None:
+        num_expanded_prompts = 1
+    else:
+        num_expanded_prompts = calculate_num_prompt_expansions(config.prompts, config.expansion)
+    
+    return (
+        num_llms *
+        len(config.languages or {"en": "English"}) *
+        config.num_samples_per_prompt *
+        source_data_num_rows *
+        num_expanded_prompts
+    )
+
+
+def build_generic_pipeline_response_format_model(config: GenericPipelineDatasetConfig) -> type[BaseModel]:
+    """Build a dynamic Pydantic model for GenericPipelineDataset response format.
+    
+    Creates a model with fields based on output_columns configuration.
+    If output_columns is None/empty, defaults to a single 'generated_text' field.
+    
+    Args:
+        config: GenericPipelineDatasetConfig with output_columns specification
+        
+    Returns:
+        Pydantic BaseModel class for structured LLM responses
+    """
+    from typing import Any
+    
+    # Determine output fields
+    if config.output_columns and len(config.output_columns) > 0:
+        output_fields = config.output_columns
+    else:
+        output_fields = ["generated_text"]
+    
+    # Create field definitions for individual entry model
+    entry_fields = {}
+    for field_name in output_fields:
+        entry_fields[field_name] = (str, Field(..., description=f"Generated content for {field_name}"))
+    
+    # Create the entry model
+    EntryModel = create_model("GenericPipelineEntry", **entry_fields)
+    
+    # Create the response model with entries list
+    ResponseModel = create_model(
+        "GenericPipelineResponse",
+        entries=(list[EntryModel], Field(..., description="List of generated entries"))
+    )
+    
+    return ResponseModel
