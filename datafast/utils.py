@@ -262,17 +262,16 @@ def _get_generic_pipeline_num_expected_rows(config: GenericPipelineDatasetConfig
     )
 
 
-def build_generic_pipeline_response_format_model(config: GenericPipelineDatasetConfig) -> type[BaseModel]:
-    """Build a dynamic Pydantic model for GenericPipelineDataset response format.
-    
-    Creates a model with fields based on output_columns configuration.
-    If output_columns is None/empty, defaults to a single 'generated_text' field.
-    
+def create_response_model(config: GenericPipelineDatasetConfig) -> type[BaseModel]:
+    """
+    Build a dynamic Pydantic model for GenericPipelineDataset response format.
+
     Args:
-        config: GenericPipelineDatasetConfig with output_columns specification
-        
+        config (GenericPipelineDatasetConfig): Config with output_columns specification.
+
     Returns:
-        Pydantic BaseModel class for structured LLM responses
+        type[BaseModel]: Pydantic BaseModel class for structured LLM responses.
+        If output_columns is None/empty, defaults to a single 'generated_text' field.
     """
     from typing import Any
     
@@ -297,3 +296,55 @@ def build_generic_pipeline_response_format_model(config: GenericPipelineDatasetC
     )
     
     return ResponseModel
+
+
+def create_generic_pipeline_row_model(config: GenericPipelineDatasetConfig) -> type[BaseModel]:
+    """
+    Build a dynamic Pydantic model for GenericPipelineRow based on configuration.
+
+    Args:
+        config (GenericPipelineDatasetConfig): Config with input_columns, forward_columns, and output_columns.
+
+    Returns:
+        type[BaseModel]: Dynamic Pydantic BaseModel class with all columns as separate fields.
+    """
+    from uuid import UUID, uuid4
+    from datafast.schema.data_rows import GenericPipelineSource
+    
+    # Determine output fields
+    if config.output_columns and len(config.output_columns) > 0:
+        output_fields = config.output_columns
+    else:
+        output_fields = ["generated_text"]
+    
+    # Create field definitions for the row model in desired order
+    row_fields = {
+        # System fields first
+        "uuid": (UUID, Field(default_factory=uuid4)),
+    }
+    
+    # Add each output column as a separate field (right after uuid)
+    for field_name in output_fields:
+        row_fields[field_name] = (str, Field(..., description=f"Generated content for {field_name}"))
+    
+    # Processing metadata
+    row_fields["model_id"] = (str | None, None)
+    row_fields["pipeline_source"] = (GenericPipelineSource, GenericPipelineSource.SYNTHETIC)
+    row_fields["language"] = (str | None, None)
+    
+    # Add each input column as a separate field
+    for field_name in config.input_columns:
+        row_fields[field_name] = (str, Field(..., description=f"Input data for {field_name}"))
+    
+    # Add each forward column as a separate field
+    if config.forward_columns:
+        for field_name in config.forward_columns:
+            row_fields[field_name] = (str, Field(..., description=f"Forwarded data for {field_name}"))
+    
+    # Metadata last
+    row_fields["metadata"] = (dict[str, str], Field(default_factory=dict))
+    
+    # Create the dynamic row model
+    DynamicRowModel = create_model("DynamicGenericPipelineRow", **row_fields)
+    
+    return DynamicRowModel
