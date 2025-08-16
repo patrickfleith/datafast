@@ -9,6 +9,19 @@ from datafast.datasets import GenericPipelineDataset
 from datafast.llms import OpenAIProvider, GeminiProvider, OllamaProvider
 
 
+PROMPT_TEMPLATE = """I will give you a persona.
+Generate {num_samples} texts in {language} with:
+1. A tweet that this person might write (engaging, authentic to their character)
+2. A short CV highlighting their background
+
+Make sure the content reflects their personality and background authentically.
+The CV should include higher education degree (and school/university they obtained it from), work experience (if any), and relevant skills, and a hobby.\
+
+Here is the persona:
+{persona}
+
+Your response should be formatted in valid JSON with {num_samples} entries and all required fields."""
+
 def main():
     # 1. Define the configuration
     config = GenericPipelineDatasetConfig(
@@ -16,25 +29,19 @@ def main():
         input_columns=["persona"],                    # Input data for generation
         forward_columns=["summary_label"],            # Data to forward through
         output_columns=["tweet", "cv"],               # Generated content columns
-        sample_count=3,                              # Process only 10 samples for testing
-        num_samples_per_prompt=1,                     # Generate 1 set per persona
-        prompts=[
-            """Based on this persona: {persona}
-
-Generate {num_samples} texts in {language} with:
-1. A tweet that this person might write (engaging, authentic to their character)
-2. A short CV highlighting their background
-
-Make sure the content reflects their personality and background authentically.
-The CV should include higher education degree (and school/university they obtained it from), work experience (if any), and relevant skills, and a hobby.
-Your response should be formatted in valid JSON"""
-        ],
+        sample_count=5,                               # Process only 5 samples for testing
+        num_samples_per_prompt=2,                     # Generate 1 set per persona
+        prompts=[PROMPT_TEMPLATE],                    # Use the prompt template
         output_file="generic_pipeline_test_dataset.jsonl",
+        languages={"en": "English", "fr": "French"}
     )
 
     # 2. Initialize LLM providers
     providers = [
-        OpenAIProvider(model_id="gpt-5-nano-2025-08-07"),
+        OpenAIProvider(
+            model_id="gpt-5-mini-2025-08-07",
+            temperature=1
+            ),
         # AnthropicProvider(model_id="claude-3-5-haiku-latest"),
         # GeminiProvider(model_id="gemini-2.5-flash-lite", rpm_limit=15),
         # OllamaProvider(model_id="gemma3:4b"),
@@ -63,7 +70,7 @@ Your response should be formatted in valid JSON"""
 
     # 6. Optional: Push to HF hub
     USERNAME = "username"  # <--- Your hugging face username
-    DATASET_NAME = "generic_pipeline_test_dataset"  # <--- Your hugging face dataset name
+    DATASET_NAME = "generic_pipeline_test_dataset_2"  # <--- Your hugging face dataset name
     url = dataset.push_to_hub(
         repo_id=f"{USERNAME}/{DATASET_NAME}",
         seed=20250816,
