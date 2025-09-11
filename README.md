@@ -145,6 +145,26 @@ Check out our guides for different dataset types:
 > [!WARNING]
 > This library is in its early stages of development and might change significantly.
 
+## Contributing
+
+Contributions are welcome! If you are new to the project, pick an issue labelled "good first issue".
+
+How to proceed?
+1. Pick an issue
+2. Comment on the issue to let others know you are working on it
+3. Fork the repository
+4. Clone your fork locally
+5. Create a new branch and give it a name like `feature/my-awsome-feature`
+6. Make your changes
+7. If you feel like it, write a few tests for your changes
+8. To run the current tests, you can run `pytest` in the root directory. Don't pay attention to `UserWarning: Pydantic serializer warnings`. Note that for the LLMs test to run successfully you'll need to have:
+- openai API key
+- anthropic API key
+- gemini API key
+- an ollama server running (use `ollama serve` from command line)
+9. Commit your change, push to your fork and create a pull request from your fork branch to datafast main branch.
+10. Explain your pull request in a clear and concise way, I'll review it as soon as possible.
+
 ## Roadmap:
 
 - RAG datasets
