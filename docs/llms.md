@@ -8,11 +8,12 @@ Datafast offers a unified interface for multiple LLM providers through the [Lite
 - **Anthropic** - For accessing Claude models.
 - **Gemini** - For accessing Google's Gemini models.
 - **Ollama** - For accessing locally hosted models.
+- **OpenRouter** - For accessing almost any models (proprietary or open source) through OpenRouter.
 
 ### Importing
 
 ```python
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider, OpenRouterProvider
 ```
 
 ### Instantiating a Provider
@@ -31,6 +32,9 @@ gemini_llm = GeminiProvider()
 
 # Ollama (default: gemma3:4b)
 ollama_llm = OllamaProvider()
+
+# OpenRouter (default: openai/gpt-4.1-mini)
+openrouter_llm = OpenRouterProvider()
 ```
 
 ### With Custom Parameters
@@ -59,12 +63,16 @@ By default, providers look for API keys in environment variables:
 - Anthropic: `ANTHROPIC_API_KEY`
 - Gemini: `GEMINI_API_KEY`
 - Ollama: Uses `OLLAMA_API_BASE` (typically doesn't require an API key)
+- OpenRouter: `OPENROUTER_API_KEY`
 
 You can also provide keys directly:
 
 ```python
 openai_llm = OpenAIProvider(api_key="your-api-key")
+openrouter_llm = OpenRouterProvider(api_key="your-openrouter-key")
 ```
+
+**Note**: Ollama typically runs locally and doesn't require an API key. You can set `OLLAMA_API_BASE` to specify a custom endpoint (defaults to `http://localhost:11434`).
 
 ## Generation Methods
 

@@ -356,3 +356,43 @@ class OllamaProvider(LLMProvider):
             frequency_penalty=frequency_penalty,
             rpm_limit=rpm_limit,
         )
+
+
+class OpenRouterProvider(LLMProvider):
+    """OpenRouter provider using litellm"""
+
+    @property
+    def provider_name(self) -> str:
+        return "openrouter"
+    
+    @property
+    def env_key_name(self) -> str:
+        return "OPENROUTER_API_KEY"
+    
+    def __init__(
+            self,
+            model_id: str = "openai/gpt-4.1-mini",  # for default model
+            api_key: str | None = None,
+            temperature: float | None = None,
+            max_completion_tokens: int | None = None,
+            top_p: float | None = None,
+            frequency_penalty: float | None = None,
+    ):
+        """Initialize the OpenRouter provider.
+
+        Args:
+            model_id: The model ID (defaults to openai/gpt-4.1-mini)
+            api_key: API key (if None, will get from environment)
+            temperature: Temperature for generation (0.0 to 1.0)
+            max_completion_tokens: Maximum tokens to generate
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+        """
+        super().__init__(
+            model_id = model_id,
+            api_key = api_key,
+            temperature = temperature,
+            max_completion_tokens = max_completion_tokens,
+            top_p = top_p,
+            frequency_penalty = frequency_penalty,
+        )
