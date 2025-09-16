@@ -371,19 +371,17 @@ class OpenRouterProvider(LLMProvider):
     
     def __init__(
             self,
-            model_id: str = "openai/gpt-3.5-turbo",  # for default model
+            model_id: str = "openai/gpt-4.1-mini",  # for default model
             api_key: str | None = None,
             temperature: float | None = None,
             max_completion_tokens: int | None = None,
             top_p: float | None = None,
             frequency_penalty: float | None = None,
-            rpm_limit: int | None= None,
     ):
         """Initialize the OpenRouter provider.
 
         Args:
-            Args:
-            model_id: The model ID (defaults to openai/gpt-3.5-turbo)
+            model_id: The model ID (defaults to openai/gpt-4.1-mini)
             api_key: API key (if None, will get from environment)
             temperature: Temperature for generation (0.0 to 1.0)
             max_completion_tokens: Maximum tokens to generate
@@ -397,5 +395,4 @@ class OpenRouterProvider(LLMProvider):
             max_completion_tokens = max_completion_tokens,
             top_p = top_p,
             frequency_penalty = frequency_penalty,
-            rpm_limit = rpm_limit,
         )
