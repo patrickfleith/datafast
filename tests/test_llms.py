@@ -1,4 +1,4 @@
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider, OpenRouterProvider
 from dotenv import load_dotenv
 import pytest
 from typing import List, Optional
@@ -75,6 +75,12 @@ def test_gemini_provider():
         prompt="What is the capital of France? Answer in one word.")
     assert "Paris" in response
 
+@pytest.mark.integration
+def test_openrouter_provider():
+    """Test the OpenRouter provider with text response."""
+    provider = OpenRouterProvider()
+    response = provider.generate(prompt="What is the capital of France? Answer in one word.")
+    assert "Paris" in response
 
 @pytest.mark.slow
 @pytest.mark.integration
@@ -138,12 +144,29 @@ def test_gemini_structured_output():
     prompt = """What is the capital of France? 
     Provide a short answer and a brief explanation of why Paris is the capital.
     Format your response as JSON with 'answer' and 'reasoning' fields."""
-
+    
     response = provider.generate(
         prompt=prompt,
         response_format=SimpleResponse
     )
+    
+    assert isinstance(response, SimpleResponse)
+    assert "Paris" in response.answer
+    assert len(response.reasoning) > 10
 
+@pytest.mark.integration
+def test_openrouter_structured_output():
+    """Test the OpenRouter provider with structured output."""
+    provider = OpenRouterProvider()
+    prompt = """What is the capital of France? 
+    Provide a short answer and a brief explanation of why Paris is the capital.
+    Format your response as JSON with 'answer' and 'reasoning' fields."""
+    
+    response = provider.generate(
+        prompt=prompt,
+        response_format=SimpleResponse
+    )
+    
     assert isinstance(response, SimpleResponse)
     assert "Paris" in response.answer
     assert len(response.reasoning) > 10
@@ -183,7 +206,19 @@ def test_gemini_with_messages():
         {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
         {"role": "user", "content": "What is the capital of France? Answer in one word."}
     ]
+    
+    response = provider.generate(messages=messages)
+    assert "Paris" in response
 
+@pytest.mark.integration
+def test_openrouter_with_messages():
+    """Test OpenRouter provider with messages input instead of prompt."""
+    provider = OpenRouterProvider()
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
+        {"role": "user", "content": "What is the capital of France? Answer in one word."}
+    ]
+    
     response = provider.generate(messages=messages)
     assert "Paris" in response
 
@@ -198,12 +233,32 @@ def test_openai_messages_with_structured_output():
         Provide a short answer and a brief explanation of why Paris is the capital.
         Format your response as JSON with 'answer' and 'reasoning' fields."""}
     ]
-
+    
     response = provider.generate(
         messages=messages,
         response_format=SimpleResponse
     )
+    
+    assert isinstance(response, SimpleResponse)
+    assert "Paris" in response.answer
+    assert len(response.reasoning) > 10
 
+@pytest.mark.integration
+def test_openrouter_messages_with_structured_output():
+    """Test OpenRouter provider with messages input and structured output."""
+    provider = OpenRouterProvider()
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
+        {"role": "user", "content": """What is the capital of France? 
+        Provide a short answer and a brief explanation of why Paris is the capital.
+        Format your response as JSON with 'answer' and 'reasoning' fields."""}
+    ]
+    
+    response = provider.generate(
+        messages=messages,
+        response_format=SimpleResponse
+    )
+    
     assert isinstance(response, SimpleResponse)
     assert "Paris" in response.answer
     assert len(response.reasoning) > 10
@@ -294,10 +349,26 @@ def test_gemini_with_all_parameters():
         top_p=0.85,
         frequency_penalty=0.15
     )
-
+    
     prompt = "What is the capital of France? Answer in one word."
     response = provider.generate(prompt=prompt)
+    
+    assert "Paris" in response
 
+@pytest.mark.integration
+def test_openrouter_with_all_parameters():
+    """Test OpenRouter provider with all optional parameters specified."""
+    provider = OpenRouterProvider(
+        model_id="openai/gpt-3.5-turbo",
+        temperature=0.4,
+        max_completion_tokens=150,
+        top_p=0.85,
+        frequency_penalty=0.15
+    )
+    
+    prompt = "What is the capital of France? Answer in one word."
+    response = provider.generate(prompt=prompt)
+    
     assert "Paris" in response
 
 
@@ -428,6 +499,48 @@ def test_gemini_structured_landmark_info():
 
 # import litellm
 # litellm._turn_on_debug() # turn on debug to see the request
+
+@pytest.mark.integration
+def test_openrouter_structured_landmark_info():
+    """Test OpenRouter with a structured landmark info response."""
+    provider = OpenRouterProvider(temperature=0.1, max_completion_tokens=800)
+    
+    prompt = """
+    Provide detailed information about the Great Wall of China.
+    
+    Return your response as a structured JSON object with the following elements:
+    - name: The name of the landmark (Great Wall of China)
+    - location: Where it's located (Northern China)
+    - description: A brief description of the landmark (2-3 sentences)
+    - year_built: The year when construction began (as a number)
+    - attributes: A list of at least 3 attribute objects, each containing:
+      - name: The name of the attribute (e.g., "length", "material", "dynasties")
+      - value: The value of the attribute (e.g., "13,171 miles", "stone, brick, wood, etc.", "multiple including Qin, Han, Ming")
+      - importance: An importance score between 0 and 1
+    - visitor_rating: Average visitor rating from 0 to 5 (e.g., 4.7)
+    
+    Make sure your response is properly structured and can be parsed as valid JSON.
+    """
+    
+    response = provider.generate(prompt=prompt, response_format=LandmarkInfo)
+    
+    # Verify the structure was correctly generated and parsed
+    assert isinstance(response, LandmarkInfo)
+    assert "Great Wall" in response.name
+    assert "China" in response.location
+    assert len(response.description) > 20
+    assert response.year_built is not None
+    assert len(response.attributes) >= 3
+    
+    # Verify nested objects
+    for attr in response.attributes:
+        assert 0 <= attr.importance <= 1
+        assert len(attr.name) > 0
+        assert len(attr.value) > 0
+    
+    # Verify rating field
+    assert 0 <= response.visitor_rating <= 5
+
 
 
 @pytest.mark.integration
