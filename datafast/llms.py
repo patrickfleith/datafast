@@ -16,6 +16,7 @@ from pydantic import BaseModel
 # LiteLLM
 import litellm
 from litellm.utils import ModelResponse
+from litellm import batch_completion
 
 # Internal imports
 from .llm_utils import get_messages
@@ -25,9 +26,10 @@ Message = dict[str, str]
 Messages = list[Message]
 T = TypeVar('T', bound=BaseModel)
 
+
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
-    
+
     def __init__(
         self,
         model_id: str,
@@ -39,7 +41,7 @@ class LLMProvider(ABC):
         rpm_limit: int | None = None,
     ):
         """Initialize the LLM provider with common parameters.
-        
+
         Args:
             model_id: The model identifier
             api_key: API key (if None, will get from environment)
@@ -50,7 +52,7 @@ class LLMProvider(ABC):
         """
         self.model_id = model_id
         self.api_key = api_key or self._get_api_key()
-        
+
         # Set generation parameters
         self.temperature = temperature
         self.max_completion_tokens = max_completion_tokens
@@ -60,22 +62,22 @@ class LLMProvider(ABC):
         # Rate limiting
         self.rpm_limit = rpm_limit
         self._request_timestamps: list[float] = []
-        
+
         # Configure environment with API key if needed
         self._configure_env()
-    
+
     @property
     @abstractmethod
     def provider_name(self) -> str:
         """Return the provider name used by LiteLLM."""
         pass
-    
+
     @property
     @abstractmethod
     def env_key_name(self) -> str:
         """Return the environment variable name for API key."""
         pass
-    
+
     def _get_api_key(self) -> str:
         """Get API key from environment variables."""
         api_key = os.getenv(self.env_key_name)
@@ -85,12 +87,12 @@ class LLMProvider(ABC):
                 f"Please set it or provide an API key when initializing the provider."
             )
         return api_key
-    
+
     def _configure_env(self) -> None:
         """Configure environment variables for API key."""
         if self.api_key:
             os.environ[self.env_key_name] = self.api_key
-    
+
     def _get_model_string(self) -> str:
         """Get the full model string for LiteLLM."""
         return f"{self.provider_name}/{self.model_id}"
@@ -101,7 +103,8 @@ class LLMProvider(ABC):
             return
         current = time.monotonic()
         # Keep only timestamps within the last minute
-        self._request_timestamps = [ts for ts in self._request_timestamps if current - ts < 60]
+        self._request_timestamps = [
+            ts for ts in self._request_timestamps if current - ts < 60]
         if len(self._request_timestamps) < self.rpm_limit:
             return
         # Need to wait until the earliest request is outside the 60-second window
@@ -111,87 +114,132 @@ class LLMProvider(ABC):
         if sleep_time > 0:
             print("Waiting for rate limit...")
             time.sleep(sleep_time)
-    
+
     def generate(
-        self, 
-        prompt: str | None = None, 
-        messages: Messages | None = None,
-        response_format: Type[T] | None = None
-    ) -> str | T:
-        """Generate a response from the LLM.
+        self,
+        prompt: str | list[str] | None = None,
+        messages: list[Messages] | Messages | None = None,
+        response_format: Type[T] | None = None,
+    ) -> str | list[str] | T | list[T]:
+        """
+        Generate responses from the LLM using single or batch inference.
 
         Args:
-            prompt: Text prompt (use either prompt or messages, not both)
-            messages: List of message dictionaries with role and content (use either prompt or messages, not both)
+            prompt: Single text prompt (str) or list of text prompts for batch processing
+            messages: Single message list or list of message lists for batch processing
             response_format: Optional Pydantic model class for structured output
 
         Returns:
-            Either a string response or a Pydantic model instance if response_format is provided
-        
+            Single string/model or list of strings/models depending on input type.
+
         Raises:
-            ValueError: If neither prompt nor messages is provided, or if both are provided
-            RuntimeError: If there's an error during generation
+            ValueError: If neither prompt nor messages is provided, or if both are provided.
+            RuntimeError: If there's an error during generation.
         """
         # Validate inputs
         if prompt is None and messages is None:
-            raise ValueError("Either prompt or messages must be provided")
+            raise ValueError("Either prompts or messages must be provided")
         if prompt is not None and messages is not None:
-            raise ValueError("Provide either prompt or messages, not both")
-        
-        try:
-            # Convert string prompt to messages if needed
-            if prompt is not None:
-                messages_to_send = get_messages(prompt)
+            raise ValueError("Provide either prompts or messages, not both")
+
+        # Determine if this is a single input or batch input
+        single_input = False
+        batch_prompts = None
+        batch_messages = None
+
+        if prompt is not None:
+            if isinstance(prompt, str):
+                # Single prompt - convert to batch
+                batch_prompts = [prompt]
+                single_input = True
+            elif isinstance(prompt, list):
+                # Already a list of prompts
+                batch_prompts = prompt
+                single_input = False
             else:
-                messages_to_send = messages
-            
-            # Enforce rate limit if set
+                raise ValueError("prompt must be a string or list of strings")
+
+        if messages is not None:
+            if isinstance(messages, list) and len(messages) > 0:
+                # Check if it's a single message list or batch
+                if isinstance(messages[0], dict):
+                    # Single message list - convert to batch
+                    batch_messages = [messages]
+                    single_input = True
+                elif isinstance(messages[0], list):
+                    # Already a batch of message lists
+                    batch_messages = messages
+                    single_input = False
+                else:
+                    raise ValueError("Invalid messages format")
+            else:
+                raise ValueError("messages cannot be empty")
+
+        try:
+            # Convert batch prompts to messages if needed
+            batch_to_send = []
+            if batch_prompts is not None:
+                for one_prompt in batch_prompts:
+                    batch_to_send.append(get_messages(one_prompt))
+            else:
+                batch_to_send = batch_messages
+
+            # Enforce rate limit per batch
             self._respect_rate_limit()
-            # Prepare completion parameters
+
+            # Prepare completion parameters for batch
             completion_params = {
                 "model": self._get_model_string(),
-                "messages": messages_to_send,
+                "messages": batch_to_send,
                 "temperature": self.temperature,
                 "max_tokens": self.max_completion_tokens,
                 "top_p": self.top_p,
                 "frequency_penalty": self.frequency_penalty,
             }
-            
-            # Add response format if provided
             if response_format is not None:
                 completion_params["response_format"] = response_format
-            
-            # Call LiteLLM completion
-            response: ModelResponse = litellm.completion(**completion_params)
+
+            # Call LiteLLM completion with batch messages
+            response: list[ModelResponse] = litellm.batch_completion(
+                **completion_params)
+
             # Record timestamp for rate limiting
             if self.rpm_limit is not None:
                 self._request_timestamps.append(time.monotonic())
-            
-            # Extract content from response
-            content = response.choices[0].message.content
-            
-            # Parse and validate if response_format is provided
-            if response_format is not None:
-                return response_format.model_validate_json(content)
-            else:
-                return content
-                
+
+            # Extract content from each response
+            results = []
+            for one_response in response:
+                content = one_response.choices[0].message.content
+                if response_format is not None:
+                    results.append(
+                        response_format.model_validate_json(content))
+                else:
+                    results.append(content)
+
+            # Return single result for backward compatibility
+            if single_input and len(results) == 1:
+                return results[0]
+            return results
+
         except Exception as e:
             error_trace = traceback.format_exc()
-            raise RuntimeError(f"Error generating response with {self.provider_name}:\n{error_trace}")
+            raise RuntimeError(
+                f"Error generating batch response with {self.provider_name}:\n{error_trace}"
+            )
 
 
 class OpenAIProvider(LLMProvider):
     """OpenAI provider using litellm."""
-    
+
     @property
     def provider_name(self) -> str:
         return "openai"
-    
+
     @property
     def env_key_name(self) -> str:
         return "OPENAI_API_KEY"
-    
+
     def __init__(
         self,
         model_id: str = "gpt-4.1-mini-2025-04-14",
@@ -200,9 +248,9 @@ class OpenAIProvider(LLMProvider):
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
         frequency_penalty: float | None = None,
-    ): 
+    ):
         """Initialize the OpenAI provider.
-        
+
         Args:
             model_id: The model ID (defaults to gpt-4.1-mini-2025-04-14)
             api_key: API key (if None, will get from environment)
@@ -223,15 +271,15 @@ class OpenAIProvider(LLMProvider):
 
 class AnthropicProvider(LLMProvider):
     """Anthropic provider using litellm."""
-    
+
     @property
     def provider_name(self) -> str:
         return "anthropic"
-    
+
     @property
     def env_key_name(self) -> str:
         return "ANTHROPIC_API_KEY"
-    
+
     def __init__(
         self,
         model_id: str = "claude-3-5-haiku-latest",
@@ -240,9 +288,9 @@ class AnthropicProvider(LLMProvider):
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
         # frequency_penalty: float | None = None,  # Not supported by anthropic
-    ): 
+    ):
         """Initialize the Anthropic provider.
-        
+
         Args:
             model_id: The model ID (defaults to claude-3-5-haiku-latest)
             api_key: API key (if None, will get from environment)
@@ -261,15 +309,15 @@ class AnthropicProvider(LLMProvider):
 
 class GeminiProvider(LLMProvider):
     """Google Gemini provider using litellm."""
-    
+
     @property
     def provider_name(self) -> str:
         return "gemini"
-    
+
     @property
     def env_key_name(self) -> str:
         return "GEMINI_API_KEY"
-    
+
     def __init__(
         self,
         model_id: str = "gemini-2.0-flash",
@@ -278,10 +326,10 @@ class GeminiProvider(LLMProvider):
         max_completion_tokens: int | None = None,
         top_p: float | None = None,
         frequency_penalty: float | None = None,
-        rpm_limit: int | None = None, 
-    ): 
+        rpm_limit: int | None = None,
+    ):
         """Initialize the Gemini provider.
-        
+
         Args:
             model_id: The model ID (defaults to gemini-2.0-flash)
             api_key: API key (if None, will get from environment)
@@ -303,26 +351,26 @@ class GeminiProvider(LLMProvider):
 
 class OllamaProvider(LLMProvider):
     """Ollama provider using litellm.
-    
+
     Note: Ollama typically doesn't require an API key as it's usually run locally.
     """
-    
+
     @property
     def provider_name(self) -> str:
         return "ollama_chat"
-    
+
     @property
     def env_key_name(self) -> str:
         return "OLLAMA_API_BASE"
-    
+
     def _get_api_key(self) -> str:
         """Override to handle Ollama not requiring an API key.
-        
+
         Returns an empty string since Ollama typically doesn't need an API key.
         OLLAMA_API_BASE can be used to set a custom base URL.
         """
         return ""
-    
+
     def __init__(
         self,
         model_id: str = "gemma3:4b",
@@ -332,9 +380,9 @@ class OllamaProvider(LLMProvider):
         frequency_penalty: float | None = None,
         api_base: str | None = None,
         rpm_limit: int | None = None,
-    ): 
+    ):
         """Initialize the Ollama provider.
-        
+
         Args:
             model_id: The model ID (defaults to llama3)
             temperature: Temperature for generation (0.0 to 1.0)
@@ -346,7 +394,7 @@ class OllamaProvider(LLMProvider):
         # Set API base URL if provided
         if api_base:
             os.environ["OLLAMA_API_BASE"] = api_base
-            
+
         super().__init__(
             model_id=model_id,
             api_key="",  # Pass empty string since parent class requires this parameter
