@@ -9,7 +9,7 @@ config = GenericPipelineDatasetConfig(
     input_columns=["text"],
     forward_columns=["label"],
     output_columns=["translation", "question"],
-    prompts=["Analyze: {text}. Generate {num_samples} translation of the move review in {language} and a follow-up question someone may ask about it."],
+    prompts=["Analyze: {text}. Generate {num_samples} translation of the movie review in {language} and a follow-up question someone may ask about it."],
     num_samples_per_prompt=1,
     languages={"fr": "French", "es": "Spanish"}
 )

@@ -1,12 +1,12 @@
 """
 Example script for generating a dataset using GenericPipelineDataset.
-This example uses the patrickfleith/FinePersonas-v0.1-100k-space-filtered dataset to generate tweets and CVs for different personas.
+This example uses the local file output from the generic_pipeline_test_dataset example script to generate keywords for different tweets.
 """
 
 import os
 from datafast.schema.config import GenericPipelineDatasetConfig
 from datafast.datasets import GenericPipelineDataset
-from datafast.llms import OpenAIProvider, GeminiProvider, OllamaProvider
+from datafast.llms import OpenAIProvider, GeminiProvider, OllamaProvider, OpenRouterProvider
 
 PROMPT_TEMPLATE = """I will give you a tweet.
 Generate a comma separated list of 3 keywords for the tweet. Avoid multi-word keywords.
@@ -19,21 +19,25 @@ Your response should be in {language} and formatted in valid JSON with {num_samp
 def main():
     # 1. Define the configuration
     config = GenericPipelineDatasetConfig(
-        hf_dataset_name="patrickfleith/generic_pipeline_test_dataset",
+        local_file_path="generic_pipeline_test_dataset.jsonl",
         input_columns=["tweet"],        # Input data for generation
         output_columns=["keywords"],    # Generated content columns
         num_samples_per_prompt=1,       # Generate 1 set per persona
         prompts=[PROMPT_TEMPLATE],
-        output_file="keywords_extraction_gemma3_runpod.jsonl",
-        languages={"en": "English", "fr": "French", "es": "Spanish", "de": "German", "it": "Italian"}
+        output_file="keywords_extraction_z-ai_glm-4.6.jsonl",
+        languages={"en": "English", "fr": "French"},
+        sample_count=10
     )
 
     # 2. Initialize LLM providers
     providers = [
-        OllamaProvider(
-            model_id="gemma3:27b-it-qat",
-            api_base="https://xxxxxxx-11434.proxy.runpod.net",
-            temperature=1
+        # OllamaProvider(
+        #     model_id="gemma3:27b-it-qat",
+        #     api_base="https://xxxxxxx-11434.proxy.runpod.net", # if you have a runpod ollama instance
+        #     temperature=1
+        # )
+        OpenRouterProvider(
+            model_id="z-ai/glm-4.6",
         )
     ]
 
@@ -49,7 +53,7 @@ def main():
 
     # 6. Optional: Push to HF hub
     USERNAME = "username"  # <--- Your hugging face username
-    DATASET_NAME = "keywords_extraction_gemma3_runpod"  # <--- Your hugging face dataset name
+    DATASET_NAME = "keywords_extraction_z-ai_glm-4.6"  # <--- Your hugging face dataset name
     url = dataset.push_to_hub(
         repo_id=f"{USERNAME}/{DATASET_NAME}",
         seed=20250816,

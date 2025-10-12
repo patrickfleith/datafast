@@ -569,7 +569,7 @@ class GenericPipelineDatasetConfig(BaseModel):
 
     output_columns: list[str] | None = Field(
         default=None,
-        description="List of column names to use as output for the pipeline"
+        description="List of column names to use as output of the pipeline"
     )
     
     prompts: list[str] = Field(
