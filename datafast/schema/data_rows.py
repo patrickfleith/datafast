@@ -105,3 +105,29 @@ class PreferenceRow(BaseModel):
 
     uuid: UUID = Field(default_factory=uuid4)
     metadata: dict[str, str] = Field(default_factory=dict)
+
+
+class GenericPipelineSource(str, Enum):
+    SYNTHETIC = "synthetic"
+    VERIFIED = "verified"
+    HUMAN = "human"
+    CONSENSUS = "consensus"
+
+
+class GenericPipelineRow(BaseModel):
+    """Row for storing generic pipeline processing results."""
+    
+    # Input data (forwarded from source)
+    input_data: dict[str, str] = Field(default_factory=dict)
+    
+    # Generated outputs
+    generated_outputs: dict[str, str] = Field(default_factory=dict)
+    
+    # Processing metadata
+    model_id: str | None = None
+    pipeline_source: GenericPipelineSource = GenericPipelineSource.SYNTHETIC
+    language: str | None = None
+    
+    # System fields
+    uuid: UUID = Field(default_factory=uuid4)
+    metadata: dict[str, str] = Field(default_factory=dict)
