@@ -17,6 +17,7 @@ Create high-quality and diverse synthetic text datasets in minutes, not weeks.
 - ✅ Instruction Dataset (Ultrachat-like)
 - ✅ Multiple Choice Question (MCQ) Dataset
 - ✅ Preference Dataset
+- ✅ Generic Pipeline Dataset
 - ⏳ more to come...
 
 ## Supported LLM Providers
@@ -118,6 +119,7 @@ Check out our comprehensive guides for different dataset types:
 - [Multiple Choice Questions](guides/generating_mcq_datasets.md) - Build datasets with multiple choice questions and answers
 - [Instruction Following](guides/generating_ultrachat_datasets.md) - Develop instruction-following conversation datasets
 - [Preference Pairs](guides/generating_preference_datasets.md) - Generate datasets for preference-based learning
+- [Generic Pipeline](guides/generating_generic_pipeline_datasets.md) - Build custom input-output LLM synthetic data generation pipelines
 
 To understand the core concepts behind Datafast, visit our [Concepts](concepts.md) page.
 

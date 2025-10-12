@@ -11,5 +11,6 @@ Datafast supports generating the following types of datasets:
 - [Multiple Choice](generating_mcq_datasets.md) - Build datasets with multiple choice questions and answers
 - [Instruction](generating_ultrachat_datasets.md) - Develop instruction-following datasets
 - [Preference](generating_preference_datasets.md) - Generate datasets for preference-based learning
+- [Generic Pipeline](generating_generic_pipeline_datasets.md) - Build custom input-output LLM synthetic data generation pipelines
 
 Select a guide from the navigation menu to learn more about each dataset type.
