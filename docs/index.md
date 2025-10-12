@@ -27,7 +27,8 @@ Currently we support the following LLM providers:
 - ✔︎ OpenAI
 - ✔︎ Anthropic
 - ✔︎ Google Gemini
-- ✔︎ Ollama
+- ✔︎ Ollama (your local LLM server)
+- ✔︎ OpenRouter (almost any LLM including open-source models)
 - ⏳ more to come...
 
 ## Quick Start
@@ -41,6 +42,7 @@ Other keys depends on which LLM providers you use.
 GEMINI_API_KEY=XXXX
 OPENAI_API_KEY=sk-XXXX
 ANTHROPIC_API_KEY=sk-ant-XXXXX
+OPENROUTER_API_KEY=XXXXX
 HF_TOKEN=hf_XXXXX
 ```
 
@@ -48,7 +50,7 @@ HF_TOKEN=hf_XXXXX
 ```python
 from datafast.datasets import ClassificationDataset
 from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
+from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OpenRouterProvider
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -93,7 +95,8 @@ config = ClassificationDatasetConfig(
 providers = [
     OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
     AnthropicProvider(model_id="claude-3-5-haiku-latest"),
-    GeminiProvider(model_id="gemini-2.0-flash")
+    GeminiProvider(model_id="gemini-2.5-flash"),
+    OpenRouterProvider(model_id="z-ai/glm-4.6")
 ]
 ```
 
