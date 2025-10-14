@@ -153,7 +153,7 @@ Configure one or more LLM providers to generate your dataset:
 
 ```python
 providers = [
-    AnthropicProvider(model_id="claude-3-5-haiku-latest"),
+    AnthropicProvider(model_id="claude-sonnet-4-5-20250929"),
 ]
 ```
 
@@ -259,7 +259,7 @@ def main():
 
     # 2. Initialize LLM providers - using just one for simplicity
     providers = [
-        AnthropicProvider(model_id="claude-3-5-haiku-latest"),
+        AnthropicProvider(model_id="claude-sonnet-4-5-20250929"),
     ]
 
     # 3. Get expected number of rows

@@ -282,7 +282,7 @@ class AnthropicProvider(LLMProvider):
 
     def __init__(
         self,
-        model_id: str = "claude-3-5-haiku-latest",
+        model_id: str = "claude-sonnet-4-5-20250929",
         api_key: str | None = None,
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
@@ -292,7 +292,7 @@ class AnthropicProvider(LLMProvider):
         """Initialize the Anthropic provider.
 
         Args:
-            model_id: The model ID (defaults to claude-3-5-haiku-latest)
+            model_id: The model ID (defaults to claude-sonnet-4-5-20250929)
             api_key: API key (if None, will get from environment)
             temperature: Temperature for generation (0.0 to 1.0)
             max_completion_tokens: Maximum tokens to generate

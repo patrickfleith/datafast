@@ -24,7 +24,7 @@ Each provider can be instantiated with default parameters:
 # OpenAI (default: gpt-5-mini-2025-08-07)
 openai_llm = OpenAIProvider()
 
-# Anthropic (default: claude-3-5-haiku-latest)
+# Anthropic (default:claude-sonnet-4-5-20250929)
 anthropic_llm = AnthropicProvider()
 
 # Gemini (default: gemini-2.0-flash)

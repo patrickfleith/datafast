@@ -327,7 +327,7 @@ def test_gemini_messages_with_structured_output():
 def test_anthropic_with_all_parameters():
     """Test Anthropic provider with all optional parameters specified."""
     provider = AnthropicProvider(
-        model_id="claude-3-5-haiku-latest",
+        model_id="claude-sonnet-4-5-20250929",
         temperature=0.3,
         max_completion_tokens=200,
         top_p=0.95,
@@ -999,7 +999,7 @@ def test_openai_batch_with_all_parameters():
 def test_anthropic_batch_with_all_parameters():
     """Test Anthropic provider with batch processing and all optional parameters."""
     provider = AnthropicProvider(
-        model_id="claude-3-5-haiku-latest",
+        model_id="claude-sonnet-4-5-20250929",
         temperature=0.1,
         max_completion_tokens=50,
         top_p=0.9
