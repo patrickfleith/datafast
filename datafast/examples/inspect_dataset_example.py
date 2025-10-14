@@ -46,7 +46,7 @@ config = ClassificationDatasetConfig(
 from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 
 providers = [
-    OpenAIProvider(model_id="gpt-4.1-nano"),
+    OpenAIProvider(model_id="gpt-5-mini-2025-08-07"),
     # Uncomment to use additional providers
     # AnthropicProvider(model_id="claude-3-5-haiku-latest"),
     # GeminiProvider(model_id="gemini-2.0-flash"),

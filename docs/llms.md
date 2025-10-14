@@ -21,7 +21,7 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, Oll
 Each provider can be instantiated with default parameters:
 
 ```python
-# OpenAI (default: gpt-4.1-mini-2025-04-14)
+# OpenAI (default: gpt-5-mini-2025-08-07)
 openai_llm = OpenAIProvider()
 
 # Anthropic (default: claude-3-5-haiku-latest)

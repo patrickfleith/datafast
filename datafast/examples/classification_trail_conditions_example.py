@@ -58,7 +58,7 @@ config = ClassificationDatasetConfig(
 
 # Set up providers
 providers = [
-    OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"),
+    OpenAIProvider(model_id="gpt-5-mini-2025-08-07"),
     AnthropicProvider(model_id="claude-3-5-haiku-latest")
 ]
 
