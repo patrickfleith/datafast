@@ -42,7 +42,7 @@ def main():
             model_id="gpt-5-mini-2025-08-07",
             temperature=1
             ),
-        # AnthropicProvider(model_id="claude-sonnet-4-5-20250929"),
+        # AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
         # GeminiProvider(model_id="gemini-2.5-flash-lite", rpm_limit=15),
         # OllamaProvider(model_id="gemma3:4b"),
     ]

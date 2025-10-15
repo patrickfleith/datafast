@@ -43,7 +43,7 @@ def main():
     # 2. Create LLM providers with specific models
     providers = [
         OpenAIProvider(model_id="gpt-5-mini-2025-08-07"), # You may want to use stronger models
-        AnthropicProvider(model_id="claude-sonnet-4-5-20250929"),
+        AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
     ]
 
     # 3. Generate the dataset

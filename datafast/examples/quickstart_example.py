@@ -35,7 +35,7 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, Oll
 
 providers = [
     OpenAIProvider(model_id="gpt-5-nano-2025-08-07"),
-    # AnthropicProvider(model_id="claude-sonnet-4-5-20250929"),
+    # AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
     # GeminiProvider(model_id="gemini-2.0-flash"),
     # OllamaProvider(model_id="gemma3:12b")
 ]

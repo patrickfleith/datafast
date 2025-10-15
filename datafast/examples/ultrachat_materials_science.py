@@ -25,7 +25,7 @@ def main():
 
     # 2. Initialize LLM providers - using just one for simplicity
     providers = [
-        AnthropicProvider(model_id="claude-sonnet-4-5-20250929"),
+        AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
     ]
 
     # 3. Get expected number of rows
