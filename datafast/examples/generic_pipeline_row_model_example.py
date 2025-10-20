@@ -32,7 +32,7 @@ example_row = DynamicRowModel(
     question="Qu'est ce qui t'a plu?",
     
     # System fields
-    model_id="gpt-4",
+    model_id="gpt-5-mini-2025-08-07",
     language="fr"
 )
 

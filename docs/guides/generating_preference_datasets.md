@@ -151,7 +151,7 @@ Configure LLM providers for different aspects of dataset generation:
 
 ```python
 # For generating questions from NASA lessons learned documents
-question_gen_llm = OpenAIProvider(model_id="gpt-4.1-mini")
+question_gen_llm = OpenAIProvider(model_id="gpt-5-mini-2025-08-07")
 
 # For generating high-quality (chosen) responses
 chosen_response_gen_llm = AnthropicProvider(model_id="claude-3-7-sonnet-latest")
@@ -160,7 +160,7 @@ chosen_response_gen_llm = AnthropicProvider(model_id="claude-3-7-sonnet-latest")
 rejected_response_gen_llm = GeminiProvider(model_id="gemini-2.0-flash")
 
 # For scoring responses (only needed if llm_as_judge=True)
-judge_llm = OpenAIProvider(model_id="gpt-4.1")
+judge_llm = OpenAIProvider(model_id="gpt-5-mini-2025-08-07")
 ```
 
 Using different providers for different aspects of generation helps create more diverse and realistic preference pairs.
@@ -265,10 +265,10 @@ config = PreferenceDatasetConfig(
 )
 
 # 2. Initialize LLM providers
-question_gen_llm = OpenAIProvider(model_id="gpt-4.1-mini")
+question_gen_llm = OpenAIProvider(model_id="gpt-5-mini-2025-08-07")
 chosen_response_gen_llm = AnthropicProvider(model_id="claude-3-7-sonnet-latest")
 rejected_response_gen_llm = GeminiProvider(model_id="gemini-2.0-flash")
-judge_llm = OpenAIProvider(model_id="gpt-4.1")
+judge_llm = OpenAIProvider(model_id="gpt-5-mini-2025-08-07")
 
 # 3. Generate the dataset
 dataset = PreferenceDataset(config)

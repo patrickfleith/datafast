@@ -21,10 +21,10 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, Oll
 Each provider can be instantiated with default parameters:
 
 ```python
-# OpenAI (default: gpt-4.1-mini-2025-04-14)
+# OpenAI (default: gpt-5-mini-2025-08-07)
 openai_llm = OpenAIProvider()
 
-# Anthropic (default: claude-3-5-haiku-latest)
+# Anthropic (default:claude-haiku-4-5-20251001)
 anthropic_llm = AnthropicProvider()
 
 # Gemini (default: gemini-2.0-flash)
@@ -41,7 +41,7 @@ openrouter_llm = OpenRouterProvider()
 
 ```python
 openai_llm = OpenAIProvider(
-    model_id="gpt-4o-mini",  # Custom model
+    model_id="gpt-5-mini-2025-08-07",  # Custom model
     temperature=0.2,         # Lower temperature for more deterministic outputs
     max_completion_tokens=100,  # Limit token generation
     top_p=0.9,               # Nucleus sampling parameter
@@ -53,6 +53,17 @@ ollama_llm = OllamaProvider(
     model_id="llama3.2:latest",
     api_base="http://localhost:11434" # <--- this is the default url
 )
+
+# OpenRouter with different models
+openrouter_llm = OpenRouterProvider(
+    model_id="z-ai/glm-4.6",  # Access glm-4.6 via OpenRouter
+    temperature=0.7,
+    max_completion_tokens=500
+)
+
+# You can access many models through OpenRouter
+openrouter_deepseek = OpenRouterProvider(model_id="deepseek/deepseek-r1-0528")
+openrouter_qwen = OpenRouterProvider(model_id="qwen/qwen3-next-80b-a3b-instruct")
 ```
 
 ## API Keys
@@ -73,6 +84,13 @@ openrouter_llm = OpenRouterProvider(api_key="your-openrouter-key")
 ```
 
 **Note**: Ollama typically runs locally and doesn't require an API key. You can set `OLLAMA_API_BASE` to specify a custom endpoint (defaults to `http://localhost:11434`).
+
+!!! warning
+    Note that `gpt-oss:20b` or `gpt-oss:120b` do not work well with structured output. Therefore we recommend you not to use them with datafast.
+
+## About OpenRouter
+
+[OpenRouter](https://openrouter.ai/) provides access to a wide variety of LLM models through a single API key. Model IDs follow the format `provider/model-name` (e.g., `deepseek/deepseek-r1-0528`, `qwen/qwen3-next-80b-a3b-instruct`). Visit [OpenRouter's models page](https://openrouter.ai/models) for the complete list.
 
 ## Generation Methods
 

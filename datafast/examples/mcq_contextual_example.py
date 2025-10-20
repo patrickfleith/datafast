@@ -50,9 +50,9 @@ def main():
         output_file="mcq_ar6_contextual_dataset.jsonl",
     )
 
-    # 3. Initialize OpenAI provider with gpt-4.1-mini
+    # 3. Initialize OpenAI provider with gpt-5-mini-2025-08-07
     providers = [
-        OpenAIProvider(model_id="gpt-4.1-mini"),
+        OpenAIProvider(model_id="gpt-5-mini-2025-08-07"),
     ]
 
     # 4. Generate the dataset
