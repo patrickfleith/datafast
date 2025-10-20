@@ -44,10 +44,10 @@ def main():
     )
 
     # 2. Initialize LLM providers
-    question_gen_llm = OpenAIProvider(model_id="gpt-4.1-mini")
+    question_gen_llm = OpenAIProvider(model_id="gpt-5-mini-2025-08-07")
     chosen_response_gen_llm = AnthropicProvider(model_id="claude-3-7-sonnet-latest")
     rejected_response_gen_llm = GeminiProvider(model_id="gemini-2.0-flash")
-    judge_llm = OpenAIProvider(model_id="gpt-4.1")
+    judge_llm = OpenAIProvider(model_id="gpt-5-mini-2025-08-07")
 
     # 3. Generate the dataset
     dataset = PreferenceDataset(config)

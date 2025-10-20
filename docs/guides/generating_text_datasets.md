@@ -156,8 +156,8 @@ Configure one or more LLM providers to generate your dataset:
 
 ```python
 providers = [
-    OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"), # You may want to use stronger models
-    AnthropicProvider(model_id="claude-3-5-haiku-latest"),
+    OpenAIProvider(model_id="gpt-5-mini-2025-08-07"), # You may want to use stronger models
+    AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
 ]
 ```
 
@@ -280,8 +280,8 @@ def main():
 
     # 2. Create LLM providers with specific models
     providers = [
-        OpenAIProvider(model_id="gpt-4.1-mini-2025-04-14"), # You may want to use stronger models
-        AnthropicProvider(model_id="claude-3-5-haiku-latest"),
+        OpenAIProvider(model_id="gpt-5-mini-2025-08-07"), # You may want to use stronger models
+        AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
     ]
 
     # 3. Generate the dataset

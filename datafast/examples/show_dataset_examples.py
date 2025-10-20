@@ -46,7 +46,7 @@ classification_dataset = ClassificationDataset(
 classification_row2 = TextClassificationRow(
     text="The trail is well maintained and easy to follow.",
     label="positive_conditions",
-    model_id="claude-3-5-haiku-latest",
+    model_id="claude-haiku-4-5-20251001",
     language="en",
 )
 classification_dataset.data_rows = [classification_row, classification_row2]
@@ -85,7 +85,7 @@ preference_row = PreferenceRow(
     question="What was the main goal of the Mars 2020 mission?",
     chosen_response="To search for signs of ancient life and collect samples.",
     rejected_response="To launch a satellite.",
-    chosen_model_id="claude-3-5-haiku-latest",
+    chosen_model_id="claude-haiku-4-5-20251001",
     rejected_model_id="gpt-4.1-nano",
     chosen_response_score=9,
     rejected_response_score=3,
