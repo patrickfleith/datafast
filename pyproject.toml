@@ -7,6 +7,7 @@ name = "datafast"
 version = "0.0.27"
 description = "A Python package for synthetic text dataset generation"
 readme = "README.md"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
   { name = "Patrick Fleith" }
@@ -16,11 +17,10 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "datasets>=3.0",
@@ -32,6 +32,7 @@ dependencies = [
     "pydantic",
     "litellm",
     "gradio",
+    "loguru",
 ]
 
 [project.optional-dependencies]
