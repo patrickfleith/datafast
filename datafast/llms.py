@@ -16,7 +16,6 @@ from pydantic import BaseModel
 # LiteLLM
 import litellm
 from litellm.utils import ModelResponse
-from litellm import batch_completion
 
 # Internal imports
 from .llm_utils import get_messages
@@ -115,6 +114,37 @@ class LLMProvider(ABC):
             print("Waiting for rate limit...")
             time.sleep(sleep_time)
 
+    @staticmethod
+    def _strip_code_fences(content: str) -> str:
+        """Strip markdown code fences from content if present.
+        
+        Args:
+            content: The content string that may contain code fences
+            
+        Returns:
+            Content with code fences removed
+        """
+        if not content:
+            return content
+        
+        content = content.strip()
+        
+        # Check for code fences with optional language identifier
+        if content.startswith('```'):
+            # Find the end of the first line (language identifier)
+            first_newline = content.find('\n')
+            if first_newline != -1:
+                content = content[first_newline + 1:]
+            else:
+                # No newline after opening fence, remove just the fence
+                content = content[3:]
+        
+        # Remove closing fence
+        if content.endswith('```'):
+            content = content[:-3]
+        
+        return content.strip()
+
     def generate(
         self,
         prompt: str | list[str] | None = None,
@@ -211,11 +241,15 @@ class LLMProvider(ABC):
             results = []
             for one_response in response:
                 content = one_response.choices[0].message.content
+                
                 if response_format is not None:
+                    # Strip code fences before validation
+                    content = self._strip_code_fences(content)
                     results.append(
                         response_format.model_validate_json(content))
                 else:
-                    results.append(content)
+                    # Strip leading/trailing whitespace for text responses
+                    results.append(content.strip() if content else content)
 
             # Return single result for backward compatibility
             if single_input and len(results) == 1:
