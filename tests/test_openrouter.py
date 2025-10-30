@@ -118,8 +118,7 @@ class TestOpenRouterProvider:
         """Test the OpenRouter provider with structured output."""
         provider = OpenRouterProvider()
         prompt = """What is the capital of France? 
-        Provide a short answer and a brief explanation of why Paris is the capital.
-        Format your response as JSON with 'answer' and 'reasoning' fields."""
+        Provide a short answer and a brief explanation of why Paris is the capital."""
         
         response = provider.generate(
             prompt=prompt,
@@ -145,10 +144,9 @@ class TestOpenRouterProvider:
         """Test OpenRouter provider with messages input and structured output."""
         provider = OpenRouterProvider()
         messages = [
-            {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
+            {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
             {"role": "user", "content": """What is the capital of France? 
-            Provide a short answer and a brief explanation of why Paris is the capital.
-            Format your response as JSON with 'answer' and 'reasoning' fields."""}
+            Provide a short answer and a brief explanation of why Paris is the capital."""}
         ]
         
         response = provider.generate(
@@ -163,11 +161,9 @@ class TestOpenRouterProvider:
     def test_with_all_parameters(self):
         """Test OpenRouter provider with all optional parameters specified."""
         provider = OpenRouterProvider(
-            model_id="z-ai/glm-4.6",
-            temperature=0.4,
+            model_id="meta-llama/llama-3.3-70b-instruct",
             max_completion_tokens=300,
             top_p=0.85,
-            frequency_penalty=0
         )
         
         response = provider.generate(prompt="What is the capital of France? Answer in one word.")
@@ -187,8 +183,6 @@ class TestOpenRouterProvider:
         Construction and major reinforcement during the Ming dynasty in the 14th century gave the wall its iconic form, using stone and brick to fortify older earthen ramparts.
         Key attributes include: overall length of about 13,171 miles (importance 0.9), primary materials of stone and brick with tamped earth cores (importance 0.7), and critical Ming dynasty stewardship that restored and expanded the fortifications (importance 0.8).
         Today's visitors typically rate the experience around 4.6 out of 5, citing sweeping views and the wall's historical resonance."
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=LandmarkInfo)
@@ -231,8 +225,6 @@ class TestOpenRouterGLM46:
         advocates for climate action, and enjoys sharing nature facts with humor.
         
         Create exactly 5 tweets and 1 bio for this persona.
-
-        Return only valid JSON. Do not include markdown or code fences. Use double quotes for all keys and values, escape internal quotes and newlines (use \n), and do not include trailing commas.
         """
         
         response = provider.generate(prompt=prompt, response_format=PersonaContent)
@@ -256,8 +248,6 @@ class TestOpenRouterGLM46:
         Topics to cover: supervised learning, neural networks, overfitting, gradient descent, and cross-validation.
         
         Each question should be clear and the answer should be concise but complete.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=QASet)
@@ -285,8 +275,6 @@ class TestOpenRouterGLM46:
         - Three plausible but incorrect answers
         
         Topics: neural networks, decision trees, and ensemble methods.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=MCQSet)
@@ -319,10 +307,6 @@ class TestOpenRouterQwen3:
         practices meditation, and frequently shares insights about startup culture.
         
         Create exactly 5 tweets and 1 bio for this persona.
-
-        Return only valid JSON. Do not include markdown or code fences. Use double quotes for all keys and values, escape internal quotes and newlines (use \n), and do not include trailing commas.
-        The JSON must match this exact schema:
-        
         """
         
         response = provider.generate(prompt=prompt, response_format=PersonaContent)
@@ -347,8 +331,6 @@ class TestOpenRouterQwen3:
         backpropagation, and feature engineering.
         
         Each question should be clear and the answer should be concise but complete.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=QASet)
@@ -376,8 +358,6 @@ class TestOpenRouterQwen3:
         - Three plausible but incorrect answers
         
         Topics: recurrent neural networks, k-means clustering, and support vector machines.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=MCQSet)
@@ -410,10 +390,6 @@ class TestOpenRouterLlama33:
         new ingredients, teaches cooking classes, and shares culinary tips with enthusiasm.
         
         Create exactly 5 tweets and 1 bio for this persona.
-
-        Return only valid JSON. Do not include markdown or code fences. Use double quotes for all keys and values, escape internal quotes and newlines (use \n), and do not include trailing commas.
-        The JSON must match this exact schema:
-        
         """
         
         response = provider.generate(prompt=prompt, response_format=PersonaContent)
@@ -438,8 +414,6 @@ class TestOpenRouterLlama33:
         dropout, and hyperparameter tuning.
         
         Each question should be clear and the answer should be concise but complete.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=QASet)
@@ -467,8 +441,6 @@ class TestOpenRouterLlama33:
         - Three plausible but incorrect answers
         
         Topics: transformers, random forests, and principal component analysis.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=MCQSet)
@@ -501,10 +473,6 @@ class TestOpenRouterGemini25Flash:
         contributes to educational content, and advocates for diversity in tech.
         
         Create exactly 5 tweets and 1 bio for this persona.
-
-        Return only valid JSON. Do not include markdown or code fences. Use double quotes for all keys and values, escape internal quotes and newlines (use \n), and do not include trailing commas.
-        The JSON must match this exact schema:
-        
         """
         
         response = provider.generate(prompt=prompt, response_format=PersonaContent)
@@ -529,8 +497,6 @@ class TestOpenRouterGemini25Flash:
         bias-variance tradeoff, and model evaluation metrics.
         
         Each question should be clear and the answer should be concise but complete.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=QASet)
@@ -558,8 +524,6 @@ class TestOpenRouterGemini25Flash:
         - Three plausible but incorrect answers
         
         Topics: LSTM networks, gradient boosting, and model interpretability.
-
-        Format your response as valid JSON.
         """
         
         response = provider.generate(prompt=prompt, response_format=MCQSet)
