@@ -336,8 +336,8 @@ class AnthropicProvider(LLMProvider):
         api_key: str | None = None,
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
-        top_p: float | None = None,
-        # frequency_penalty: float | None = None,  # Not supported by anthropic
+        # top_p: float | None = None, # Not properly supported by anthropic models 4.5
+        # frequency_penalty: float | None = None,  # Not supported by anthropic models 4.5
     ):
         """Initialize the Anthropic provider.
 
@@ -353,7 +353,6 @@ class AnthropicProvider(LLMProvider):
             api_key=api_key,
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
-            top_p=top_p,
         )
 
 
