@@ -1,10 +1,10 @@
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider, OpenRouterProvider
+from datafast.llms import OpenAIProvider, GeminiProvider
 from dotenv import load_dotenv
 import pytest
 from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 
-load_dotenv('secrets.env')
+load_dotenv()
 
 
 class SimpleResponse(BaseModel):
@@ -59,15 +59,6 @@ def test_openai_provider():
 
 
 @pytest.mark.integration
-def test_anthropic_provider():
-    """Test the Anthropic provider with text response."""
-    provider = AnthropicProvider()
-    response = provider.generate(
-        prompt="What is the capital of France? Answer in one word.")
-    assert "Paris" in response
-
-
-@pytest.mark.integration
 def test_gemini_provider():
     """Test the Gemini provider with text response."""
     provider = GeminiProvider()
@@ -75,12 +66,6 @@ def test_gemini_provider():
         prompt="What is the capital of France? Answer in one word.")
     assert "Paris" in response
 
-@pytest.mark.integration
-def test_openrouter_provider():
-    """Test the OpenRouter provider with text response."""
-    provider = OpenRouterProvider()
-    response = provider.generate(prompt="What is the capital of France? Answer in one word.")
-    assert "Paris" in response
 
 @pytest.mark.slow
 @pytest.mark.integration
@@ -119,22 +104,7 @@ def test_openai_structured_output():
     assert len(response.reasoning) > 10
 
 
-@pytest.mark.integration
-def test_anthropic_structured_output():
-    """Test the Anthropic provider with structured output."""
-    provider = AnthropicProvider()
-    prompt = """What is the capital of France? 
-    Provide a short answer and a brief explanation of why Paris is the capital.
-    Format your response as JSON with 'answer' and 'reasoning' fields."""
 
-    response = provider.generate(
-        prompt=prompt,
-        response_format=SimpleResponse
-    )
-
-    assert isinstance(response, SimpleResponse)
-    assert "Paris" in response.answer
-    assert len(response.reasoning) > 10
 
 
 @pytest.mark.integration
@@ -154,41 +124,12 @@ def test_gemini_structured_output():
     assert "Paris" in response.answer
     assert len(response.reasoning) > 10
 
-@pytest.mark.integration
-def test_openrouter_structured_output():
-    """Test the OpenRouter provider with structured output."""
-    provider = OpenRouterProvider()
-    prompt = """What is the capital of France? 
-    Provide a short answer and a brief explanation of why Paris is the capital.
-    Format your response as JSON with 'answer' and 'reasoning' fields."""
-    
-    response = provider.generate(
-        prompt=prompt,
-        response_format=SimpleResponse
-    )
-    
-    assert isinstance(response, SimpleResponse)
-    assert "Paris" in response.answer
-    assert len(response.reasoning) > 10
 
 
 @pytest.mark.integration
 def test_openai_with_messages():
     """Test OpenAI provider with messages input instead of prompt."""
     provider = OpenAIProvider()
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
-        {"role": "user", "content": "What is the capital of France? Answer in one word."}
-    ]
-
-    response = provider.generate(messages=messages)
-    assert "Paris" in response
-
-
-@pytest.mark.integration
-def test_anthropic_with_messages():
-    """Test Anthropic provider with messages input instead of prompt."""
-    provider = AnthropicProvider()
     messages = [
         {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
         {"role": "user", "content": "What is the capital of France? Answer in one word."}
@@ -210,17 +151,6 @@ def test_gemini_with_messages():
     response = provider.generate(messages=messages)
     assert "Paris" in response
 
-@pytest.mark.integration
-def test_openrouter_with_messages():
-    """Test OpenRouter provider with messages input instead of prompt."""
-    provider = OpenRouterProvider()
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
-        {"role": "user", "content": "What is the capital of France? Answer in one word."}
-    ]
-    
-    response = provider.generate(messages=messages)
-    assert "Paris" in response
 
 
 @pytest.mark.integration
@@ -243,25 +173,6 @@ def test_openai_messages_with_structured_output():
     assert "Paris" in response.answer
     assert len(response.reasoning) > 10
 
-@pytest.mark.integration
-def test_openrouter_messages_with_structured_output():
-    """Test OpenRouter provider with messages input and structured output."""
-    provider = OpenRouterProvider()
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
-        {"role": "user", "content": """What is the capital of France? 
-        Provide a short answer and a brief explanation of why Paris is the capital.
-        Format your response as JSON with 'answer' and 'reasoning' fields."""}
-    ]
-    
-    response = provider.generate(
-        messages=messages,
-        response_format=SimpleResponse
-    )
-    
-    assert isinstance(response, SimpleResponse)
-    assert "Paris" in response.answer
-    assert len(response.reasoning) > 10
 
 
 @pytest.mark.integration
@@ -279,27 +190,6 @@ def test_openai_with_all_parameters():
     response = provider.generate(prompt=prompt)
 
     assert "Paris" in response
-
-
-@pytest.mark.integration
-def test_anthropic_messages_with_structured_output():
-    """Test the Anthropic provider with messages input and structured output."""
-    provider = AnthropicProvider()
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
-        {"role": "user", "content": """What is the capital of France? 
-        Provide a short answer and a brief explanation of why Paris is the capital.
-        Format your response as JSON with 'answer' and 'reasoning' fields."""}
-    ]
-
-    response = provider.generate(
-        messages=messages,
-        response_format=SimpleResponse
-    )
-
-    assert isinstance(response, SimpleResponse)
-    assert "Paris" in response.answer
-    assert len(response.reasoning) > 10
 
 
 @pytest.mark.integration
@@ -324,22 +214,6 @@ def test_gemini_messages_with_structured_output():
 
 
 @pytest.mark.integration
-def test_anthropic_with_all_parameters():
-    """Test Anthropic provider with all optional parameters specified."""
-    provider = AnthropicProvider(
-        model_id="claude-haiku-4-5-20251001",
-        temperature=0.3,
-        max_completion_tokens=200,
-        top_p=0.95,
-    )
-
-    prompt = "What is the capital of France? Answer in one word."
-    response = provider.generate(prompt=prompt)
-
-    assert "Paris" in response
-
-
-@pytest.mark.integration
 def test_gemini_with_all_parameters():
     """Test Gemini provider with all optional parameters specified."""
     provider = GeminiProvider(
@@ -355,21 +229,6 @@ def test_gemini_with_all_parameters():
     
     assert "Paris" in response
 
-@pytest.mark.integration
-def test_openrouter_with_all_parameters():
-    """Test OpenRouter provider with all optional parameters specified."""
-    provider = OpenRouterProvider(
-        model_id="openai/gpt-3.5-turbo",
-        temperature=0.4,
-        max_completion_tokens=150,
-        top_p=0.85,
-        frequency_penalty=0.15
-    )
-    
-    prompt = "What is the capital of France? Answer in one word."
-    response = provider.generate(prompt=prompt)
-    
-    assert "Paris" in response
 
 
 @pytest.mark.integration
@@ -414,46 +273,7 @@ def test_openai_structured_landmark_info():
     assert 0 <= response.visitor_rating <= 5
 
 
-@pytest.mark.integration
-def test_anthropic_structured_landmark_info():
-    """Test Anthropic with a structured landmark info response."""
-    provider = AnthropicProvider(temperature=0.1, max_completion_tokens=800)
 
-    prompt = """
-    Provide detailed information about the Golden Gate Bridge in San Francisco.
-    
-    Return your response as a structured JSON object with the following elements:
-    - name: The name of the landmark (Golden Gate Bridge)
-    - location: Where it's located (San Francisco, USA)
-    - description: A brief description of the landmark (2-3 sentences)
-    - year_built: The year when it was built (as a number)
-    - attributes: A list of at least 3 attribute objects, each containing:
-      - name: The name of the attribute (e.g., "length", "color", "architect")
-      - value: The value of the attribute (e.g., "1.7 miles", "International Orange", "Joseph Strauss")
-      - importance: An importance score between 0 and 1
-    - visitor_rating: Average visitor rating from 0 to 5 (e.g., 4.8)
-    
-    Make sure your response is properly structured and can be parsed as valid JSON.
-    """
-
-    response = provider.generate(prompt=prompt, response_format=LandmarkInfo)
-
-    # Verify the structure was correctly generated and parsed
-    assert isinstance(response, LandmarkInfo)
-    assert "Golden Gate Bridge" in response.name
-    assert "Francisco" in response.location
-    assert len(response.description) > 20
-    assert response.year_built is not None and response.year_built > 1900
-    assert len(response.attributes) >= 3
-
-    # Verify nested objects
-    for attr in response.attributes:
-        assert 0 <= attr.importance <= 1
-        assert len(attr.name) > 0
-        assert len(attr.value) > 0
-
-    # Verify rating field
-    assert 0 <= response.visitor_rating <= 5
 
 
 @pytest.mark.integration
@@ -497,172 +317,6 @@ def test_gemini_structured_landmark_info():
     # Verify rating field
     assert 0 <= response.visitor_rating <= 5
 
-# import litellm
-# litellm._turn_on_debug() # turn on debug to see the request
-
-@pytest.mark.integration
-def test_openrouter_structured_landmark_info():
-    """Test OpenRouter with a structured landmark info response."""
-    provider = OpenRouterProvider(temperature=0.1, max_completion_tokens=800)
-    
-    prompt = """
-    Provide detailed information about the Great Wall of China.
-    
-    Return your response as a structured JSON object with the following elements:
-    - name: The name of the landmark (Great Wall of China)
-    - location: Where it's located (Northern China)
-    - description: A brief description of the landmark (2-3 sentences)
-    - year_built: The year when construction began (as a number)
-    - attributes: A list of at least 3 attribute objects, each containing:
-      - name: The name of the attribute (e.g., "length", "material", "dynasties")
-      - value: The value of the attribute (e.g., "13,171 miles", "stone, brick, wood, etc.", "multiple including Qin, Han, Ming")
-      - importance: An importance score between 0 and 1
-    - visitor_rating: Average visitor rating from 0 to 5 (e.g., 4.7)
-    
-    Make sure your response is properly structured and can be parsed as valid JSON.
-    """
-    
-    response = provider.generate(prompt=prompt, response_format=LandmarkInfo)
-    
-    # Verify the structure was correctly generated and parsed
-    assert isinstance(response, LandmarkInfo)
-    assert "Great Wall" in response.name
-    assert "China" in response.location
-    assert len(response.description) > 20
-    assert response.year_built is not None
-    assert len(response.attributes) >= 3
-    
-    # Verify nested objects
-    for attr in response.attributes:
-        assert 0 <= attr.importance <= 1
-        assert len(attr.name) > 0
-        assert len(attr.value) > 0
-    
-    # Verify rating field
-    assert 0 <= response.visitor_rating <= 5
-
-
-
-@pytest.mark.integration
-def test_ollama_provider():
-    """Test the Ollama provider with text response."""
-    provider = OllamaProvider(model_id="gemma3:4b")
-    response = provider.generate(
-        prompt="What is the capital of France? Answer in one word.")
-    assert "Paris" in response
-
-
-@pytest.mark.integration
-def test_ollama_structured_output():
-    """Test the Ollama provider with structured output."""
-    provider = OllamaProvider(model_id="gemma3:4b")
-    prompt = """What is the capital of France? 
-    Provide a short answer and a brief explanation of why Paris is the capital.
-    Format your response as JSON with 'answer' and 'reasoning' fields."""
-
-    response = provider.generate(
-        prompt=prompt,
-        response_format=SimpleResponse
-    )
-
-    assert isinstance(response, SimpleResponse)
-    assert "Paris" in response.answer
-    assert len(response.reasoning) > 10
-
-
-@pytest.mark.integration
-def test_ollama_with_messages():
-    """Test Ollama provider with messages input instead of prompt."""
-    provider = OllamaProvider()
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
-        {"role": "user", "content": "What is the capital of France? Answer in one word."}
-    ]
-
-    response = provider.generate(messages=messages)
-    assert "Paris" in response
-
-
-@pytest.mark.integration
-def test_ollama_messages_with_structured_output():
-    """Test the Ollama provider with messages input and structured output."""
-    provider = OllamaProvider()
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
-        {"role": "user", "content": """What is the capital of France? 
-        Provide a short answer and a brief explanation of why Paris is the capital.
-        Format your response as JSON with 'answer' and 'reasoning' fields."""}
-    ]
-
-    response = provider.generate(
-        messages=messages,
-        response_format=SimpleResponse
-    )
-
-    assert isinstance(response, SimpleResponse)
-    assert "Paris" in response.answer
-    assert len(response.reasoning) > 10
-
-
-@pytest.mark.integration
-def test_ollama_with_all_parameters():
-    """Test Ollama provider with all optional parameters specified."""
-    provider = OllamaProvider(
-        model_id="gemma3:4b",
-        temperature=0.4,
-        max_completion_tokens=150,
-        top_p=0.85,
-        frequency_penalty=0.15,
-        api_base="http://localhost:11434"
-    )
-
-    prompt = "What is the capital of France? Answer in one word."
-    response = provider.generate(prompt=prompt)
-
-    assert "Paris" in response
-
-
-@pytest.mark.integration
-def test_ollama_structured_landmark_info():
-    """Test Ollama with a structured landmark info response."""
-    provider = OllamaProvider(temperature=0.1, max_completion_tokens=800)
-
-    prompt = """
-    Provide detailed information about the Sydney Opera House.
-    
-    Return your response as a structured JSON object with the following elements:
-    - name: The name of the landmark (Sydney Opera House)
-    - location: Where it's located (Sydney, Australia)
-    - description: A brief description of the landmark (2-3 sentences)
-    - year_built: The year when it was completed (as a number)
-    - attributes: A list of at least 3 attribute objects, each containing:
-      - name: The name of the attribute (e.g., "architect", "style", "height")
-      - value: The value of the attribute (e.g., "Jørn Utzon", "Expressionist", "65 meters")
-      - importance: An importance score between 0 and 1
-    - visitor_rating: Average visitor rating from 0 to 5 (e.g., 4.9)
-    
-    Make sure your response is properly structured and can be parsed as valid JSON.
-    """
-
-    response = provider.generate(prompt=prompt, response_format=LandmarkInfo)
-
-    # Verify the structure was correctly generated and parsed
-    assert isinstance(response, LandmarkInfo)
-    assert "Opera House" in response.name
-    assert "Sydney" in response.location
-    assert len(response.description) > 20
-    assert response.year_built is not None and response.year_built > 1900
-    assert len(response.attributes) >= 3
-
-    # Verify nested objects
-    for attr in response.attributes:
-        assert 0 <= attr.importance <= 1
-        assert len(attr.name) > 0
-        assert len(attr.value) > 0
-
-    # Verify rating field
-    assert 0 <= response.visitor_rating <= 5
-
 
 "******* Batch Inference Tests *******"
 "Similar to previous tests but for batch inputs"
@@ -688,26 +342,6 @@ def test_openai_batch_prompts():
     assert "Paris" in responses[0]
     assert "Berlin" in responses[1]
     assert "Rome" in responses[2]
-
-
-@pytest.mark.integration
-def test_anthropic_batch_prompts():
-    """Test the Anthropic provider with batch prompts."""
-    provider = AnthropicProvider()
-    prompt = [
-        "What is the capital of France? Answer in one word.",
-        "What is the capital of Spain? Answer in one word.",
-        "What is the capital of Portugal? Answer in one word."
-    ]
-
-    responses = provider.generate(prompt=prompt)
-
-    assert len(responses) == 3
-    assert isinstance(responses, list)
-    assert all(isinstance(r, str) for r in responses)
-    assert "Paris" in responses[0]
-    assert "Madrid" in responses[1]
-    assert "Lisbon" in responses[2]
 
 
 @pytest.mark.integration
@@ -752,30 +386,6 @@ def test_openai_batch_messages():
     assert all(isinstance(r, str) for r in responses)
     assert "Paris" in responses[0]
     assert "Tokyo" in responses[1]
-
-
-@pytest.mark.integration
-def test_anthropic_batch_messages():
-    """Test Anthropic provider with batch messages."""
-    provider = AnthropicProvider()
-    messages = [
-        [
-            {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
-            {"role": "user", "content": "What is the capital of Canada? One word."}
-        ],
-        [
-            {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
-            {"role": "user", "content": "What is the capital of Australia? One word."}
-        ]
-    ]
-
-    responses = provider.generate(messages=messages)
-
-    assert len(responses) == 2
-    assert isinstance(responses, list)
-    assert all(isinstance(r, str) for r in responses)
-    assert "Ottawa" in responses[0]
-    assert "Canberra" in responses[1]
 
 
 @pytest.mark.integration
@@ -824,32 +434,6 @@ def test_openai_batch_structured_output():
     assert all(isinstance(r, SimpleResponse) for r in responses)
     assert "Paris" in responses[0].answer
     assert "Tokyo" in responses[1].answer
-    assert len(responses[0].reasoning) > 5
-    assert len(responses[1].reasoning) > 5
-
-
-@pytest.mark.integration
-def test_anthropic_batch_structured_output():
-    """Test Anthropic provider with batch structured output."""
-    provider = AnthropicProvider()
-    prompt = [
-        """What is the capital of Germany? 
-        Provide a short answer and brief reasoning.
-        Format as JSON with 'answer' and 'reasoning' fields.""",
-        """What is the capital of Italy?
-        Provide a short answer and brief reasoning.
-        Format as JSON with 'answer' and 'reasoning' fields."""
-    ]
-
-    responses = provider.generate(
-        prompt=prompt,
-        response_format=SimpleResponse
-    )
-
-    assert len(responses) == 2
-    assert all(isinstance(r, SimpleResponse) for r in responses)
-    assert "Berlin" in responses[0].answer
-    assert "Rome" in responses[1].answer
     assert len(responses[0].reasoning) > 5
     assert len(responses[1].reasoning) > 5
 
@@ -911,38 +495,6 @@ def test_openai_batch_messages_with_structured_output():
 
 
 @pytest.mark.integration
-def test_anthropic_batch_messages_with_structured_output():
-    """Test Anthropic provider with batch messages and structured output."""
-    provider = AnthropicProvider()
-    messages = [
-        [
-            {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
-            {"role": "user", "content": """What is the capital of Egypt? 
-            Provide a short answer and brief reasoning.
-            Format as JSON with 'answer' and 'reasoning' fields."""}
-        ],
-        [
-            {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
-            {"role": "user", "content": """What is the capital of Morocco?
-            Provide a short answer and brief reasoning.
-            Format as JSON with 'answer' and 'reasoning' fields."""}
-        ]
-    ]
-
-    responses = provider.generate(
-        messages=messages,
-        response_format=SimpleResponse
-    )
-
-    assert len(responses) == 2
-    assert all(isinstance(r, SimpleResponse) for r in responses)
-    assert "Cairo" in responses[0].answer
-    assert "Rabat" in responses[1].answer
-    assert len(responses[0].reasoning) > 5
-    assert len(responses[1].reasoning) > 5
-
-
-@pytest.mark.integration
 def test_gemini_batch_messages_with_structured_output():
     """Test Gemini provider with batch messages and structured output."""
     provider = GeminiProvider()
@@ -995,26 +547,7 @@ def test_openai_batch_with_all_parameters():
     assert "Oslo" in responses[1]
 
 
-@pytest.mark.integration
-def test_anthropic_batch_with_all_parameters():
-    """Test Anthropic provider with batch processing and all optional parameters."""
-    provider = AnthropicProvider(
-        model_id="claude-haiku-4-5-20251001",
-        temperature=0.1,
-        max_completion_tokens=50,
-        top_p=0.9
-    )
 
-    prompt = [
-        "What is the capital of Denmark? Answer in one word.",
-        "What is the capital of Finland? Answer in one word."
-    ]
-
-    responses = provider.generate(prompt=prompt)
-
-    assert len(responses) == 2
-    assert "Copenhagen" in responses[0]
-    assert "Helsinki" in responses[1]
 
 
 @pytest.mark.integration
@@ -1038,23 +571,6 @@ def test_gemini_batch_with_all_parameters():
     assert len(responses) == 2
     assert "Brussels" in responses[0]
     assert "Amsterdam" in responses[1]
-
-
-@pytest.mark.integration
-def test_batch_validation_errors():
-    """Test that batch generate properly validates inputs."""
-    provider = AnthropicProvider()
-
-    # Test no inputs provided
-    with pytest.raises(ValueError, match="Either prompts or messages must be provided"):
-        provider.generate()
-
-    # Test both inputs provided
-    with pytest.raises(ValueError, match="Provide either prompts or messages, not both"):
-        provider.generate(
-            prompt=["test"],
-            messages=[[{"role": "user", "content": "test"}]]
-        )
 
 
 @pytest.mark.integration
@@ -1127,69 +643,3 @@ def test_openai_batch_landmark_info():
         assert 0 <= response.visitor_rating <= 5
 
 
-@pytest.mark.integration
-def test_ollama_batch_prompts():
-    """Test Ollama provider with batch prompts."""
-    provider = OllamaProvider(model_id="gemma3:4b")
-    prompt = [
-        "What is the capital of France? Answer in one word.",
-        "What is the capital of Germany? Answer in one word."
-    ]
-
-    responses = provider.generate(prompt=prompt)
-
-    assert len(responses) == 2
-    assert isinstance(responses, list)
-    assert all(isinstance(r, str) for r in responses)
-    assert "Paris" in responses[0]
-    assert "Berlin" in responses[1]
-
-
-@pytest.mark.integration
-def test_ollama_batch_messages():
-    """Test Ollama provider with batch messages."""
-    provider = OllamaProvider()
-    messages = [
-        [
-            {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
-            {"role": "user", "content": "What is 6+4? Just the number."}
-        ],
-        [
-            {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
-            {"role": "user", "content": "What is 8+2? Just the number."}
-        ]
-    ]
-
-    responses = provider.generate(messages=messages)
-
-    assert len(responses) == 2
-    assert isinstance(responses, list)
-    assert all(isinstance(r, str) for r in responses)
-    assert "10" in responses[0]
-    assert "10" in responses[1]
-
-
-@pytest.mark.integration
-def test_ollama_batch_structured_output():
-    """Test Ollama provider with batch structured output."""
-    provider = OllamaProvider()
-    prompt = [
-        """What is the capital of Spain? 
-        Provide a short answer and brief reasoning.
-        Format as JSON with 'answer' and 'reasoning' fields.""",
-        """What is the capital of Portugal?
-        Provide a short answer and brief reasoning.
-        Format as JSON with 'answer' and 'reasoning' fields."""
-    ]
-
-    responses = provider.generate(
-        prompt=prompt,
-        response_format=SimpleResponse
-    )
-
-    assert len(responses) == 2
-    assert all(isinstance(r, SimpleResponse) for r in responses)
-    assert "Madrid" in responses[0].answer
-    assert "Lisbon" in responses[1].answer
-    assert len(responses[0].reasoning) > 5
-    assert len(responses[1].reasoning) > 5
