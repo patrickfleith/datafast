@@ -206,13 +206,29 @@ class LLMProvider(ABC):
                 raise ValueError("messages cannot be empty")
 
         try:
+            # Append JSON formatting instructions if response_format is provided
+            json_instructions = (
+                "\nReturn only valid JSON. To do so, don't include ```json ``` markdown "
+                "or code fences around the JSON. Use double quotes for all keys and values. "
+                "Escape internal quotes and newlines (use \\n). Do not include trailing commas."
+            )
+            
             # Convert batch prompts to messages if needed
             batch_to_send = []
             if batch_prompts is not None:
                 for one_prompt in batch_prompts:
-                    batch_to_send.append(get_messages(one_prompt))
+                    # Append JSON instructions to prompt if response_format is provided
+                    modified_prompt = one_prompt + json_instructions if response_format is not None else one_prompt
+                    batch_to_send.append(get_messages(modified_prompt))
             else:
                 batch_to_send = batch_messages
+                # Append JSON instructions to the last user message if response_format is provided
+                if response_format is not None:
+                    for message_list in batch_to_send:
+                        for msg in reversed(message_list):
+                            if msg.get("role") == "user":
+                                msg["content"] += json_instructions
+                                break
 
             # Enforce rate limit per batch
             self._respect_rate_limit()
