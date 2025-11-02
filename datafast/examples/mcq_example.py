@@ -11,12 +11,12 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 def main():
     # 1. Define the configuration
     config = MCQDatasetConfig(
-        # hf_dataset_name="patrickfleith/space_engineering_environment_effects_texts",
+        hf_dataset_name="patrickfleith/space_engineering_environment_effects_texts",
         # local_file_path="datafast/examples/data/mcq/sample.csv",
         # local_file_path="datafast/examples/data/mcq/sample.txt",
-        local_file_path="datafast/examples/data/mcq/sample.jsonl",
+        #local_file_path="datafast/examples/data/mcq/sample.jsonl",
         text_column="text",    # Column containing the text to generate questions from
-        sample_count=3,          # Process only 3 samples for testing
+        sample_count=2,          # Process only 3 samples for testing
         num_samples_per_prompt=2,# Generate 2 questions per document
         min_document_length=100, # Skip documents shorter than 100 chars
         max_document_length=20000,# Skip documents longer than 20000 chars
@@ -32,7 +32,7 @@ def main():
 
     # 3. Generate the dataset
     dataset = MCQDataset(config)
-    num_expected_rows = dataset.get_num_expected_rows(providers, source_data_num_rows=3)
+    num_expected_rows = dataset.get_num_expected_rows(providers, source_data_num_rows=2)
     print(f"\nExpected number of rows: {num_expected_rows}")
     dataset.generate(providers)
 
@@ -55,5 +55,5 @@ def main():
 if __name__ == "__main__":
     from dotenv import load_dotenv
 
-    load_dotenv("secrets.env")
+    load_dotenv()
     main()

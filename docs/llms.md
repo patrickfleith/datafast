@@ -33,7 +33,7 @@ gemini_llm = GeminiProvider()
 # Ollama (default: gemma3:4b)
 ollama_llm = OllamaProvider()
 
-# OpenRouter (default: openai/gpt-4.1-mini)
+# OpenRouter (default: openai/gpt-5-mini)
 openrouter_llm = OpenRouterProvider()
 ```
 
@@ -42,12 +42,38 @@ openrouter_llm = OpenRouterProvider()
 ```python
 openai_llm = OpenAIProvider(
     model_id="gpt-5-mini-2025-08-07",  # Custom model
-    temperature=0.2,         # Lower temperature for more deterministic outputs
-    max_completion_tokens=100,  # Limit token generation
-    top_p=0.9,               # Nucleus sampling parameter
-    frequency_penalty=0.1    # Penalty for frequent tokens
+    max_completion_tokens=1000,  # Limit token generation (don't set this too low for reasoning models)
+    reasoning_effort="medium"   # Reasoning effort: "low", "medium", or "high"
 )
+```
 
+!!! warning "OpenAI Provider Changes"
+    `OpenAIProvider` now uses the `responses` endpoint. The following parameters are **deprecated** and will trigger warnings:
+    - `temperature`
+    - `top_p`
+    - `frequency_penalty`
+    
+    Use `reasoning_effort` ("low", "medium", "high") instead to control generation behavior.
+
+```python
+# Anthropic with custom parameters
+anthropic_llm = AnthropicProvider(
+    model_id="claude-haiku-4-5-20251001",
+    temperature=0.7,
+    max_completion_tokens=1000
+)
+```
+
+!!! warning "Anthropic Provider Limitations"
+    `AnthropicProvider` only supports the following parameters:
+    - `temperature` (0.0 to 1.0)
+    - `max_completion_tokens`
+    
+    The following parameters are **not supported** by Anthropic Claude 4.5 models:
+    - `top_p`
+    - `frequency_penalty`
+
+```python
 # Ollama with custom API endpoint
 ollama_llm = OllamaProvider(
     model_id="llama3.2:latest",

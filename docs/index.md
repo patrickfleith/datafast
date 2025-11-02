@@ -95,7 +95,7 @@ config = ClassificationDatasetConfig(
 providers = [
     OpenAIProvider(model_id="gpt-5-mini-2025-08-07"),
     AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
-    GeminiProvider(model_id="gemini-2.5-flash"),
+    GeminiProvider(model_id="gemini-2.0-flash"),
     OpenRouterProvider(model_id="z-ai/glm-4.6")
 ]
 ```
