@@ -1,52 +1,15 @@
 from datafast.llms import OpenAIProvider
 from dotenv import load_dotenv
 import pytest
-from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator
+from tests.test_schemas import (
+    SimpleResponse,
+    LandmarkInfo,
+    PersonaContent,
+    QASet,
+    MCQSet,
+)
 
 load_dotenv()
-
-
-class SimpleResponse(BaseModel):
-    """Simple response model for testing structured output."""
-    answer: str = Field(description="The answer to the question")
-    reasoning: str = Field(description="The reasoning behind the answer")
-
-
-class Attribute(BaseModel):
-    """Attribute of a landmark with value and importance."""
-    name: str = Field(description="Name of the attribute")
-    value: str = Field(description="Value of the attribute")
-    importance: float = Field(description="Importance score between 0 and 1")
-
-    @field_validator('importance')
-    @classmethod
-    def check_importance(cls, v: float) -> float:
-        """Validate importance is between 0 and 1."""
-        if not 0 <= v <= 1:
-            raise ValueError("Importance must be between 0 and 1")
-        return v
-
-
-class LandmarkInfo(BaseModel):
-    """Information about a landmark with attributes."""
-    name: str = Field(description="The name of the landmark")
-    location: str = Field(description="Where the landmark is located")
-    description: str = Field(description="A brief description of the landmark")
-    year_built: Optional[int] = Field(
-        None, description="Year when the landmark was built")
-    attributes: List[Attribute] = Field(
-        description="List of attributes about the landmark")
-    visitor_rating: float = Field(
-        description="Average visitor rating from 0 to 5")
-
-    @field_validator('visitor_rating')
-    @classmethod
-    def check_rating(cls, v: float) -> float:
-        """Validate rating is between 0 and 5."""
-        if not 0 <= v <= 5:
-            raise ValueError("Rating must be between 0 and 5")
-        return v
 
 
 @pytest.mark.integration
@@ -87,7 +50,6 @@ class TestOpenAIProvider:
     def test_messages_with_structured_output(self):
         provider = OpenAIProvider()
         messages = [
-            {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
             {"role": "user", "content": """What is the capital of France? 
             Provide a short answer and a brief explanation of why Paris is the capital.
             Format your response as JSON with 'answer' and 'reasoning' fields."""}
@@ -105,10 +67,8 @@ class TestOpenAIProvider:
     def test_with_all_parameters(self):
         provider = OpenAIProvider(
             model_id="gpt-5-mini-2025-08-07",
-            temperature=0.2,
-            max_completion_tokens=100,
-            top_p=0.9,
-            frequency_penalty=0.1
+            max_completion_tokens=1000,
+            reasoning_effort="low"
         )
 
         prompt = "What is the capital of France? Answer in one word."
@@ -117,7 +77,7 @@ class TestOpenAIProvider:
         assert "Paris" in response
 
     def test_structured_landmark_info(self):
-        provider = OpenAIProvider(temperature=0.1, max_completion_tokens=800)
+        provider = OpenAIProvider(max_completion_tokens=1000)
 
         prompt = """
         Provide detailed information about the Eiffel Tower in Paris.
@@ -245,10 +205,8 @@ class TestOpenAIProvider:
     def test_batch_with_all_parameters(self):
         provider = OpenAIProvider(
             model_id="gpt-5-mini-2025-08-07",
-            temperature=0.1,
-            max_completion_tokens=50,
-            top_p=0.9,
-            frequency_penalty=0.1
+            max_completion_tokens=1000,
+            reasoning_effort="low"
         )
 
         prompt = [
@@ -263,7 +221,7 @@ class TestOpenAIProvider:
         assert "Oslo" in responses[1]
 
     def test_batch_landmark_info(self):
-        provider = OpenAIProvider(temperature=0.1, max_completion_tokens=800)
+        provider = OpenAIProvider(max_completion_tokens=1000)
 
         prompt = [
             """
@@ -338,3 +296,68 @@ class TestOpenAIProvider:
                 prompt=["test"],
                 messages=[[{"role": "user", "content": "test"}]]
             )
+
+    def test_persona_content_generation(self):
+        """Test generating tweets and bio for a persona using OpenAI."""
+        provider = OpenAIProvider(max_completion_tokens=1000)
+        
+        prompt = """
+        Generate social media content for the following persona:
+        
+        Persona: A passionate environmental scientist who loves hiking and photography, 
+        advocates for climate action, and enjoys sharing nature facts with humor.
+        
+        Create exactly 5 tweets and 1 bio for this persona.
+        """
+        
+        response = provider.generate(prompt=prompt, response_format=PersonaContent)
+        
+        assert isinstance(response, PersonaContent)
+        assert len(response.tweets) == 5
+        assert all(len(tweet) > 0 for tweet in response.tweets)
+        assert len(response.bio) > 20
+
+    def test_qa_generation(self):
+        """Test generating Q&A pairs on machine learning using OpenAI."""
+        provider = OpenAIProvider(max_completion_tokens=1500)
+        
+        prompt = """
+        Generate exactly 5 questions and their correct answers about machine learning topics.
+        
+        Topics to cover: supervised learning, neural networks, overfitting, gradient descent, and cross-validation.
+        
+        Each question should be clear and the answer should be concise but complete.
+        """
+        
+        response = provider.generate(prompt=prompt, response_format=QASet)
+        
+        assert isinstance(response, QASet)
+        assert len(response.questions) == 5
+        for qa in response.questions:
+            assert len(qa.question) > 10
+            assert len(qa.answer) > 10
+
+    def test_mcq_generation(self):
+        """Test generating multiple choice questions using OpenAI."""
+        provider = OpenAIProvider(max_completion_tokens=1500)
+        
+        prompt = """
+        Generate exactly 3 multiple choice questions about machine learning.
+        
+        For each question, provide:
+        - The question itself
+        - One correct answer
+        - Three plausible but incorrect answers
+        
+        Topics: neural networks, decision trees, and ensemble methods.
+        """
+        
+        response = provider.generate(prompt=prompt, response_format=MCQSet)
+        
+        assert isinstance(response, MCQSet)
+        assert len(response.questions) == 3
+        for mcq in response.questions:
+            assert len(mcq.question) > 10
+            assert len(mcq.correct_answer) > 0
+            assert len(mcq.incorrect_answers) == 3
+            assert all(len(ans) > 0 for ans in mcq.incorrect_answers)
