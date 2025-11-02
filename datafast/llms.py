@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 import os
 import time
 import traceback
+import warnings
 
 # Pydantic
 from pydantic import BaseModel
@@ -249,9 +250,11 @@ class LLMProvider(ABC):
             response: list[ModelResponse] = litellm.batch_completion(
                 **completion_params)
 
-            # Record timestamp for rate limiting
+            # Record timestamp for rate limiting (one timestamp per batch item)
             if self.rpm_limit is not None:
-                self._request_timestamps.append(time.monotonic())
+                current_time = time.monotonic()
+                for _ in range(len(batch_to_send)):
+                    self._request_timestamps.append(current_time)
 
             # Extract content from each response
             results = []
@@ -280,7 +283,15 @@ class LLMProvider(ABC):
 
 
 class OpenAIProvider(LLMProvider):
-    """OpenAI provider using litellm."""
+    """OpenAI provider using litellm.responses endpoint.
+    
+    Note: This provider uses the new responses endpoint which has different
+    parameter support compared to the standard completion endpoint:
+    - temperature, top_p, and frequency_penalty are not supported
+    - Uses text_format instead of response_format
+    - Supports reasoning parameter for controlling reasoning effort
+    - Does not support batch operations (will process sequentially with warning)
+    """
 
     @property
     def provider_name(self) -> str:
@@ -294,29 +305,187 @@ class OpenAIProvider(LLMProvider):
         self,
         model_id: str = "gpt-5-mini-2025-08-07",
         api_key: str | None = None,
-        temperature: float | None = None,
         max_completion_tokens: int | None = None,
+        reasoning_effort: str = "low",
+        temperature: float | None = None,
         top_p: float | None = None,
         frequency_penalty: float | None = None,
     ):
         """Initialize the OpenAI provider.
 
         Args:
-            model_id: The model ID (defaults to gpt-5-mini-2025-08-07)
+            model_id: The model ID (defaults to gpt-5-mini)
             api_key: API key (if None, will get from environment)
-            temperature: The sampling temperature to be used, between 0 and 2. Higher values like 0.8 produce more random outputs, while lower values like 0.2 make outputs more focused and deterministic
             max_completion_tokens: An upper bound for the number of tokens that can be generated for a completion, including visible output tokens and reasoning tokens.
-            top_p: Nucleus sampling parameter (0.0 to 1.0)
-            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+            reasoning_effort: Reasoning effort level - "low", "medium", or "high" (defaults to "low")
+            temperature: DEPRECATED - Not supported by responses endpoint
+            top_p: DEPRECATED - Not supported by responses endpoint
+            frequency_penalty: DEPRECATED - Not supported by responses endpoint
         """
+        # Warn about deprecated parameters
+        if temperature is not None:
+            warnings.warn(
+                "temperature parameter is not supported by OpenAI responses endpoint and will be ignored",
+                UserWarning,
+                stacklevel=2
+            )
+        if top_p is not None:
+            warnings.warn(
+                "top_p parameter is not supported by OpenAI responses endpoint and will be ignored",
+                UserWarning,
+                stacklevel=2
+            )
+        if frequency_penalty is not None:
+            warnings.warn(
+                "frequency_penalty parameter is not supported by OpenAI responses endpoint and will be ignored",
+                UserWarning,
+                stacklevel=2
+            )
+        
+        # Store reasoning effort
+        self.reasoning_effort = reasoning_effort
+        
+        # Call parent init with None for unsupported params
         super().__init__(
             model_id=model_id,
             api_key=api_key,
-            temperature=temperature,
+            temperature=None,
             max_completion_tokens=max_completion_tokens,
-            top_p=top_p,
-            frequency_penalty=frequency_penalty,
+            top_p=None,
+            frequency_penalty=None,
         )
+    
+    def generate(
+        self,
+        prompt: str | list[str] | None = None,
+        messages: list[Messages] | Messages | None = None,
+        response_format: Type[T] | None = None,
+    ) -> str | list[str] | T | list[T]:
+        """
+        Generate responses from the LLM using the responses endpoint.
+        
+        Note: Batch operations are processed sequentially as the responses endpoint
+        does not support native batching.
+
+        Args:
+            prompt: Single text prompt (str) or list of text prompts for batch processing
+            messages: Single message list or list of message lists for batch processing
+            response_format: Optional Pydantic model class for structured output
+
+        Returns:
+            Single string/model or list of strings/models depending on input type.
+
+        Raises:
+            ValueError: If neither prompt nor messages is provided, or if both are provided.
+            RuntimeError: If there's an error during generation.
+        """
+        # Validate inputs
+        if prompt is None and messages is None:
+            raise ValueError("Either prompts or messages must be provided")
+        if prompt is not None and messages is not None:
+            raise ValueError("Provide either prompts or messages, not both")
+
+        # Determine if this is a single input or batch input
+        single_input = False
+        batch_prompts = None
+        batch_messages = None
+
+        if prompt is not None:
+            if isinstance(prompt, str):
+                # Single prompt - convert to batch
+                batch_prompts = [prompt]
+                single_input = True
+            elif isinstance(prompt, list):
+                # Already a list of prompts
+                batch_prompts = prompt
+                single_input = False
+            else:
+                raise ValueError("prompt must be a string or list of strings")
+
+        if messages is not None:
+            if isinstance(messages, list) and len(messages) > 0:
+                # Check if it's a single message list or batch
+                if isinstance(messages[0], dict):
+                    # Single message list - convert to batch
+                    batch_messages = [messages]
+                    single_input = True
+                elif isinstance(messages[0], list):
+                    # Already a batch of message lists
+                    batch_messages = messages
+                    single_input = False
+                else:
+                    raise ValueError("Invalid messages format")
+            else:
+                raise ValueError("messages cannot be empty")
+
+        try:
+            # Convert batch prompts to messages if needed
+            batch_to_send = []
+            if batch_prompts is not None:
+                for one_prompt in batch_prompts:
+                    batch_to_send.append([{"role": "user", "content": one_prompt}])
+            else:
+                batch_to_send = batch_messages
+
+            # Warn if batch processing is being used
+            if len(batch_to_send) > 1:
+                warnings.warn(
+                    f"OpenAI responses endpoint does not support batch operations. "
+                    f"Processing {len(batch_to_send)} requests sequentially.",
+                    UserWarning,
+                    stacklevel=2
+                )
+
+            # Process each request sequentially
+            results = []
+            for message_list in batch_to_send:
+                # Enforce rate limit per request
+                self._respect_rate_limit()
+
+                # Prepare completion parameters
+                completion_params = {
+                    "model": self._get_model_string(),
+                    "input": message_list,
+                    "reasoning": {"effort": self.reasoning_effort},
+                }
+                
+                # Add max_output_tokens if specified
+                if self.max_completion_tokens is not None:
+                    completion_params["max_output_tokens"] = self.max_completion_tokens
+                
+                # Add text_format if response_format is provided
+                if response_format is not None:
+                    completion_params["text_format"] = response_format
+
+                # Call LiteLLM responses endpoint
+                response = litellm.responses(**completion_params)
+
+                # Record timestamp for rate limiting
+                if self.rpm_limit is not None:
+                    self._request_timestamps.append(time.monotonic())
+
+                # Extract content from response
+                # Response structure: response.output[1].content[0].text
+                content = response.output[1].content[0].text
+                
+                if response_format is not None:
+                    # Strip code fences before validation
+                    content = self._strip_code_fences(content)
+                    results.append(response_format.model_validate_json(content))
+                else:
+                    # Strip leading/trailing whitespace for text responses
+                    results.append(content.strip() if content else content)
+
+            # Return single result for backward compatibility
+            if single_input and len(results) == 1:
+                return results[0]
+            return results
+
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            raise RuntimeError(
+                f"Error generating response with {self.provider_name}:\n{error_trace}"
+            )
 
 
 class AnthropicProvider(LLMProvider):
