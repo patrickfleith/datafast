@@ -69,13 +69,41 @@ The prompt expansion system is key and enables:
 The datafast workflow follows a consistent pattern across all dataset types:
 
 1. **Configuration**: Define the dataset parameters, classes/topics, and generation settings
-2. **Prompt Design**: Create base prompts with mandatory and optional placeholders
-3. **Provider Setup**: Initialize one or more LLM providers
-4. **Generation**: Execute the generation process, which:
+2. **Logging Setup**: Configure logging to monitor the generation process (recommended)
+3. **Prompt Design**: Create base prompts with mandatory and optional placeholders
+4. **Provider Setup**: Initialize one or more LLM providers
+5. **Generation**: Execute the generation process, which:
     - Expands prompts based on configuration
     - Distributes generation across providers
     - Collects and processes responses
-5. **Output**: Save the resulting dataset to a file and optionally push to Hugging Face Hub
+6. **Output**: Save the resulting dataset to a file and optionally push to Hugging Face Hub
+
+## Logging and Monitoring
+
+Datafast includes comprehensive logging to provide visibility into the generation process:
+
+### Why Configure Logging?
+
+Without `configure_logger()`, your datafast scripts will run silently without:
+- Progress indicators during generation
+- Rate limiting warnings
+- Success completion messages
+- Detailed error information
+
+### Basic Usage
+
+```python
+from datafast.logger_config import configure_logger
+
+# Default: INFO level, console output with colors
+configure_logger()
+
+# With file logging for long-running jobs
+configure_logger(level="INFO", log_file="generation.log")
+
+# Debug mode for troubleshooting
+configure_logger(level="DEBUG", log_file="debug.log")
+```
 
 ## Dataset Diversity Mechanisms
 

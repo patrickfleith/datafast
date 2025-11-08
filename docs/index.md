@@ -35,7 +35,7 @@ Currently we support the following LLM providers:
 
 ### 1. Environment Setup
 
-Make sure you have created a `secrets.env` file with your API keys.
+Make sure you have created a `.env` file with your API keys.
 HF token is needed if you want to push the dataset to your HF hub.
 Other keys depends on which LLM providers you use.
 ```
@@ -51,10 +51,14 @@ HF_TOKEN=hf_XXXXX
 from datafast.datasets import ClassificationDataset
 from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OpenRouterProvider
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv("secrets.env") # <--- your API keys
+load_dotenv() # <--- your API keys
+
+# Configure logger for visibility into generation process
+configure_logger() # <--- see progress, warnings, and success messages
 ```
 
 ### 3. Configure Dataset
@@ -135,6 +139,7 @@ Star this package to send positive vibes and support 🌟
 * **Multiple LLMs** used to boost dataset diversity 🤖
 * **Flexible prompt**: use our default prompts or provide your own custom prompts 📝
 * **Prompt expansion**: Combinatorial variation of prompts to maximize diversity 🔄
+* **Built-in logging**: Comprehensive logging with progress tracking, rate limiting warnings, and success messages 📊
 * **Hugging Face Integration**: Push generated datasets to the Hub 🤗
 
 !!! warning
