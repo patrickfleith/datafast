@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datafast"
-version = "0.0.30"
+version = "0.0.31"
 description = "A Python package for synthetic text dataset generation"
 readme = "README.md"
 requires-python = ">=3.10"
