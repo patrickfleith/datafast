@@ -46,7 +46,7 @@ pip install datafast
 
 ### 1. Environment Setup
 
-Make sure you have created a `secrets.env` file with your API keys.
+Make sure you have created a `.env` file with your API keys.
 HF token is needed if you want to push the dataset to your HF hub.
 Other keys depends on which LLM providers you use.
 ```
@@ -64,7 +64,7 @@ from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv("secrets.env") # <--- your API keys
+load_dotenv() # <--- your API keys
 ```
 
 ### 3. Configure Dataset

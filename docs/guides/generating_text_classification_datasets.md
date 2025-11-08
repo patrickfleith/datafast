@@ -26,15 +26,19 @@ from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionC
 from datafast.llms import OpenAIProvider, AnthropicProvider
 ```
 
-In addition, we'll use `dotenv` to load environment variables containing API keys.
+In addition, we'll use `dotenv` to load environment variables containing API keys and configure logging to monitor the generation process.
 ```python
 from dotenv import load_dotenv
+from datafast.logger_config import configure_logger
 
 # Load environment variables containing API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger to see progress, warnings, and success messages
+configure_logger()
 ```
 
-Make sure you have created a `secrets.env` file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depends on which LLM providers you use. In our example, we use OpenAI and Anthropic.
+Make sure you have created a `.env` file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depends on which LLM providers you use. In our example, we use OpenAI and Anthropic.
 
 ```
 GEMINI_API_KEY=XXXX
@@ -236,10 +240,14 @@ Here's a complete example for creating a trail conditions classification dataset
 from datafast.datasets import ClassificationDataset
 from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 
 # Load API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger
+configure_logger()
 
 # Configure dataset
 config = ClassificationDatasetConfig(

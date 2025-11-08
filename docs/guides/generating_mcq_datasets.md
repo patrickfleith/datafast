@@ -31,15 +31,19 @@ from datafast.schema.config import MCQDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
 ```
 
-In addition, we'll use `dotenv` to load environment variables containing API keys.
+In addition, we'll use `dotenv` to load environment variables containing API keys and configure logging to monitor the generation process.
 ```python
 from dotenv import load_dotenv
+from datafast.logger_config import configure_logger
 
 # Load environment variables containing API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger to see progress, warnings, and success messages
+configure_logger()
 ```
 
-Make sure you have created a `secrets.env` file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depend on which LLM providers you use.
+Make sure you have created a `.env` file with your API keys. HF token is needed if you want to push the dataset to your HF hub. Other keys depend on which LLM providers you use.
 
 ```
 GEMINI_API_KEY=XXXX
@@ -253,10 +257,14 @@ Here's a complete example for creating an MCQ dataset from a local JSONL file:
 from datafast.datasets import MCQDataset
 from datafast.schema.config import MCQDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger
+configure_logger()
 
 def main():
     # 1. Define the configuration

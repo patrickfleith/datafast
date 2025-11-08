@@ -34,16 +34,20 @@ from datafast.schema.config import GenericPipelineDatasetConfig
 from datafast.llms import OpenRouterProvider
 ```
 
-In addition, we'll use `dotenv` to load environment variables containing API keys:
+In addition, we'll use `dotenv` to load environment variables containing API keys and configure logging to monitor the generation process:
 
 ```python
 from dotenv import load_dotenv
+from datafast.logger_config import configure_logger
 
 # Load environment variables containing API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger to see progress, warnings, and success messages
+configure_logger()
 ```
 
-Make sure you have created a `secrets.env` file with your API keys:
+Make sure you have created a `.env` file with your API keys:
 
 ```
 OPENROUTER_API_KEY=XXXX
@@ -214,10 +218,14 @@ Here's a complete working example:
 from datafast.datasets import GenericPipelineDataset
 from datafast.schema.config import GenericPipelineDatasetConfig
 from datafast.llms import OpenRouterProvider
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 
 # Load API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger
+configure_logger()
 
 # Define prompt
 PROMPT = """I will give you a persona description.

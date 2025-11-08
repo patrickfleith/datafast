@@ -1,7 +1,10 @@
 from datafast.datasets import ClassificationDataset
 from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from dotenv import load_dotenv
-load_dotenv("secrets.env")
+from datafast.logger_config import configure_logger
+load_dotenv()
+
+configure_logger()
 
 config = ClassificationDatasetConfig(
     classes=[

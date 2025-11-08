@@ -5,7 +5,13 @@ Example script for generating a Multiple Choice Question dataset.
 import os
 from datafast.schema.config import MCQDatasetConfig
 from datafast.datasets import MCQDataset
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
+from datafast.llms import OpenAIProvider, OpenRouterProvider
+from datafast.logger_config import configure_logger
+from dotenv import load_dotenv
+
+# Load environment variables and configure logger
+load_dotenv()
+configure_logger()
 
 
 def main():
@@ -16,8 +22,8 @@ def main():
         # local_file_path="datafast/examples/data/mcq/sample.txt",
         #local_file_path="datafast/examples/data/mcq/sample.jsonl",
         text_column="text",    # Column containing the text to generate questions from
-        sample_count=2,          # Process only 3 samples for testing
-        num_samples_per_prompt=2,# Generate 2 questions per document
+        sample_count=20,          # Process only 3 samples for testing
+        num_samples_per_prompt=3,# Generate 2 questions per document
         min_document_length=100, # Skip documents shorter than 100 chars
         max_document_length=20000,# Skip documents longer than 20000 chars
         output_file="mcq_test_dataset.jsonl",
@@ -26,13 +32,12 @@ def main():
     # 2. Initialize LLM providers
     providers = [
         OpenAIProvider(model_id="gpt-5-mini-2025-08-07"),
-        # AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
-        # GeminiProvider(model_id="gemini-2.0-flash"),
+        OpenRouterProvider(model_id="qwen/qwen3-next-80b-a3b-instruct"),
     ]
 
     # 3. Generate the dataset
     dataset = MCQDataset(config)
-    num_expected_rows = dataset.get_num_expected_rows(providers, source_data_num_rows=2)
+    num_expected_rows = dataset.get_num_expected_rows(providers, source_data_num_rows=20)
     print(f"\nExpected number of rows: {num_expected_rows}")
     dataset.generate(providers)
 
@@ -53,7 +58,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
     main()

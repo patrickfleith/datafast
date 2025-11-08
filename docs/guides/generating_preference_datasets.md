@@ -21,19 +21,23 @@ Generating a preference dataset with `datafast` requires these imports:
 from datafast.datasets import PreferenceDataset
 from datafast.schema.config import PreferenceDatasetConfig
 from datafast.llms import OpenAIProvider, GeminiProvider, AnthropicProvider
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 import json
 from pathlib import Path
 ```
 
-You'll need to load environment variables containing API keys:
+You'll need to load environment variables containing API keys and configure logging:
 
 ```python
 # Load environment variables containing API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger to see progress, warnings, and success messages
+configure_logger()
 ```
 
-Make sure you have created a `secrets.env` file with your API keys for the LLM providers you plan to use:
+Make sure you have created a `.env` file with your API keys for the LLM providers you plan to use:
 
 ```
 OPENAI_API_KEY=sk-XXXX
@@ -235,10 +239,14 @@ from pathlib import Path
 from datafast.schema.config import PreferenceDatasetConfig
 from datafast.datasets import PreferenceDataset 
 from datafast.llms import OpenAIProvider, GeminiProvider, AnthropicProvider
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 
 # Load environment variables with API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger
+configure_logger()
 
 # Load NASA lessons learned documents from JSONL file
 def load_documents_from_jsonl(jsonl_path: str | Path) -> list[str]:

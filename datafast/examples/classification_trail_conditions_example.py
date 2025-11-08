@@ -1,10 +1,14 @@
 from datafast.datasets import ClassificationDataset
 from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 
 # Load API keys
-load_dotenv("secrets.env")
+load_dotenv()
+
+# Configure logger
+configure_logger()
 
 # Configure dataset
 config = ClassificationDatasetConfig(

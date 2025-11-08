@@ -7,6 +7,8 @@ import os
 from datafast.schema.config import GenericPipelineDatasetConfig
 from datafast.datasets import GenericPipelineDataset
 from datafast.llms import OpenAIProvider, GeminiProvider, OllamaProvider
+from datafast.logger_config import configure_logger
+from dotenv import load_dotenv
 
 
 PROMPT_TEMPLATE = """I will give you a persona.
@@ -80,7 +82,6 @@ def main():
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv("secrets.env")
+    load_dotenv()
+    configure_logger()
     main()

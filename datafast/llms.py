@@ -10,6 +10,7 @@ import os
 import time
 import traceback
 import warnings
+from loguru import logger
 
 # Pydantic
 from pydantic import BaseModel
@@ -65,6 +66,9 @@ class LLMProvider(ABC):
 
         # Configure environment with API key if needed
         self._configure_env()
+        
+        # Log successful initialization
+        logger.info(f"Initialized {self.provider_name} | Model: {self.model_id}")
 
     @property
     @abstractmethod
@@ -82,6 +86,9 @@ class LLMProvider(ABC):
         """Get API key from environment variables."""
         api_key = os.getenv(self.env_key_name)
         if not api_key:
+            logger.error(
+                f"Missing API key | Set {self.env_key_name} environment variable"
+            )
             raise ValueError(
                 f"{self.env_key_name} environment variable not set. "
                 f"Please set it or provide an API key when initializing the provider."
@@ -112,7 +119,7 @@ class LLMProvider(ABC):
         # Add a 1s margin to avoid accidental rate limit exceedance
         sleep_time = 61 - (current - earliest)
         if sleep_time > 0:
-            print("Waiting for rate limit...")
+            logger.warning(f"Rate limit reached | Waiting {sleep_time:.1f}s")
             time.sleep(sleep_time)
 
     @staticmethod
@@ -264,8 +271,23 @@ class LLMProvider(ABC):
                 if response_format is not None:
                     # Strip code fences before validation
                     content = self._strip_code_fences(content)
-                    results.append(
-                        response_format.model_validate_json(content))
+                    try:
+                        results.append(
+                            response_format.model_validate_json(content))
+                    except Exception as validation_error:
+                        # Show the content that failed to parse for debugging
+                        content_preview = content[:200] + "..." if len(content) > 200 else content
+                        logger.warning(
+                            f"JSON parsing failed, skipping response | "
+                            f"Model: {self.model_id} | "
+                            f"Format: {response_format.__name__} | "
+                            f"Content preview: {content_preview}"
+                        )
+                        raise ValueError(
+                            f"Failed to parse JSON response into {response_format.__name__}.\n"
+                            f"Validation error: {validation_error}\n"
+                            f"Content received (first 200 chars):\n{content_preview}"
+                        ) from validation_error
                 else:
                     # Strip leading/trailing whitespace for text responses
                     results.append(content.strip() if content else content)
@@ -277,6 +299,10 @@ class LLMProvider(ABC):
 
         except Exception as e:
             error_trace = traceback.format_exc()
+            logger.error(
+                f"Generation failed | Provider: {self.provider_name} | "
+                f"Model: {self.model_id} | Error: {str(e)}"
+            )
             raise RuntimeError(
                 f"Error generating batch response with {self.provider_name}:\n{error_trace}"
             )
@@ -471,7 +497,22 @@ class OpenAIProvider(LLMProvider):
                 if response_format is not None:
                     # Strip code fences before validation
                     content = self._strip_code_fences(content)
-                    results.append(response_format.model_validate_json(content))
+                    try:
+                        results.append(response_format.model_validate_json(content))
+                    except Exception as validation_error:
+                        # Show the content that failed to parse for debugging
+                        content_preview = content[:200] + "..." if len(content) > 200 else content
+                        logger.warning(
+                            f"JSON parsing failed, skipping response | "
+                            f"Model: {self.model_id} | "
+                            f"Format: {response_format.__name__} | "
+                            f"Content preview: {content_preview}"
+                        )
+                        raise ValueError(
+                            f"Failed to parse JSON response into {response_format.__name__}.\n"
+                            f"Validation error: {validation_error}\n"
+                            f"Content received (first 200 chars):\n{content_preview}"
+                        ) from validation_error
                 else:
                     # Strip leading/trailing whitespace for text responses
                     results.append(content.strip() if content else content)
@@ -483,6 +524,10 @@ class OpenAIProvider(LLMProvider):
 
         except Exception as e:
             error_trace = traceback.format_exc()
+            logger.error(
+                f"Generation failed | Provider: {self.provider_name} | "
+                f"Model: {self.model_id} | Error: {str(e)}"
+            )
             raise RuntimeError(
                 f"Error generating response with {self.provider_name}:\n{error_trace}"
             )

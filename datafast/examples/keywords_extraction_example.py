@@ -7,6 +7,12 @@ import os
 from datafast.schema.config import GenericPipelineDatasetConfig
 from datafast.datasets import GenericPipelineDataset
 from datafast.llms import OpenAIProvider, GeminiProvider, OllamaProvider, OpenRouterProvider
+from datafast.logger_config import configure_logger
+from dotenv import load_dotenv
+
+# Load environment variables and configure logger
+load_dotenv()
+configure_logger()
 
 PROMPT_TEMPLATE = """I will give you a tweet.
 Generate a comma separated list of 3 keywords for the tweet. Avoid multi-word keywords.
@@ -63,7 +69,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv("secrets.env")
     main()

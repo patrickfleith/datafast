@@ -2,6 +2,10 @@
 
 from datafast.schema.config import GenericPipelineDatasetConfig
 from datafast.utils import create_generic_pipeline_row_model
+from datafast.logger_config import configure_logger
+
+# Configure logger
+configure_logger()
 
 # Test with multiple input, forward, and output columns
 config = GenericPipelineDatasetConfig(
