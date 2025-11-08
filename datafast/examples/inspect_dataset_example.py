@@ -5,15 +5,19 @@ Run with:
     python -m datafast.examples.inspect_dataset_example
 
 Requires:
-    - OpenAI API key in secrets.env or environment
+    - OpenAI API key in .env or environment
     - gradio package (pip install gradio)
 """
 from datafast.datasets import ClassificationDataset
 from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
+from datafast.logger_config import configure_logger
 from dotenv import load_dotenv
 
-# Load API keys from environment or secrets.env
-load_dotenv("secrets.env")
+# Load API keys from environment or .env
+load_dotenv()
+
+# Configure logger
+configure_logger()
 
 # Configure the dataset generation
 config = ClassificationDatasetConfig(

@@ -2,6 +2,10 @@
 
 from datafast.schema.config import GenericPipelineDatasetConfig
 from datafast.utils import create_response_model
+from datafast.logger_config import configure_logger
+
+# Configure logger
+configure_logger()
 
 # Test with multiple columns and num_samples_per_prompt = 3
 config = GenericPipelineDatasetConfig(

@@ -6,6 +6,12 @@ import os
 from datafast.schema.config import MCQDatasetConfig
 from datafast.datasets import MCQDataset
 from datafast.llms import OpenAIProvider, OpenRouterProvider
+from datafast.logger_config import configure_logger
+from dotenv import load_dotenv
+
+# Load environment variables and configure logger
+load_dotenv()
+configure_logger()
 
 
 def main():
@@ -52,7 +58,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
     main()

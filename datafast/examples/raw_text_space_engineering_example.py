@@ -1,23 +1,26 @@
 from datafast.datasets import RawDataset
 from datafast.schema.config import RawDatasetConfig, PromptExpansionConfig
 from datafast.llms import OpenAIProvider, AnthropicProvider
+from datafast.logger_config import configure_logger
+
+configure_logger()
 
 
 def main():
     # 1. Configure the dataset generation
     config = RawDatasetConfig(
         document_types=[
-            "space engineering textbook", 
-            "spacecraft design justification document", 
+            # "space engineering textbook", 
+            # "spacecraft design justification document", 
             "personal blog of a space engineer"
         ],
         topics=[
-            "Microgravity",
-            "Vacuum",
-            "Heavy Ions",
-            "Thermal Extremes",
-            "Atomic Oxygen",
-            "Debris Impact",
+            # "Microgravity",
+            # "Vacuum",
+            # "Heavy Ions",
+            # "Thermal Extremes",
+            # "Atomic Oxygen",
+            # "Debris Impact",
             "Electrostatic Charging",
             "Propellant Boil-off",
             # ... You can pour hundreds of topics here. 8 is enough for this example
@@ -67,5 +70,5 @@ def main():
 if __name__ == "__main__":
     from dotenv import load_dotenv
 
-    load_dotenv("secrets.env")
+    load_dotenv()
     main()

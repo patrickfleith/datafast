@@ -10,11 +10,15 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
-load_dotenv("secrets.env")
+load_dotenv()
 
 from datafast.schema.config import MCQDatasetConfig
 from datafast.datasets import MCQDataset
 from datafast.llms import OpenAIProvider
+from datafast.logger_config import configure_logger
+
+# Configure logger
+configure_logger()
 
 def main():
     # 1. Create a temporary filtered version of the dataset
