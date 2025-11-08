@@ -35,6 +35,7 @@ from datafast.schema.data_rows import (
 )
 from datafast.expanders import expand_prompts
 import os
+import time
 from datafast import utils
 from loguru import logger
 
@@ -268,7 +269,10 @@ class DatasetBase(ABC):
             ValueError: If invalid split parameters are provided
         """
         if not self.data_rows:
+            logger.error("No data rows to push")
             raise ValueError("No data rows to push. Generate data first.")
+        
+        logger.info(f"Pushing dataset to {repo_id}...")
 
         # Convert Pydantic models to dictionaries and handle UUID serialization
         data = []
@@ -302,6 +306,7 @@ class DatasetBase(ABC):
         # Get token from env if not provided
         token = token or os.getenv("HF_TOKEN")
         if token is None:
+            logger.error("No HuggingFace token found | Set HF_TOKEN environment variable")
             raise ValueError(
                 "No token provided and HF_TOKEN environment variable not set"
             )
@@ -334,12 +339,14 @@ class DatasetBase(ABC):
             try:
                 from datafast.card_utils import upload_dataset_card
                 upload_dataset_card(repo_id=repo_id, token=token)
-                print("Dataset card uploaded successfully")
+                logger.info("Dataset card uploaded successfully")
             except Exception as e:
-                print(f"Warning: Failed to upload dataset card: {e}")
+                logger.warning(f"Failed to upload dataset card: {e}")
                 # Continue even if card upload fails
 
-        return f"https://huggingface.co/datasets/{repo_id}"
+        url = f"https://huggingface.co/datasets/{repo_id}"
+        logger.success(f"Dataset pushed to Hub | URL: {url}")
+        return url
 
 
 class ClassificationDataset(DatasetBase):
@@ -372,10 +379,20 @@ class ClassificationDataset(DatasetBase):
             ValueError: If no LLM providers are supplied or if no classes are defined.
         """
         if not llms:
+            logger.error("No LLM providers supplied")
             raise ValueError("At least one LLM provider must be supplied")
 
         if not self.config.classes:
+            logger.error("No classification classes provided in config")
             raise ValueError("No classification classes provided in config")
+        
+        start_time = time.time()
+        expected_rows = self.get_num_expected_rows(llms)
+        logger.info(
+            f"Starting ClassificationDataset.generate() | "
+            f"Expected rows: {expected_rows} | "
+            f"Providers: {len(llms)}"
+        )
 
         # Get labels listing for context in prompts
         labels_listing = [label["name"] for label in self.config.classes]
@@ -408,6 +425,9 @@ class ClassificationDataset(DatasetBase):
                 for expanded_prompt, meta in expansions:
                     for llm in llms:
                         try:
+                            # Track batch start time
+                            batch_start_time = time.time()
+                            
                             # Generate multiple examples using the LLM
                             response = llm.generate(
                                 expanded_prompt, response_format=TextEntries
@@ -426,12 +446,36 @@ class ClassificationDataset(DatasetBase):
                                 self.data_rows.append(row)
                                 new_rows.append(row)
                             
+                            # Calculate batch duration
+                            batch_duration = time.time() - batch_start_time
+                            
                             # Save this batch
-                            self.to_jsonl(self.config.output_file, new_rows, append=True)
-                            print(f" Generated and saved {len(self.data_rows)} examples total")
+                            try:
+                                self.to_jsonl(self.config.output_file, new_rows, append=True)
+                                utils.log_generation_progress(
+                                    len(self.data_rows),
+                                    llm.provider_name,
+                                    llm.model_id,
+                                    batch_duration,
+                                    "examples"
+                                )
+                            except IOError as e:
+                                logger.error(
+                                    f"Failed to save to {self.config.output_file} | Error: {e}"
+                                )
+                                raise
 
                         except Exception as e:
-                            print(f"Error with llm provider {llm.provider_name}: {e}")
+                            logger.warning(
+                                f"Provider {llm.provider_name} failed, continuing | Error: {e}"
+                            )
+        
+        duration = time.time() - start_time
+        logger.success(
+            f"ClassificationDataset.generate() completed | "
+            f"Rows: {len(self.data_rows)} | "
+            f"Duration: {duration:.1f}s"
+        )
         return self
 
     def _get_default_prompts(self) -> list[str]:
@@ -467,7 +511,16 @@ class RawDataset(DatasetBase):
             ValueError: If no LLM providers are supplied or if text_attributes are missing.
         """
         if not llms:
+            logger.error("No LLM providers supplied")
             raise ValueError("At least one LLM provider must be supplied")
+        
+        start_time = time.time()
+        expected_rows = self.get_num_expected_rows(llms)
+        logger.info(
+            f"Starting RawDataset.generate() | "
+            f"Expected rows: {expected_rows} | "
+            f"Providers: {len(llms)}"
+        )
 
         # Get languages from config, default to English if not specified
         languages = self.config.languages or {"en": "English"}
@@ -503,6 +556,9 @@ class RawDataset(DatasetBase):
                     for expanded_prompt, meta in expansions:
                         for llm in llms:
                             try:
+                                # Track batch start time
+                                batch_start_time = time.time()
+                                
                                 # Generate multiple examples using the LLM
                                 response = llm.generate(
                                     expanded_prompt, response_format=TextExamples
@@ -524,13 +580,36 @@ class RawDataset(DatasetBase):
                                     self.data_rows.append(row)
                                     new_rows.append(row)
                                 
+                                # Calculate batch duration
+                                batch_duration = time.time() - batch_start_time
+                                
                                 # Save this batch
-                                self.to_jsonl(self.config.output_file, new_rows, append=True)
-                                print(f" Generated and saved {len(self.data_rows)} examples total")
+                                try:
+                                    self.to_jsonl(self.config.output_file, new_rows, append=True)
+                                    utils.log_generation_progress(
+                                        len(self.data_rows),
+                                        llm.provider_name,
+                                        llm.model_id,
+                                        batch_duration,
+                                        "examples"
+                                    )
+                                except IOError as e:
+                                    logger.error(
+                                        f"Failed to save to {self.config.output_file} | Error: {e}"
+                                    )
+                                    raise
 
                             except Exception as e:
-                                print(f"Error with llm provider {llm.provider_name}: {e}")
+                                logger.warning(
+                                    f"Provider {llm.provider_name} failed, continuing | Error: {e}"
+                                )
 
+        duration = time.time() - start_time
+        logger.success(
+            f"RawDataset.generate() completed | "
+            f"Rows: {len(self.data_rows)} | "
+            f"Duration: {duration:.1f}s"
+        )
         return self
 
     def _get_default_prompts(self) -> list[str]:
@@ -559,7 +638,16 @@ class UltrachatDataset(DatasetBase):
 
     def generate(self, llms: list[LLMProvider]) -> "UltrachatDataset":
         if not llms:
+            logger.error("No LLM providers supplied")
             raise ValueError("At least one LLM provider must be supplied")
+        
+        start_time = time.time()
+        expected_rows = self.get_num_expected_rows(llms)
+        logger.info(
+            f"Starting UltrachatDataset.generate() | "
+            f"Expected rows: {expected_rows} | "
+            f"Providers: {len(llms)}"
+        )
 
         # Get languages from config, default to English if not specified
         languages = self.config.languages or {"en": "English"}
@@ -602,6 +690,8 @@ class UltrachatDataset(DatasetBase):
                                 )
 
                                 for opening_question in opening_questions.questions:
+                                    # Track conversation start time
+                                    conversation_start_time = time.time()
                                     random_persona = np.random.choice(
                                         self.config.personas
                                     )
@@ -700,18 +790,39 @@ class UltrachatDataset(DatasetBase):
                                         persona=random_persona,
                                     )
                                     self.data_rows.append(row)
+                                    
+                                    # Calculate conversation duration
+                                    conversation_duration = time.time() - conversation_start_time
+                                    
                                     # Save each chat conversation as it's generated
-                                    self.to_jsonl(self.config.output_file, [row], append=True)
-                                    print(f" Generated and saved {len(self.data_rows)} chat conversations total")
+                                    try:
+                                        self.to_jsonl(self.config.output_file, [row], append=True)
+                                        utils.log_generation_progress(
+                                            len(self.data_rows),
+                                            llm.provider_name,
+                                            llm.model_id,
+                                            conversation_duration,
+                                            "chat conversations"
+                                        )
+                                    except IOError as e:
+                                        logger.error(
+                                            f"Failed to save to {self.config.output_file} | Error: {e}"
+                                        )
+                                        raise
 
                             except Exception as e:
                                 import traceback
                                 error_trace = traceback.format_exc()
-                                print(f"\nError with llm provider {llm.provider_name}:\n{error_trace}")
-                                print(f"Error occurred at response type: {response_format.__name__ if 'response_format' in locals() else 'unknown'}")
-                                if 'reformulated_question' in locals():
-                                    print(f"Last reformulated_question: {reformulated_question}")
+                                logger.warning(
+                                    f"Provider {llm.provider_name} failed, continuing | Error: {str(e)}"
+                                )
 
+        duration = time.time() - start_time
+        logger.success(
+            f"UltrachatDataset.generate() completed | "
+            f"Rows: {len(self.data_rows)} | "
+            f"Duration: {duration:.1f}s"
+        )
         return self
 
     def _get_default_question_generation_prompts(self) -> list[str]:
@@ -762,20 +873,34 @@ class MCQDataset(DatasetBase):
             ValueError: If no LLM providers are supplied or if required configuration is missing.
         """
         if not llms:
+            logger.error("No LLM providers supplied")
             raise ValueError("At least one LLM provider must be supplied")
-            
+        
+        start_time = time.time()
+        
         # Load the dataset using shared utility
         try:
+            source = self.config.hf_dataset_name or self.config.local_file_path
+            logger.info(f"Loading source dataset from {source}")
             dataset = utils.load_dataset_from_source(
                 hf_dataset_name=self.config.hf_dataset_name,
                 local_file_path=self.config.local_file_path,
                 sample_count=self.config.sample_count,
                 text_column=self.config.text_column
             )
+            logger.info(f"Loaded {len(dataset)} documents from source")
                 
         except Exception as e:
             source = self.config.hf_dataset_name or self.config.local_file_path
+            logger.error(f"Failed to load dataset from {source} | Error: {e}")
             raise ValueError(f"Error loading data from {source}: {e}")
+        
+        expected_rows = self.get_num_expected_rows(llms, len(dataset))
+        logger.info(
+            f"Starting MCQDataset.generate() | "
+            f"Expected rows: {expected_rows} | "
+            f"Providers: {len(llms)}"
+        )
             
         # Get languages from config, default to English if not specified
         languages = self.config.languages or {"en": "English"}
@@ -839,6 +964,9 @@ class MCQDataset(DatasetBase):
                             response = llm.generate(expanded_prompt, response_format=QAEntries)
                             
                             for qa_entry in response.entries:
+                                # Track MCQ generation start time
+                                mcq_start_time = time.time()
+                                
                                 # Extract question and correct answer from the QAEntry
                                 try:
                                     # QAEntry already has question and answer fields
@@ -880,18 +1008,44 @@ class MCQDataset(DatasetBase):
                                                 },
                                             )
                                             self.data_rows.append(row)
+                                            
+                                            # Calculate MCQ generation duration
+                                            mcq_duration = time.time() - mcq_start_time
+                                            
                                             # Save each MCQ as it's generated
-                                            self.to_jsonl(self.config.output_file, [row], append=True)
+                                            try:
+                                                self.to_jsonl(self.config.output_file, [row], append=True)
+                                                utils.log_generation_progress(
+                                                    len(self.data_rows),
+                                                    llm.provider_name,
+                                                    llm.model_id,
+                                                    mcq_duration,
+                                                    "MCQs"
+                                                )
+                                            except IOError as e:
+                                                logger.error(
+                                                    f"Failed to save to {self.config.output_file} | Error: {e}"
+                                                )
+                                                raise
                                         else:
-                                            print(f"Warning: Not enough incorrect answers generated (got {len(incorrect_answers)}, need 3)")
+                                            logger.warning(
+                                                f"Not enough incorrect answers generated (got {len(incorrect_answers)}, need 3)"
+                                            )
                                     except Exception as e:
-                                        print(f"Error generating distractors: {e}")
+                                        logger.warning(f"Error generating distractors: {e}")
                                 except Exception as e:
-                                    print(f"Error processing entry: {e}")
-                            print(f" Generated and saved {len(self.data_rows)} MCQs total")
+                                    logger.warning(f"Error processing entry: {e}")
                         except Exception as e:
-                            print(f"Error with llm provider {llm.provider_name}: {e}")
+                            logger.warning(
+                                f"Provider {llm.provider_name} failed, continuing | Error: {e}"
+                            )
         
+        duration = time.time() - start_time
+        logger.success(
+            f"MCQDataset.generate() completed | "
+            f"Rows: {len(self.data_rows)} | "
+            f"Duration: {duration:.1f}s"
+        )
         return self
     
     def _get_default_prompts(self) -> list[str]:
@@ -963,7 +1117,15 @@ class PreferenceDataset(DatasetBase):
             ValueError: If input_documents are missing in the configuration.
         """
         if not self.config.input_documents:
+            logger.error("No input documents provided in configuration")
             raise ValueError("input_documents must be provided in the configuration")
+        
+        start_time = time.time()
+        expected_rows = self.get_num_expected_rows([question_gen_llm, chosen_response_gen_llm, rejected_response_gen_llm])
+        logger.info(
+            f"Starting PreferenceDataset.generate() | "
+            f"Expected rows: {expected_rows}"
+        )
         
         # Get languages from config, default to English if not specified
         languages = self.config.languages or {"en": "English"}
@@ -977,6 +1139,9 @@ class PreferenceDataset(DatasetBase):
                 
                 # For each question, generate chosen and rejected responses
                 for question in questions:
+                    # Track preference pair generation start time
+                    pair_start_time = time.time()
+                    
                     # Generate chosen response
                     chosen_response = self._generate_chosen_response(
                         doc, 
@@ -1069,10 +1234,31 @@ class PreferenceDataset(DatasetBase):
                     row = PreferenceRow(**row_data)
                     self.data_rows.append(row)
                     
+                    # Calculate preference pair generation duration
+                    pair_duration = time.time() - pair_start_time
+                    
                     # Save each preference pair immediately
-                    self.to_jsonl(self.config.output_file, [row], append=True)
-                    print(f" Generated and saved {len(self.data_rows)} preference pairs total")
+                    try:
+                        self.to_jsonl(self.config.output_file, [row], append=True)
+                        utils.log_generation_progress(
+                            len(self.data_rows),
+                            question_gen_llm.provider_name,
+                            question_gen_llm.model_id,
+                            pair_duration,
+                            "preference pairs"
+                        )
+                    except IOError as e:
+                        logger.error(
+                            f"Failed to save to {self.config.output_file} | Error: {e}"
+                        )
+                        raise
             
+        duration = time.time() - start_time
+        logger.success(
+            f"PreferenceDataset.generate() completed | "
+            f"Rows: {len(self.data_rows)} | "
+            f"Duration: {duration:.1f}s"
+        )
         return self
         
     def _generate_questions(self, document: str, llm: LLMProvider, language_name: str) -> list[str]:
@@ -1296,16 +1482,26 @@ class GenericPipelineDataset(DatasetBase):
             Self for method chaining.
         """
         if not llms:
+            logger.error("No LLM providers supplied")
             raise ValueError("At least one LLM provider must be supplied")
+        
+        start_time = time.time()
         
         # Load source dataset
         source_dataset = self._load_source_dataset()
-        print(f"Loaded source dataset with {len(source_dataset)} rows")
+        logger.info(f"Loaded source dataset with {len(source_dataset)} rows")
         
         # Apply sample limit if specified
         if self.config.sample_count:
             source_dataset = source_dataset[:min(self.config.sample_count, len(source_dataset))]
-            print(f"Limited to {len(source_dataset)} rows")
+            logger.info(f"Limited to {len(source_dataset)} rows")
+        
+        expected_rows = self.get_num_expected_rows(llms)
+        logger.info(
+            f"Starting GenericPipelineDataset.generate() | "
+            f"Expected rows: {expected_rows} | "
+            f"Providers: {len(llms)}"
+        )
         
         # Get languages from config
         languages = self.config.languages or {"en": "English"}
@@ -1314,7 +1510,7 @@ class GenericPipelineDataset(DatasetBase):
         for row_idx, source_row in enumerate(source_dataset):
             # Apply skip function if provided
             if self.config.skip_function and self.config.skip_function(source_row):
-                print(f"Skipping row {row_idx} due to skip_function")
+                logger.debug(f"Skipping row {row_idx} due to skip_function")
                 continue
             
             # Extract input data based on input_columns
@@ -1347,6 +1543,9 @@ class GenericPipelineDataset(DatasetBase):
                         # Process with each LLM
                         for llm in llms:
                             try:
+                                # Track batch start time
+                                batch_start_time = time.time()
+                                
                                 # Create dynamic response model based on output_columns configuration
                                 response_model = utils.create_response_model(self.config)
                                 
@@ -1390,12 +1589,35 @@ class GenericPipelineDataset(DatasetBase):
                                     self.data_rows.append(row)
                                     new_rows.append(row)
                                 
+                                # Calculate batch duration
+                                batch_duration = time.time() - batch_start_time
+                                
                                 # Save this batch
-                                self.to_jsonl(self.config.output_file, new_rows, append=True)
-                                logger.success(f"Generated and saved {len(self.data_rows)} examples total")
+                                try:
+                                    self.to_jsonl(self.config.output_file, new_rows, append=True)
+                                    utils.log_generation_progress(
+                                        len(self.data_rows),
+                                        llm.provider_name,
+                                        llm.model_id,
+                                        batch_duration,
+                                        "examples"
+                                    )
+                                except IOError as e:
+                                    logger.error(
+                                        f"Failed to save to {self.config.output_file} | Error: {e}"
+                                    )
+                                    raise
                                 
                             except Exception as e:
-                                logger.error(f"Error with llm provider {llm.provider_name} on row {row_idx}: {e}")
+                                logger.warning(
+                                    f"Provider {llm.provider_name} failed on row {row_idx}, continuing | Error: {e}"
+                                )
                                 continue
         
+        duration = time.time() - start_time
+        logger.success(
+            f"GenericPipelineDataset.generate() completed | "
+            f"Rows: {len(self.data_rows)} | "
+            f"Duration: {duration:.1f}s"
+        )
         return self

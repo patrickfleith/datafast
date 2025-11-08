@@ -2,6 +2,37 @@ from datafast.schema.config import PromptExpansionConfig, ClassificationDatasetC
 from datafast.llms import LLMProvider
 from datasets import Dataset, load_dataset
 from pydantic import BaseModel, Field, create_model
+from loguru import logger
+import time
+
+
+def log_generation_progress(
+    total_rows: int,
+    provider_name: str,
+    model_id: str,
+    duration: float,
+    item_type: str = "examples"
+) -> None:
+    """Log generation progress with provider and timing information.
+    
+    Args:
+        total_rows: Total number of rows generated so far
+        provider_name: Name of the LLM provider (e.g., "openai", "anthropic")
+        model_id: Model identifier (e.g., "gpt-4", "claude-3-sonnet")
+        duration: Duration in seconds for this generation step
+        item_type: Type of items being generated (e.g., "examples", "chat conversations", "MCQs")
+    
+    Example:
+        >>> log_generation_progress(25, "openai", "gpt-4", 3.2, "examples")
+        # Logs: Generated and saved 25 examples total | Provider: openai | Model: gpt-4 | Duration: 3.2s
+    """
+    logger.success(
+        f"Generated and saved {total_rows} {item_type} total | "
+        f"Provider: {provider_name} | "
+        f"Model: {model_id} | "
+        f"Duration: {duration:.1f}s"
+    )
+
 
 def calculate_num_prompt_expansions(base_prompts: list[str], expansion_config: PromptExpansionConfig) -> int:
     """Calculate the number of prompt expansions based on the expansion configuration.
@@ -177,10 +208,12 @@ def load_dataset_from_source(hf_dataset_name: str | None = None,
     try:
         if hf_dataset_name:
             # Load from Hugging Face
+            logger.info(f"Loading dataset from HuggingFace: {hf_dataset_name}")
             hf_dataset = load_dataset(hf_dataset_name)
             # Most datasets have a 'train' split, but fallback to first available split
             split_names = list(hf_dataset.keys())
             if not split_names:
+                logger.error(f"No splits found in dataset {hf_dataset_name}")
                 raise ValueError(f"No splits found in dataset {hf_dataset_name}")
                 
             main_split = "train" if "train" in split_names else split_names[0]
@@ -190,6 +223,7 @@ def load_dataset_from_source(hf_dataset_name: str | None = None,
             
         elif local_file_path:
             # Load from local file based on extension
+            logger.info(f"Loading dataset from local file: {local_file_path}")
             file_ext = local_file_path.lower().split('.')[-1]
             
             if file_ext == 'csv':
@@ -217,17 +251,23 @@ def load_dataset_from_source(hf_dataset_name: str | None = None,
                             dataset.append(json.loads(line))
                 
             else:
+                logger.error(f"Unsupported file extension: {file_ext}")
                 raise ValueError(f"Unsupported file extension: {file_ext}. Supported extensions are: csv, txt, parquet, jsonl, json")
         else:
+            logger.error("No dataset source specified")
             raise ValueError("Either hf_dataset_name or local_file_path must be specified")
             
         # Limit the number of samples if specified
         if sample_count is not None:
             dataset = dataset[:min(sample_count, len(dataset))]
+            logger.info(f"Dataset loaded successfully | Rows: {len(dataset)}")
+        else:
+            logger.info(f"Dataset loaded successfully | Rows: {len(dataset)}")
             
         return dataset
         
     except Exception as e:
+        logger.error(f"Failed to load dataset | Error: {str(e)}")
         raise ValueError(f"Error loading dataset: {str(e)}")
 
 
@@ -238,6 +278,7 @@ def _get_generic_pipeline_specific_factors(config: GenericPipelineDatasetConfig)
 def _get_generic_pipeline_num_expected_rows(config: GenericPipelineDatasetConfig, llms: list[LLMProvider]) -> int:
     """Calculate expected rows for GenericPipelineDataset including prompt expansions."""
     # Load source dataset to get row count
+    logger.debug("Calculating expected rows for GenericPipelineDataset")
     source_dataset = load_dataset_from_source(
         hf_dataset_name=config.hf_dataset_name,
         local_file_path=config.local_file_path,
