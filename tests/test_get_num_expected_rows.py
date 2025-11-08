@@ -6,7 +6,7 @@ from datafast import utils
 
 from dotenv import load_dotenv
 
-load_dotenv('secrets.env')
+load_dotenv('.env')
 
 @pytest.fixture
 def providers():
