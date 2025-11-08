@@ -264,8 +264,17 @@ class LLMProvider(ABC):
                 if response_format is not None:
                     # Strip code fences before validation
                     content = self._strip_code_fences(content)
-                    results.append(
-                        response_format.model_validate_json(content))
+                    try:
+                        results.append(
+                            response_format.model_validate_json(content))
+                    except Exception as validation_error:
+                        # Show the content that failed to parse for debugging
+                        content_preview = content[:500] + "..." if len(content) > 500 else content
+                        raise ValueError(
+                            f"Failed to parse JSON response into {response_format.__name__}.\n"
+                            f"Validation error: {validation_error}\n"
+                            f"Content received (first 500 chars):\n{content_preview}"
+                        ) from validation_error
                 else:
                     # Strip leading/trailing whitespace for text responses
                     results.append(content.strip() if content else content)
@@ -471,7 +480,16 @@ class OpenAIProvider(LLMProvider):
                 if response_format is not None:
                     # Strip code fences before validation
                     content = self._strip_code_fences(content)
-                    results.append(response_format.model_validate_json(content))
+                    try:
+                        results.append(response_format.model_validate_json(content))
+                    except Exception as validation_error:
+                        # Show the content that failed to parse for debugging
+                        content_preview = content[:500] + "..." if len(content) > 500 else content
+                        raise ValueError(
+                            f"Failed to parse JSON response into {response_format.__name__}.\n"
+                            f"Validation error: {validation_error}\n"
+                            f"Content received (first 500 chars):\n{content_preview}"
+                        ) from validation_error
                 else:
                     # Strip leading/trailing whitespace for text responses
                     results.append(content.strip() if content else content)
