@@ -1121,7 +1121,7 @@ class PreferenceDataset(DatasetBase):
             raise ValueError("input_documents must be provided in the configuration")
         
         start_time = time.time()
-        expected_rows = self.get_num_expected_rows([question_gen_llm, chosen_response_gen_llm, rejected_response_gen_llm])
+        expected_rows = self.get_num_expected_rows([question_gen_llm])
         logger.info(
             f"Starting PreferenceDataset.generate() | "
             f"Expected rows: {expected_rows}"
