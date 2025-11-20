@@ -1135,28 +1135,40 @@ class PreferenceDataset(DatasetBase):
             # Process each input document
             for doc in self.config.input_documents:
                 # Generate questions for each document
-                questions = self._generate_questions(doc, question_gen_llm, language_name)
+                try:
+                    questions = self._generate_questions(doc, question_gen_llm, language_name)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to generate questions for document '{doc.get('title', 'unknown')}' | Error: {e}"
+                    )
+                    continue
                 
                 # For each question, generate chosen and rejected responses
                 for question in questions:
-                    # Track preference pair generation start time
-                    pair_start_time = time.time()
+                    try:
+                        # Track preference pair generation start time
+                        pair_start_time = time.time()
+                        # Generate chosen response
+                        chosen_response = self._generate_chosen_response(
+                            doc, 
+                            question, 
+                            chosen_response_gen_llm, 
+                            language_name
+                        )
                     
-                    # Generate chosen response
-                    chosen_response = self._generate_chosen_response(
-                        doc, 
-                        question, 
-                        chosen_response_gen_llm, 
-                        language_name
-                    )
-                    
-                    # Generate rejected response
-                    rejected_response = self._generate_rejected_response(
-                        doc,
-                        question,
-                        rejected_response_gen_llm, 
-                        language_name
-                    )
+                        # Generate rejected response
+                        rejected_response = self._generate_rejected_response(
+                            doc,
+                            question,
+                            rejected_response_gen_llm, 
+                            language_name   
+                        )
+
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to generate responses for question '{question}' | Error: {e}"
+                        )
+                        continue
 
                     # If evolutionary instruction is enabled, refine the instruction and response
                     if self.config.evol_instruct and evolution_llm:
@@ -1181,31 +1193,38 @@ class PreferenceDataset(DatasetBase):
                     
                     # If LLM as judge is enabled, use the judge LLM to evaluate the preference pair
                     if self.config.llm_as_judge and judge_llm:
-                        # Get judge scores for chosen response
-                        chosen_response_result = self._judge_scoring(
-                            doc, question, chosen_response, judge_llm
-                        )
-                        chosen_response_score = chosen_response_result.score
-                        chosen_response_assessment = chosen_response_result.assessment
+                        try:
+                            # Get judge scores for chosen response
+                            chosen_response_result = self._judge_scoring(
+                                doc, question, chosen_response, judge_llm
+                            )
+                            chosen_response_score = chosen_response_result.score
+                            chosen_response_assessment = chosen_response_result.assessment
 
-                        # Get judge scores for rejected response
-                        rejected_response_result = self._judge_scoring(
-                            doc, question, rejected_response, judge_llm
-                        )
-                        rejected_response_score = rejected_response_result.score
-                        rejected_response_assessment = rejected_response_result.assessment
+                            # Get judge scores for rejected response
+                            rejected_response_result = self._judge_scoring(
+                                doc, question, rejected_response, judge_llm
+                            )
+                            rejected_response_score = rejected_response_result.score
+                            rejected_response_assessment = rejected_response_result.assessment
 
-                        # Swap chosen and rejected responses based on scores if needed
-                        # This ensures the higher-scored response is always the chosen one
-                        if rejected_response_score > chosen_response_score:
-                            # Swap responses
-                            chosen_response, rejected_response = rejected_response, chosen_response
-                            # Swap scores
-                            chosen_response_score, rejected_response_score = rejected_response_score, chosen_response_score
-                            # Swap assessments
-                            chosen_response_assessment, rejected_response_assessment = rejected_response_assessment, chosen_response_assessment
-                            # Swap model IDs
-                            chosen_model_id, rejected_model_id = rejected_model_id, chosen_model_id
+                            # Swap chosen and rejected responses based on scores if needed
+                            # This ensures the higher-scored response is always the chosen one
+                            if rejected_response_score > chosen_response_score:
+                                # Swap responses
+                                chosen_response, rejected_response = rejected_response, chosen_response
+                                # Swap scores
+                                chosen_response_score, rejected_response_score = rejected_response_score, chosen_response_score
+                                # Swap assessments
+                                chosen_response_assessment, rejected_response_assessment = rejected_response_assessment, chosen_response_assessment
+                                # Swap model IDs
+                                chosen_model_id, rejected_model_id = rejected_model_id, chosen_model_id
+                        except Exception as e:
+                            question_preview = question[:100] + "..." if len(question) > 100 else question
+                            logger.warning(
+                                f"Failed to score responses with judge for question '{question_preview}' | Error: {e}"
+                            )
+                            # Continue without judge scores - the row will be created with None values
                     
                     # Create and store the preference row
                     row_data = {
