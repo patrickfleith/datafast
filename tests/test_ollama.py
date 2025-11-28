@@ -92,6 +92,54 @@ def test_ollama_with_all_parameters():
 
 
 @pytest.mark.integration
+def test_ollama_timeout():
+    """Test that the timeout parameter works correctly with Ollama provider."""
+    # Create provider with a very short timeout (1 second)
+    provider = OllamaProvider(
+        model_id="gemma3:4b",
+        temperature=0.7,
+        max_completion_tokens=500,
+        timeout=1  # 1 second - should timeout
+    )
+    
+    # Try to generate a response that would normally take longer
+    prompt = """Write a detailed essay about the history of artificial intelligence, 
+    covering major milestones from the 1950s to present day. Include information about 
+    key researchers, breakthrough algorithms, and the evolution of neural networks."""
+    
+    # Expect a RuntimeError (which wraps the timeout/connection error)
+    with pytest.raises(RuntimeError) as exc_info:
+        provider.generate(prompt=prompt)
+    
+    # Verify that the error is related to timeout or connection issues
+    error_message = str(exc_info.value).lower()
+    # The error could mention timeout, connection errors, or API errors
+    assert any(keyword in error_message for keyword in [
+        "timeout", "timed out", "time out", "deadline", 
+        "apiconnectionerror", "connection", "api"
+    ]), f"Expected timeout/connection error, but got: {exc_info.value}"
+
+
+@pytest.mark.integration
+def test_ollama_with_reasonable_timeout():
+    """Test that a reasonable timeout allows successful completion."""
+    # Create provider with a reasonable timeout (30 seconds)
+    provider = OllamaProvider(
+        model_id="gemma3:4b",
+        temperature=0.7,
+        max_completion_tokens=50,
+        timeout=30  # 30 seconds - should be enough
+    )
+    
+    # Generate a simple response
+    prompt = "What is the capital of France? Answer in one word."
+    response = provider.generate(prompt=prompt)
+    
+    # Should complete successfully
+    assert "Paris" in response
+
+
+@pytest.mark.integration
 def test_ollama_structured_landmark_info():
     """Test Ollama with a structured landmark info response."""
     provider = OllamaProvider(temperature=0.1, max_completion_tokens=800)
