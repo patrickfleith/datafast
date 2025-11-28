@@ -40,6 +40,7 @@ class LLMProvider(ABC):
         top_p: float | None = None,
         frequency_penalty: float | None = None,
         rpm_limit: int | None = None,
+        timeout: int | None = None,
     ):
         """Initialize the LLM provider with common parameters.
 
@@ -63,6 +64,9 @@ class LLMProvider(ABC):
         # Rate limiting
         self.rpm_limit = rpm_limit
         self._request_timestamps: list[float] = []
+
+        # timeout
+        self.timeout = timeout
 
         # Configure environment with API key if needed
         self._configure_env()
@@ -249,6 +253,7 @@ class LLMProvider(ABC):
                 "max_tokens": self.max_completion_tokens,
                 "top_p": self.top_p,
                 "frequency_penalty": self.frequency_penalty,
+                "timeout": self.timeout,
             }
             if response_format is not None:
                 completion_params["response_format"] = response_format
@@ -336,6 +341,7 @@ class OpenAIProvider(LLMProvider):
         temperature: float | None = None,
         top_p: float | None = None,
         frequency_penalty: float | None = None,
+        timeout: int | None = None,
     ):
         """Initialize the OpenAI provider.
 
@@ -347,6 +353,7 @@ class OpenAIProvider(LLMProvider):
             temperature: DEPRECATED - Not supported by responses endpoint
             top_p: DEPRECATED - Not supported by responses endpoint
             frequency_penalty: DEPRECATED - Not supported by responses endpoint
+            timeout: Request timeout in seconds
         """
         # Warn about deprecated parameters
         if temperature is not None:
@@ -379,6 +386,7 @@ class OpenAIProvider(LLMProvider):
             max_completion_tokens=max_completion_tokens,
             top_p=None,
             frequency_penalty=None,
+            timeout=timeout,
         )
     
     def generate(
@@ -550,6 +558,7 @@ class AnthropicProvider(LLMProvider):
         api_key: str | None = None,
         temperature: float | None = None,
         max_completion_tokens: int | None = None,
+        timeout: int | None = None,
         # top_p: float | None = None, # Not properly supported by anthropic models 4.5
         # frequency_penalty: float | None = None,  # Not supported by anthropic models 4.5
     ):
@@ -560,6 +569,7 @@ class AnthropicProvider(LLMProvider):
             api_key: API key (if None, will get from environment)
             temperature: Temperature for generation (0.0 to 1.0)
             max_completion_tokens: Maximum tokens to generate
+            timeout: Request timeout in seconds
             top_p: Nucleus sampling parameter (0.0 to 1.0)
         """
         super().__init__(
@@ -567,6 +577,7 @@ class AnthropicProvider(LLMProvider):
             api_key=api_key,
             temperature=temperature,
             max_completion_tokens=max_completion_tokens,
+            timeout=timeout,
         )
 
 
@@ -590,6 +601,7 @@ class GeminiProvider(LLMProvider):
         top_p: float | None = None,
         frequency_penalty: float | None = None,
         rpm_limit: int | None = None,
+        timeout: int | None = None,
     ):
         """Initialize the Gemini provider.
 
@@ -600,6 +612,7 @@ class GeminiProvider(LLMProvider):
             max_completion_tokens: Maximum tokens to generate
             top_p: Nucleus sampling parameter (0.0 to 1.0)
             frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+            timeout: Request timeout in seconds
         """
         super().__init__(
             model_id=model_id,
@@ -609,6 +622,7 @@ class GeminiProvider(LLMProvider):
             top_p=top_p,
             frequency_penalty=frequency_penalty,
             rpm_limit=rpm_limit,
+            timeout=timeout,
         )
 
 
@@ -643,6 +657,7 @@ class OllamaProvider(LLMProvider):
         frequency_penalty: float | None = None,
         api_base: str | None = None,
         rpm_limit: int | None = None,
+        timeout: int | None = None,
     ):
         """Initialize the Ollama provider.
 
@@ -653,6 +668,7 @@ class OllamaProvider(LLMProvider):
             top_p: Nucleus sampling parameter (0.0 to 1.0)
             frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
             api_base: Base URL for Ollama API (e.g., "http://localhost:11434")
+            timeout: Request timeout in seconds
         """
         # Set API base URL if provided
         if api_base:
@@ -666,6 +682,7 @@ class OllamaProvider(LLMProvider):
             top_p=top_p,
             frequency_penalty=frequency_penalty,
             rpm_limit=rpm_limit,
+            timeout=timeout,
         )
 
 
@@ -688,6 +705,7 @@ class OpenRouterProvider(LLMProvider):
             max_completion_tokens: int | None = None,
             top_p: float | None = None,
             frequency_penalty: float | None = None,
+            timeout: int | None = None,
     ):
         """Initialize the OpenRouter provider.
 
@@ -698,6 +716,7 @@ class OpenRouterProvider(LLMProvider):
             max_completion_tokens: Maximum tokens to generate
             top_p: Nucleus sampling parameter (0.0 to 1.0)
             frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+            timeout: Request timeout in seconds
         """
         super().__init__(
             model_id = model_id,
@@ -706,4 +725,5 @@ class OpenRouterProvider(LLMProvider):
             max_completion_tokens = max_completion_tokens,
             top_p = top_p,
             frequency_penalty = frequency_penalty,
+            timeout = timeout,
         )
