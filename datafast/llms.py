@@ -1,6 +1,6 @@
 """LLM providers for datafast using LiteLLM.
 
-This module provides classes for different LLM providers (OpenAI, Anthropic, Gemini)
+This module provides classes for different LLM providers (OpenAI, Anthropic, Gemini, Mistral)
 with a unified interface using LiteLLM under the hood.
 """
 
@@ -726,4 +726,50 @@ class OpenRouterProvider(LLMProvider):
             top_p = top_p,
             frequency_penalty = frequency_penalty,
             timeout = timeout,
+        )
+
+
+class MistralProvider(LLMProvider):
+    """Mistral AI provider using litellm."""
+
+    @property
+    def provider_name(self) -> str:
+        return "mistral"
+
+    @property
+    def env_key_name(self) -> str:
+        return "MISTRAL_API_KEY"
+
+    def __init__(
+        self,
+        model_id: str = "mistral-small-latest",
+        api_key: str | None = None,
+        temperature: float | None = None,
+        max_completion_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
+        rpm_limit: int | None = None,
+        timeout: int | None = None,
+    ):
+        """Initialize the Mistral provider.
+
+        Args:
+            model_id: The model ID (defaults to mistral-small-latest)
+            api_key: API key (if None, will get from MISTRAL_API_KEY env var)
+            temperature: Temperature for generation (0.0 to 1.0)
+            max_completion_tokens: Maximum tokens to generate
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+            rpm_limit: Requests per minute limit for rate limiting
+            timeout: Request timeout in seconds
+        """
+        super().__init__(
+            model_id=model_id,
+            api_key=api_key,
+            temperature=temperature,
+            max_completion_tokens=max_completion_tokens,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            rpm_limit=rpm_limit,
+            timeout=timeout,
         )

@@ -29,6 +29,7 @@ Currently we support the following LLM providers:
 - ✔︎ Anthropic
 - ✔︎ Google Gemini
 - ✔︎ Ollama (local LLM server)
+- ✔︎ Mistral AI
 - ⏳ more to come...
 
 
@@ -53,6 +54,7 @@ Other keys depends on which LLM providers you use.
 GEMINI_API_KEY=XXXX
 OPENAI_API_KEY=sk-XXXX
 ANTHROPIC_API_KEY=sk-ant-XXXXX
+MISTRAL_API_KEY=XXXX
 HF_TOKEN=hf_XXXXX
 ```
 
@@ -161,6 +163,7 @@ How to proceed?
 - openai API key
 - anthropic API key
 - gemini API key
+- mistral API key
 - an ollama server running (use `ollama serve` from command line)
 9. Commit your change, push to your fork and create a pull request from your fork branch to datafast main branch.
 10. Explain your pull request in a clear and concise way, I'll review it as soon as possible.
