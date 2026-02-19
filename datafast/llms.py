@@ -70,7 +70,6 @@ class LLMProvider(ABC):
 
         # Configure environment with API key if needed
         self._configure_env()
-        
         # Log successful initialization
         logger.info(f"Initialized {self.provider_name} | Model: {self.model_id}")
 
