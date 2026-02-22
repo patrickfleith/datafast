@@ -1,4 +1,4 @@
-"""Data operation steps: Map, FlatMap, Filter, Group, Pair."""
+"""Data operation steps: Map, FlatMap, Filter, Group, Pair, Concat."""
 
 import itertools
 import random
@@ -617,4 +617,200 @@ class Pair(Step):
         logger.info(
             f"Pair: created {total_pairs} {self._n}-tuples "
             f"from {len(all_records)} records ({len(groups)} groups)"
+        )
+
+
+class Concat(Step):
+    """Stack multiple data sources/pipelines vertically.
+
+    Executes each source pipeline and yields all their records sequentially,
+    followed by any records received from upstream.
+
+    Examples:
+        >>> # Combine results from different sources
+        >>> science = Source.file("science.jsonl") >> LLMStep(...)
+        >>> history = Source.file("history.jsonl") >> LLMStep(...)
+        >>> Concat(science, history) >> Sink.jsonl("combined.jsonl")
+
+        >>> # Combine different generation runs
+        >>> Concat(
+        ...     data >> LLMStep(model=gpt4),
+        ...     data >> LLMStep(model=claude),
+        ... ) >> Sink.jsonl("multi_model.jsonl")
+    """
+
+    def __init__(self, *sources: Step) -> None:
+        """
+        Initialize a Concat step.
+
+        Args:
+            *sources: Steps or pipelines whose outputs will be concatenated.
+        """
+        super().__init__()
+        if not sources:
+            raise ValueError("Concat requires at least one source")
+        self._sources = sources
+
+    def process(self, records: Iterable[Record]) -> Iterable[Record]:
+        """Run each source and yield all records sequentially."""
+        total = 0
+        for i, source in enumerate(self._sources):
+            count = 0
+            for record in source.process(iter([])):
+                count += 1
+                total += 1
+                yield record
+            logger.debug(f"Concat: source {i} produced {count} records")
+
+        logger.info(f"Concat: {total} total records from {len(self._sources)} sources")
+
+
+class Join(Step):
+    """Merge two datasets horizontally by key.
+
+    The *left* side is the upstream pipeline (records flowing through
+    ``process``).  The *right* side is a separate ``Step`` or
+    ``Pipeline`` whose records are materialized once when ``process``
+    is called.
+
+    Overlapping column names (other than the join key) are disambiguated
+    with configurable suffixes.
+
+    Examples:
+        >>> # Inner join on user_id
+        >>> users >> Join(actions, on="user_id")
+        >>> # Output: {user_id, name, action}
+
+        >>> # Left join — keep all left records even without a match
+        >>> users >> Join(actions, on="user_id", how="left")
+
+        >>> # Custom suffixes for overlapping columns
+        >>> chosen >> Join(rejected, on="question_id",
+        ...               suffixes=("_chosen", "_rejected"))
+    """
+
+    VALID_HOW = frozenset(["inner", "left", "right", "outer"])
+
+    def __init__(
+        self,
+        right: Step,
+        on: str | list[str],
+        how: str = "inner",
+        suffixes: tuple[str, str] = ("_left", "_right"),
+    ) -> None:
+        """
+        Initialize a Join step.
+
+        Args:
+            right: Step or pipeline providing the right-side records.
+            on: Column name(s) used as the join key.
+            how: Join type — ``"inner"``, ``"left"``, ``"right"``, or
+                ``"outer"``.
+            suffixes: A 2-tuple of suffixes applied to overlapping
+                column names from the left and right sides respectively.
+
+        Raises:
+            ValueError: If *how* is not a recognised join type.
+        """
+        super().__init__()
+
+        if how not in self.VALID_HOW:
+            raise ValueError(
+                f"how must be one of {sorted(self.VALID_HOW)}, got '{how}'"
+            )
+
+        self._right = right
+        self._on = [on] if isinstance(on, str) else list(on)
+        self._how = how
+        self._left_suffix, self._right_suffix = suffixes
+
+    def _key(self, record: Record) -> tuple:
+        """Extract the join key from a record."""
+        return tuple(record.get(col) for col in self._on)
+
+    def _merge(
+        self,
+        left: Record,
+        right: Record | None,
+        overlapping: set[str],
+    ) -> Record:
+        """Merge a left and right record, handling overlapping columns."""
+        output: Record = {}
+
+        # Join key columns — always unsuffixed.
+        for col in self._on:
+            output[col] = left.get(col) if left is not None else (
+                right.get(col) if right is not None else None
+            )
+
+        # Left columns.
+        if left is not None:
+            for key, value in left.items():
+                if key in self._on:
+                    continue
+                if key in overlapping:
+                    output[f"{key}{self._left_suffix}"] = value
+                else:
+                    output[key] = value
+
+        # Right columns.
+        if right is not None:
+            for key, value in right.items():
+                if key in self._on:
+                    continue
+                if key in overlapping:
+                    output[f"{key}{self._right_suffix}"] = value
+                else:
+                    output[key] = value
+
+        return output
+
+    def process(self, records: Iterable[Record]) -> Iterable[Record]:
+        """Join left (upstream) records with right-side records."""
+        left_records = list(records)
+        right_records = list(self._right.process(iter([])))
+
+        # Build right-side index (key → list of records).
+        right_index: dict[tuple, list[Record]] = defaultdict(list)
+        for rec in right_records:
+            right_index[self._key(rec)].append(rec)
+
+        # Determine overlapping non-key columns.
+        left_cols: set[str] = set()
+        for rec in left_records:
+            left_cols.update(rec.keys())
+        right_cols: set[str] = set()
+        for rec in right_records:
+            right_cols.update(rec.keys())
+        key_cols = set(self._on)
+        overlapping = (left_cols - key_cols) & (right_cols - key_cols)
+
+        matched_right_keys: set[tuple] = set()
+        total = 0
+
+        # Left side iteration.
+        for left_rec in left_records:
+            lkey = self._key(left_rec)
+            right_matches = right_index.get(lkey)
+
+            if right_matches:
+                matched_right_keys.add(lkey)
+                for right_rec in right_matches:
+                    total += 1
+                    yield self._merge(left_rec, right_rec, overlapping)
+            elif self._how in ("left", "outer"):
+                total += 1
+                yield self._merge(left_rec, None, overlapping)
+
+        # Right-only records (for right / outer joins).
+        if self._how in ("right", "outer"):
+            for right_rec in right_records:
+                rkey = self._key(right_rec)
+                if rkey not in matched_right_keys:
+                    total += 1
+                    yield self._merge(None, right_rec, overlapping)
+
+        logger.info(
+            f"Join ({self._how}): {len(left_records)} left × "
+            f"{len(right_records)} right → {total} output records"
         )
