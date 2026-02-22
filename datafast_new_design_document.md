@@ -31,6 +31,7 @@
 20. [Module Structure](#20-module-structure)
 21. [Implementation Priorities](#21-implementation-priorities)
 22. [API Quick Reference](#22-api-quick-reference)
+23. [Future Extensions](#23-future-extensions)
 
 ---
 
@@ -532,32 +533,21 @@ Or use `forward_columns` in LLMStep to preserve identifying fields.
 │  Sample                Select records using strategy                             │
 │  Pair                  Create pairs/tuples within data                           │
 │  Group                 Aggregate records by key                                  │
-│  Chunk                 Split long text into chunks                               │
-│  Deduplicate           Remove duplicate/similar records                          │
 │                                                                                  │
 │  LLM GENERATION (create new content)                                             │
 │  ───────────────────────────────────                                             │
 │  LLMStep               Free-form generation with custom prompt                   │
-│  Conversation          Multi-turn dialogue generation                            │
 │                                                                                  │
 │  LLM TRANSFORMATION (modify existing content)                                    │
 │  ────────────────────────────────────────────                                    │
 │  Rewrite               Paraphrase, simplify, formalize, etc.                     │
-│  Translate             Language translation                                      │
-│  Evolve                Iteratively increase complexity                           │
-│  Refine                Improve based on critique                                 │
+│  Extract               Pull structured fields from text                          │
 │                                                                                  │
 │  LLM EVALUATION (judge content)                                                  │
 │  ──────────────────────────────                                                  │
 │  Classify              Assign label(s) from fixed set                            │
 │  Score                 Assign numeric score in range                             │
-│  Validate              Boolean check against criteria                            │
 │  Compare               Pairwise comparison of two fields                         │
-│  Critique              Generate criticism/feedback                               │
-│                                                                                  │
-│  LLM EXTRACTION (structure from unstructured)                                    │
-│  ────────────────────────────────────────────                                    │
-│  Extract               Pull structured fields from text                          │
 │                                                                                  │
 │  MULTI-DATA OPERATIONS                                                           │
 │  ─────────────────────                                                           │
@@ -914,67 +904,6 @@ Select records using a sampling strategy. (See Section 4 for full details.)
 >> Sample(frac=0.1, strategy="diverse", by="text")  # 10% diverse sample
 ```
 
-### 10.5 Chunk
-
-Split long text into smaller chunks.
-
-```python
-class Chunk(Step):
-    def __init__(
-        self,
-        input_column: str,
-        output_column: str = "chunk",
-        
-        strategy: str = "tokens",  # "tokens", "sentences", "paragraphs", "semantic"
-        size: int = 512,           # target chunk size
-        overlap: int = 50,         # overlap between chunks
-        
-        # For semantic chunking
-        llm: Model | None = None,
-        
-        # Metadata
-        add_index: bool = True,     # adds {output_column}_index
-        add_total: bool = True,     # adds {output_column}_total
-        keep_source: bool = True,   # keep original text column
-    ):
-        ...
-
-# Usage
->> Chunk(input_column="text", strategy="tokens", size=512, overlap=50)
->> Chunk(input_column="text", strategy="sentences", size=5)  # 5 sentences per chunk
->> Chunk(input_column="text", strategy="semantic", llm=gpt4)
-```
-
-**Output:** One record per chunk, with:
-- `chunk` — the chunk text
-- `chunk_index` — index of this chunk (0-based)
-- `chunk_total` — total number of chunks from this source
-- Original fields preserved (unless overwritten)
-
-### 10.6 Deduplicate
-
-Remove duplicate or near-duplicate records.
-
-```python
-class Deduplicate(Step):
-    def __init__(
-        self,
-        columns: str | list[str],           # columns to compare
-        strategy: str = "exact",            # "exact", "fuzzy", "semantic"
-        threshold: float = 0.9,             # for fuzzy/semantic
-        embedding_model: str | None = None, # for semantic
-        keep: str = "first",                # "first", "last", "random"
-    ):
-        ...
-
-# Usage
->> Deduplicate(columns="text", strategy="exact")
->> Deduplicate(columns="text", strategy="fuzzy", threshold=0.85)
->> Deduplicate(columns="question", strategy="semantic", threshold=0.9)
-```
-
-**Note:** Deduplicate requires loading all records into memory to compare. For very large datasets, consider sampling first.
-
 ---
 
 ## 11. Transform Steps — LLM Generation
@@ -1118,56 +1047,6 @@ For each output, LLMStep creates a new record with:
 # → 2 × 2 × 2 × 2 = 16 outputs per input
 ```
 
-### 11.2 Conversation
-
-Generate multi-turn dialogues.
-
-```python
-class Conversation(Step):
-    def __init__(
-        self,
-        seed_column: str | None = None,       # column with opening topic/message
-        
-        num_turns: int | tuple[int, int] = 3, # fixed or (min, max) range
-        
-        user_persona: str | list[str] | Sample | None = None,
-        assistant_persona: str | None = None,
-        
-        output_column: str = "conversation",  # stores list of {role, content}
-        
-        continuation_probability: float = 1.0, # prob of each follow-up turn
-        
-        model: Model | list[Model] | Sample = None,
-        temperature: float = 0.7,
-    ):
-        ...
-
-# Usage
->> Conversation(
-    seed_column="topic",
-    num_turns=(2, 5),
-    user_persona=Sample([
-        "curious beginner",
-        "expert seeking clarification",
-        "skeptical questioner",
-    ], n=1),
-    model=gpt4,
-)
-
-# Output record includes:
-# {
-#   "topic": "machine learning",
-#   "conversation": [
-#     {"role": "user", "content": "What is machine learning?"},
-#     {"role": "assistant", "content": "Machine learning is..."},
-#     {"role": "user", "content": "How does it differ from..."},
-#     {"role": "assistant", "content": "The key difference is..."},
-#   ],
-#   "_user_persona": "curious beginner",
-#   "_num_turns": 4,
-# }
-```
-
 ---
 
 ## 12. Transform Steps — LLM Evaluation
@@ -1282,50 +1161,7 @@ class Score(Step):
 )
 ```
 
-### 12.3 Validate
-
-Boolean check against one or more criteria.
-
-```python
-class Validate(Step):
-    def __init__(
-        self,
-        input_columns: list[str],
-        criteria: str | list[str],
-        
-        output_column: str = "is_valid",
-        include_reason: bool = False,
-        
-        all_criteria: bool = True,  # all must pass vs any
-        
-        llm: Model | list[Model] | Sample | None = None,
-        fn: Callable[[Record], bool] | None = None,
-    ):
-        ...
-
-# Usage: Validate Q&A quality
->> Validate(
-    input_columns=["context", "question", "answer"],
-    criteria=[
-        "The answer is factually supported by the context",
-        "The answer directly addresses the question",
-        "The answer is complete and not truncated",
-    ],
-    output_column="is_valid",
-    include_reason=True,
-    llm=gpt4,
-)
->> Filter(where={"is_valid": True})
-
-# Usage: Function-based syntax check
->> Validate(
-    input_columns=["code"],
-    criteria="Valid Python syntax",
-    fn=lambda r: is_valid_python(r["code"]),
-)
-```
-
-### 12.4 Compare
+### 12.3 Compare
 
 Pairwise comparison of two fields.
 
@@ -1358,29 +1194,6 @@ class Compare(Step):
 #   "score_b": 5,
 #   "reasoning": "Response A provides more detail..."
 # }
-```
-
-### 12.5 Critique
-
-Generate criticism or feedback about content.
-
-```python
-class Critique(Step):
-    def __init__(
-        self,
-        input_columns: list[str],
-        output_column: str = "critique",
-        criteria: str | list[str] | None = None,
-        llm: Model | list[Model] | Sample | None = None,
-    ):
-        ...
-
-# Usage
->> Critique(
-    input_columns=["essay"],
-    criteria=["clarity", "argument strength", "evidence quality"],
-    llm=gpt4,
-)
 ```
 
 ---
@@ -1438,111 +1251,7 @@ class Rewrite(Step):
 )
 ```
 
-### 13.2 Translate
-
-Translate text between languages.
-
-```python
-class Translate(Step):
-    def __init__(
-        self,
-        input_column: str,
-        output_column: str | None = None,  # default: {input}_{target}
-        
-        source_language: str | None = None,  # auto-detect if None
-        target_language: str | list[str],
-        
-        preserve_formatting: bool = True,
-        preserve_names: bool = True,  # don't translate proper nouns
-        
-        back_translate: bool = False,  # translate back for augmentation
-        
-        llm: Model | list[Model] | Sample | None = None,
-    ):
-        ...
-
-# Usage: Multilingual dataset
->> Translate(
-    input_column="text",
-    target_language=["french", "german", "spanish"],
-    llm=gpt4,
-)
-# Output: text_french, text_german, text_spanish
-
-# Usage: Back-translation for augmentation
->> Translate(
-    input_column="text",
-    target_language="german",
-    back_translate=True,
-    llm=gpt4,
-)
-# Output: text_german, text_backtranslated
-```
-
-### 13.3 Evolve
-
-Iteratively increase complexity or sophistication.
-
-```python
-class Evolve(Step):
-    def __init__(
-        self,
-        input_column: str,
-        output_column: str | None = None,
-        
-        strategy: str | list[str] = "deepen",
-        # Strategies: "deepen", "broaden", "complicate", "specialize",
-        #             "abstract", "adversarial"
-        
-        num_iterations: int = 1,
-        keep_history: bool = False,  # keep intermediate versions
-        
-        llm: Model | list[Model] | Sample | None = None,
-    ):
-        ...
-
-# Usage: Make questions more complex
->> Evolve(
-    input_column="question",
-    strategy="complicate",
-    num_iterations=2,
-    llm=gpt4,
-)
-# "What is 2+2?" → "What is the sum of the smallest prime and its successor,
-#                   expressed in base 3?"
-
-# Usage: Multi-strategy evolution
->> Evolve(
-    input_column="problem",
-    strategy=["deepen", "adversarial"],
-    num_iterations=2,
-    keep_history=True,
-    llm=gpt4,
-)
-```
-
-### 13.4 Refine
-
-Improve content based on provided critique.
-
-```python
-class Refine(Step):
-    def __init__(
-        self,
-        content_column: str,
-        critique_column: str = "critique",
-        output_column: str | None = None,  # default: {content}_refined
-        
-        llm: Model | list[Model] | Sample | None = None,
-    ):
-        ...
-
-# Usage: Critique then refine
->> Critique(input_columns=["essay"], criteria=["clarity", "flow"], llm=gpt4)
->> Refine(content_column="essay", critique_column="critique", llm=gpt4)
-```
-
-### 13.5 Extract
+### 13.2 Extract
 
 Pull structured information from unstructured text.
 
@@ -2399,8 +2108,6 @@ datafast2/
 │   │   ├── flatmap.py
 │   │   ├── filter.py
 │   │   ├── sample.py
-│   │   ├── chunk.py
-│   │   ├── deduplicate.py
 │   │   ├── pair.py
 │   │   ├── group.py
 │   │   ├── concat.py
@@ -2409,18 +2116,11 @@ datafast2/
 │   │
 │   ├── llm/                    # LLM-based steps
 │   │   ├── __init__.py
-│   │   ├── base.py             # LLMStep base with common logic
 │   │   ├── generate.py         # LLMStep
-│   │   ├── conversation.py     # Conversation
 │   │   ├── classify.py         # Classify
 │   │   ├── score.py            # Score
-│   │   ├── validate.py         # Validate
 │   │   ├── compare.py          # Compare
-│   │   ├── critique.py         # Critique
 │   │   ├── rewrite.py          # Rewrite
-│   │   ├── translate.py        # Translate
-│   │   ├── evolve.py           # Evolve
-│   │   ├── refine.py           # Refine
 │   │   └── extract.py          # Extract
 │   │
 │   └── __init__.py             # Re-export all steps
@@ -2478,17 +2178,15 @@ from datafast2.sampling import Sample
 # Data Steps
 from datafast2.steps.data import (
     Map, FlatMap, Filter, Sample,
-    Chunk, Deduplicate,
     Pair, Group,
     Concat, Join, Branch, JoinBranches,
 )
 
 # LLM Steps
 from datafast2.steps.llm import (
-    LLMStep, Conversation,
-    Classify, Score, Validate, Compare, Critique,
-    Rewrite, Translate, Evolve, Refine,
-    Extract,
+    LLMStep,
+    Classify, Score, Compare,
+    Rewrite, Extract,
 )
 
 # Models
@@ -2574,38 +2272,30 @@ __version__ = "2.0.0"
 
 ### Phase 6: LLM Evaluation Steps (Week 6-7)
 
-**Goal:** Classify, Score, Validate, Compare, Critique.
+**Goal:** Classify, Score, Compare.
 
 1. `Classify`
 2. `Score`
-3. `Validate`
-4. `Compare`
-5. `Critique`
+3. `Compare`
 
 **Test:** Pipeline with generation → scoring → filtering
 
 ### Phase 7: LLM Transformation Steps (Week 7-8)
 
-**Goal:** Rewrite, Translate, Evolve, Refine, Extract.
+**Goal:** Rewrite, Extract.
 
 1. `Rewrite`
-2. `Translate`
-3. `Evolve`
-4. `Refine`
-5. `Extract`
-6. `Conversation`
+2. `Extract`
 
 **Test:** Text augmentation pipeline
 
-### Phase 8: Advanced Data Steps (Week 8-9)
+### Phase 8: Data Sources, Sinks & Remaining Steps (Week 8-9)
 
-**Goal:** Chunk, Deduplicate, FlatMap, and remaining file sources/sinks.
+**Goal:** FlatMap and remaining file sources/sinks.
 
 1. `FlatMap`
-2. `Chunk` with multiple strategies
-3. `Deduplicate` with fuzzy/semantic
-4. `Source.huggingface`, `Source.file`
-5. `Sink.jsonl`, `Sink.hub`, etc.
+2. `Source.huggingface`, `Source.file`
+3. `Sink.jsonl`, `Sink.hub`, etc.
 
 **Test:** Full pipeline from HuggingFace → Hub
 
@@ -2647,8 +2337,6 @@ Map(fn)
 FlatMap(fn)
 Filter(fn=..., where=..., expr=...)
 Sample(n=..., strategy=..., by=...)
-Chunk(input_column, strategy, size, overlap)
-Deduplicate(columns, strategy, threshold)
 Pair(n, strategy, within, across, by)
 Group(by, collect, agg)
 Concat(stream1, stream2, ...)
@@ -2659,25 +2347,19 @@ Branch(name1=step1, name2=step2) >> JoinBranches()
 ### LLM Generation
 ```python
 LLMStep(prompt, input_columns, output_columns, model, num_outputs, language)
-Conversation(seed_column, num_turns, user_persona, model)
 ```
 
 ### LLM Evaluation
 ```python
 Classify(labels, input_columns, output_column, llm, multi_label)
 Score(input_columns, output_column, range, llm, criteria, rubric)
-Validate(input_columns, criteria, output_column, llm)
 Compare(column_a, column_b, criteria, llm)
-Critique(input_columns, criteria, llm)
 ```
 
 ### LLM Transformation
 ```python
-Rewrite(input_column, mode, target_style, num_variations, llm)
-Translate(input_column, target_language, back_translate, llm)
-Evolve(input_column, strategy, num_iterations, llm)
-Refine(content_column, critique_column, llm)
-Extract(input_column, fields, llm)
+Rewrite(input_column, mode, custom_instruction, num_variations, llm)
+Extract(input_column, fields, extractor, llm)
 ```
 
 ### Sampling
@@ -2707,7 +2389,7 @@ pipeline.estimate()  # estimate cost
 ```python
 from datafast2 import (
     Source, Seed, Sample, Filter, Map,
-    LLMStep, Score, Validate, Branch, JoinBranches,
+    LLMStep, Score, Branch, JoinBranches,
     Sink, gpt4, gpt4_mini, claude,
 )
 
@@ -2787,17 +2469,7 @@ pipeline = (
     >> Filter(fn=lambda r: r["score_chosen"] - r["score_rejected"] >= 3)
     .as_step("filter_preferences")
     
-    # 8. Validate preference
-    >> Validate(
-        input_columns=["question", "response_chosen", "response_rejected"],
-        criteria="The first response is clearly better than the second response",
-        output_column="preference_valid",
-        llm=claude,
-    )
-    >> Filter(where={"preference_valid": True})
-    .as_step("validate_preferences")
-    
-    # 9. Output
+    # 8. Output
     >> Sink.hub("username/preference-dataset", train_size=0.9, private=False)
 )
 
@@ -2818,10 +2490,12 @@ pipeline.run(
 
 ## Appendix B: Complete Example — Multi-Hop QA
 
+> **Note:** This example uses `Chunk`, `Validate`, and `Deduplicate` which are planned as future extensions (see Section 23). The pipeline structure illustrates the intended design; replace those steps with `FlatMap` for chunking and `Filter` + `Score` for validation in the current implementation.
+
 ```python
 from datafast2 import (
-    Source, Sample, Filter, Chunk, Pair, Group,
-    LLMStep, Validate, Score, Deduplicate,
+    Source, Sample, Filter, Pair, Group,
+    LLMStep, Score,
     Sink, gpt4, claude,
 )
 
@@ -2834,14 +2508,11 @@ pipeline = (
     >> Sample(n=500, strategy="diverse", by="abstract")
     .as_step("sample_papers")
     
-    # 3. Chunk into paragraphs
-    >> Chunk(
-        input_column="full_text",
-        output_column="chunk",
-        strategy="paragraphs",
-        size=3,  # 3 paragraphs per chunk
-        overlap=1,
-    )
+    # 3. Split into paragraphs via FlatMap (Chunk is a future extension)
+    >> FlatMap(lambda r: [
+        {**r, "chunk": p.strip()}
+        for p in r["full_text"].split("\n\n") if p.strip()
+    ])
     .as_step("chunk")
     
     # 4. Filter short chunks
@@ -2875,23 +2546,7 @@ pipeline = (
     )
     .as_step("generate_qa")
     
-    # 7. Validate multi-hop requirement
-    >> Validate(
-        input_columns=["chunk_1_chunk", "question", "answer"],
-        criteria="This question CANNOT be fully answered using only this passage",
-        output_column="needs_both_1",
-        llm=claude,
-    )
-    >> Validate(
-        input_columns=["chunk_2_chunk", "question", "answer"],
-        criteria="This question CANNOT be fully answered using only this passage",
-        output_column="needs_both_2",
-        llm=claude,
-    )
-    >> Filter(fn=lambda r: r["needs_both_1"] and r["needs_both_2"])
-    .as_step("validate_multihop")
-    
-    # 8. Score question quality
+    # 7. Score question quality
     >> Score(
         input_columns=["question"],
         output_column="quality",
@@ -2902,21 +2557,9 @@ pipeline = (
     >> Filter(where={"quality": {"$gte": 4}})
     .as_step("score_quality")
     
-    # 9. Deduplicate similar questions
-    >> Deduplicate(
-        columns="question",
-        strategy="semantic",
-        threshold=0.85,
-    )
-    .as_step("deduplicate")
-    
-    # 10. Output
+    # 8. Output
     >> Sink.hub("username/multihop-qa-dataset")
 )
-
-# Test with one example first
-test_result = pipeline.run_one()
-print(test_result)
 
 # Run full pipeline
 pipeline.run(
@@ -2996,6 +2639,26 @@ pipeline = classification_pipeline(
 
 pipeline.run()
 ```
+
+---
+
+## 23. Future Extensions
+
+The following components are intentionally deferred. They follow the same `Step` interface and can be added later without breaking existing pipelines.
+
+**Chunk** — Splits a long text column into smaller, overlapping chunks, yielding one record per chunk. Supports token-based, sentence-based, paragraph-based, and semantic splitting strategies, and is essential for RAG and document-processing pipelines.
+
+**Deduplicate** — Removes duplicate or near-duplicate records by comparing one or more columns. Supports exact matching, fuzzy string similarity, and semantic embedding-based deduplication with a configurable threshold.
+
+**Conversation** — Generates synthetic multi-turn dialogues from a seed topic or message column. Supports configurable turn counts, user and assistant personas, and continuation probability, producing a list of `{role, content}` dicts per record.
+
+**Translate** — Translates a text column into one or more target languages using an LLM, optionally producing a back-translated version for data augmentation. Each target language yields a separate output column.
+
+**Evolve** — Iteratively rewrites content to increase complexity or sophistication over multiple rounds, inspired by the Evol-Instruct technique. Supports strategies such as deepening, broadening, complicating, and adversarial rewriting.
+
+**Refine** — Takes a content column and a corresponding critique column (e.g. from `LLMStep`) and rewrites the content to address the critique, enabling a self-improvement loop.
+
+**Validate** — Performs a boolean LLM-as-judge check against one or more free-text criteria, writing `True`/`False` to an output column. Designed to be chained with `Filter` to keep only records that pass quality gates.
 
 ---
 
