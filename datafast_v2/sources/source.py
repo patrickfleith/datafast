@@ -150,8 +150,112 @@ class FileSource(Step):
                 yield row
 
 
+class HuggingFaceSource(Step):
+    """Load data from a HuggingFace Hub dataset."""
+
+    def __init__(
+        self,
+        dataset_name: str,
+        split: str = "train",
+        subset: str | None = None,
+        columns: list[str] | None = None,
+        trust_remote_code: bool = False,
+        streaming: bool = False,
+    ) -> None:
+        """
+        Initialize a HuggingFace source.
+
+        Args:
+            dataset_name: HuggingFace dataset name (e.g., "wikipedia", "squad").
+            split: Dataset split to load (e.g., "train", "validation", "test").
+            subset: Dataset subset/config name (e.g., "20220301.en" for wikipedia).
+            columns: List of columns to load. If None, loads all columns.
+            trust_remote_code: Whether to trust remote code in dataset scripts.
+            streaming: If True, load dataset in streaming mode (lazy, no download).
+        """
+        super().__init__()
+        self._dataset_name = dataset_name
+        self._split = split
+        self._subset = subset
+        self._columns = columns
+        self._trust_remote_code = trust_remote_code
+        self._streaming = streaming
+
+    def process(self, records: Iterable[Record]) -> Iterable[Record]:
+        """Load and yield records from HuggingFace Hub."""
+        try:
+            from datasets import load_dataset
+        except ImportError:
+            raise ImportError(
+                "datasets is required for HuggingFaceSource. "
+                "Install it with: pip install datasets"
+            )
+
+        logger.info(
+            f"Loading '{self._dataset_name}' "
+            f"(split={self._split}"
+            + (f", subset={self._subset}" if self._subset else "")
+            + ")"
+        )
+
+        kwargs = {
+            "trust_remote_code": self._trust_remote_code,
+            "streaming": self._streaming,
+        }
+        if self._subset:
+            kwargs["name"] = self._subset
+
+        dataset = load_dataset(self._dataset_name, split=self._split, **kwargs)
+
+        if self._columns:
+            dataset = dataset.select_columns(self._columns)
+
+        count = 0
+        for row in dataset:
+            yield dict(row)
+            count += 1
+
+        logger.info(f"Loaded {count} records from '{self._dataset_name}'")
+
+
 class Source:
     """Factory class for creating source steps."""
+
+    @staticmethod
+    def huggingface(
+        dataset_name: str,
+        split: str = "train",
+        subset: str | None = None,
+        columns: list[str] | None = None,
+        trust_remote_code: bool = False,
+        streaming: bool = False,
+    ) -> HuggingFaceSource:
+        """
+        Load data from a HuggingFace Hub dataset.
+
+        Args:
+            dataset_name: HuggingFace dataset name (e.g., "wikipedia", "squad").
+            split: Dataset split to load (e.g., "train", "validation", "test").
+            subset: Dataset subset/config name (e.g., "20220301.en" for wikipedia).
+            columns: List of columns to load. If None, loads all columns.
+            trust_remote_code: Whether to trust remote code in dataset scripts.
+            streaming: If True, load dataset in streaming mode (lazy, no download).
+
+        Returns:
+            A HuggingFaceSource step.
+
+        Examples:
+            >>> Source.huggingface("wikipedia", split="train", subset="20220301.en")
+            >>> Source.huggingface("squad", split="validation", columns=["question", "context"])
+        """
+        return HuggingFaceSource(
+            dataset_name=dataset_name,
+            split=split,
+            subset=subset,
+            columns=columns,
+            trust_remote_code=trust_remote_code,
+            streaming=streaming,
+        )
 
     @staticmethod
     def file(
