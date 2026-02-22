@@ -159,10 +159,17 @@ class Runner:
         )
 
     def _is_llm_step(self, step: "Step") -> bool:
-        """Check if a step is an LLMStep."""
-        from datafast_v2.transforms.llm_step import LLMStep
+        """Check if a step supports LLM batching (has collect_calls/apply_result).
 
-        return isinstance(step, LLMStep)
+        For dual-mode steps (e.g. Classify, Score) that support both fn and
+        LLM modes, also checks the ``uses_llm`` property.
+        """
+        if not (hasattr(step, "collect_calls") and hasattr(step, "apply_result")):
+            return False
+        # Dual-mode steps expose a uses_llm flag; respect it.
+        if hasattr(step, "uses_llm"):
+            return step.uses_llm
+        return True
 
     def _execute_llm_step(
         self,
