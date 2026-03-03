@@ -6,6 +6,8 @@ Demonstrates:
 """
 
 from datafast_v2 import Source, Score, Sink, openrouter
+import litellm
+litellm.suppress_debug_info = True
 
 # --- Part A: LLM-based scoring with rubric ---
 # model = ollama("gemma3:4b")
