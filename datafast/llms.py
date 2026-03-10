@@ -1,6 +1,6 @@
 """LLM providers for datafast using LiteLLM.
 
-This module provides classes for different LLM providers (OpenAI, Anthropic, Gemini)
+This module provides classes for different LLM providers (OpenAI, Anthropic, Gemini, Mistral)
 with a unified interface using LiteLLM under the hood.
 """
 
@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 # LiteLLM
 import litellm
+from litellm.exceptions import RateLimitError
 from litellm.utils import ModelResponse
 
 # Internal imports
@@ -115,15 +116,27 @@ class LLMProvider(ABC):
         # Keep only timestamps within the last minute
         self._request_timestamps = [
             ts for ts in self._request_timestamps if current - ts < 60]
-        if len(self._request_timestamps) < self.rpm_limit:
+        
+        # Be more conservative - wait if we're at 90% of the limit
+        conservative_limit = max(1, int(self.rpm_limit * 0.9))
+        
+        if len(self._request_timestamps) < conservative_limit:
             return
+        
         # Need to wait until the earliest request is outside the 60-second window
         earliest = self._request_timestamps[0]
-        # Add a 1s margin to avoid accidental rate limit exceedance
-        sleep_time = 61 - (current - earliest)
+        # Add a 2s margin to avoid accidental rate limit exceedance
+        sleep_time = 62 - (current - earliest)
         if sleep_time > 0:
-            logger.warning(f"Rate limit reached | Waiting {sleep_time:.1f}s")
+            logger.warning(
+                f"Rate limit approaching | Requests: {len(self._request_timestamps)}/{self.rpm_limit} | "
+                f"Waiting {sleep_time:.1f}s"
+            )
             time.sleep(sleep_time)
+            # Clean up old timestamps after waiting
+            current = time.monotonic()
+            self._request_timestamps = [
+                ts for ts in self._request_timestamps if current - ts < 60]
 
     @staticmethod
     def _strip_code_fences(content: str) -> str:
@@ -257,9 +270,33 @@ class LLMProvider(ABC):
             if response_format is not None:
                 completion_params["response_format"] = response_format
 
-            # Call LiteLLM completion with batch messages
-            response: list[ModelResponse] = litellm.batch_completion(
-                **completion_params)
+            # Call LiteLLM completion with batch messages - retry on rate limit
+            max_retries = 3
+            retry_delay = 5  # Start with 5 seconds
+            response = None
+            
+            for attempt in range(max_retries):
+                try:
+                    response: list[ModelResponse] = litellm.batch_completion(
+                        **completion_params)
+                    break  # Success, exit retry loop
+                except RateLimitError as e:
+                    if attempt < max_retries - 1:
+                        wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                        logger.warning(
+                            f"Rate limit hit | Provider: {self.provider_name} | Model: {self.model_id} | "
+                            f"Attempt {attempt + 1}/{max_retries} | Waiting {wait_time}s before retry"
+                        )
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(
+                            f"Rate limit exceeded after {max_retries} attempts | "
+                            f"Provider: {self.provider_name} | Model: {self.model_id}"
+                        )
+                        raise
+            
+            if response is None:
+                raise RuntimeError("Failed to get response after retries")
 
             # Record timestamp for rate limiting (one timestamp per batch item)
             if self.rpm_limit is not None:
@@ -269,7 +306,24 @@ class LLMProvider(ABC):
 
             # Extract content from each response
             results = []
-            for one_response in response:
+            for idx, one_response in enumerate(response):
+                if isinstance(one_response, Exception):
+                    if isinstance(one_response, RateLimitError):
+                        logger.warning(
+                            "Rate limit error in batch item | Provider: %s | Model: %s | Item: %d",
+                            self.provider_name,
+                            self.model_id,
+                            idx,
+                        )
+                    raise RuntimeError(
+                        f"Batch item {idx} failed during generation: {one_response}"
+                    ) from one_response
+
+                if not getattr(one_response, "choices", None):
+                    raise RuntimeError(
+                        f"Unexpected response type from LiteLLM batch completion at item {idx}: {type(one_response).__name__}"
+                    )
+
                 content = one_response.choices[0].message.content
                 
                 if response_format is not None:
@@ -725,4 +779,50 @@ class OpenRouterProvider(LLMProvider):
             top_p = top_p,
             frequency_penalty = frequency_penalty,
             timeout = timeout,
+        )
+
+
+class MistralProvider(LLMProvider):
+    """Mistral AI provider using litellm."""
+
+    @property
+    def provider_name(self) -> str:
+        return "mistral"
+
+    @property
+    def env_key_name(self) -> str:
+        return "MISTRAL_API_KEY"
+
+    def __init__(
+        self,
+        model_id: str = "mistral-small-latest",
+        api_key: str | None = None,
+        temperature: float | None = None,
+        max_completion_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
+        rpm_limit: int | None = None,
+        timeout: int | None = None,
+    ):
+        """Initialize the Mistral provider.
+
+        Args:
+            model_id: The model ID (defaults to mistral-small-latest)
+            api_key: API key (if None, will get from MISTRAL_API_KEY env var)
+            temperature: Temperature for generation (0.0 to 1.0)
+            max_completion_tokens: Maximum tokens to generate
+            top_p: Nucleus sampling parameter (0.0 to 1.0)
+            frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
+            rpm_limit: Requests per minute limit for rate limiting
+            timeout: Request timeout in seconds
+        """
+        super().__init__(
+            model_id=model_id,
+            api_key=api_key,
+            temperature=temperature,
+            max_completion_tokens=max_completion_tokens,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            rpm_limit=rpm_limit,
+            timeout=timeout,
         )
