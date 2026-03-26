@@ -1,192 +1,117 @@
-<div align="left">
-  <img src="./assets/Datafast Logo.png" alt="Datafast Logo" width="300px">
-</div>
-    
-> *Generate text datasets for LLMs in minutes, not weeks.*
+# Datafast
 
-## Intended use cases
-- Get initial evaluation text data instead of starting your LLM project blind.
-- Increase diversity and coverage of an existing dataset by generating more data.
-- Experiment and test quickly LLM-based application PoCs.
-- Make your own datasets to fine-tune and evaluate language models for your application.
+Datafast is a python library for synthetic data generation using llms.
 
-🌟 Star this repo if you find this useful! 
+The old dataset-class API has been removed. The canonical package is `datafast`, and the primary model is:
 
-## Supported Dataset Types
-
-- ✅ Text Classification Dataset
-- ✅ Raw Text Generation Dataset
-- ✅ Instruction Dataset (Ultrachat-like)
-- ✅ Multiple Choice Question (MCQ) Dataset
-- ✅ Preference Dataset
-- ⏳ more to come...
-
-## Supported LLM Providers
-
-Currently we support the following LLM providers:
-
-- ✔︎ OpenAI
-- ✔︎ Anthropic
-- ✔︎ Google Gemini
-- ✔︎ Ollama (local LLM server)
-- ✔︎ Mistral AI
-- ⏳ more to come...
-
-
-Try it in Colab: 
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/patrickfleith/datapipes/blob/main/notebooks/Datafast_Quickstart_Text_Classification.ipynb)
-
+- create records with `Source` or `Seed`
+- transform them with composable steps
+- call LLMs with `LLMStep`, `Classify`, `Score`, `Compare`, `Rewrite`, or `Extract`
+- persist results with `Sink`
 
 ## Installation
+
 ```bash
 pip install datafast
 ```
 
+Optional Langfuse tracing:
+
+```bash
+pip install "datafast[langfuse]"
+```
+
 ## Quick Start
 
-### 1. Environment Setup
-
-Make sure you have created a `.env` file with your API keys.
-HF token is needed if you want to push the dataset to your HF hub.
-Other keys depends on which LLM providers you use.
-```
-GEMINI_API_KEY=XXXX
-OPENAI_API_KEY=sk-XXXX
-ANTHROPIC_API_KEY=sk-ant-XXXXX
-MISTRAL_API_KEY=XXXX
-HF_TOKEN=hf_XXXXX
-```
-
-### 2. Import Dependencies
 ```python
-from datafast.datasets import ClassificationDataset
-from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider
-from dotenv import load_dotenv
+from datafast import LLMStep, Seed, Sink, openrouter
 
-# Load environment variables
-load_dotenv() # <--- your API keys
-```
+model = openrouter("z-ai/glm-4.6")
 
-### 3. Configure Dataset
-```python
-# Configure the dataset for text classification
-config = ClassificationDatasetConfig(
-    classes=[
-        {"name": "positive", "description": "Text expressing positive emotions or approval"},
-        {"name": "negative", "description": "Text expressing negative emotions or criticism"}
-    ],
-    num_samples_per_prompt=5,
-    output_file="outdoor_activities_sentiments.jsonl",
-    languages={
-        "en": "English", 
-        "fr": "French"
-    },
-    prompts=[
-        (
-            "Generate {num_samples} reviews in {language_name} which are diverse "
-            "and representative of a '{label_name}' sentiment class. "
-            "{label_description}. The reviews should be {{style}} and in the "
-            "context of {{context}}."
-        )
-    ],
-    expansion=PromptExpansionConfig(
-        placeholders={
-            "context": ["hike review", "speedboat tour review", "outdoor climbing experience"],
-            "style": ["brief", "detailed"]
-        },
-        combinatorial=True
+pipeline = (
+    Seed.product(
+        Seed.values("topic", ["robotics", "energy storage"]),
+        Seed.values("audience", ["beginner", "expert"]),
     )
+    >> LLMStep(
+        prompt=(
+            "Write one short {audience} question about {topic}. "
+            "Return JSON with fields question and answer."
+        ),
+        input_columns=["topic", "audience"],
+        output_columns=["question", "answer"],
+        parse_mode="json",
+        model=model,
+    )
+    >> Sink.jsonl("examples/outputs/quickstart.jsonl")
 )
+
+pipeline.run(batch_size=4)
 ```
 
-### 4. Setup LLM Providers
+## Main Building Blocks
+
+- `Source`: load records from Python lists, files, or Hugging Face datasets
+- `Seed`: generate record combinations declaratively
+- `Map`, `FlatMap`, `Filter`, `Group`, `Pair`, `Concat`, `Join`: data operations
+- `LLMStep`: free-form generation
+- `Classify`, `Score`, `Compare`, `Rewrite`, `Extract`: higher-level LLM transforms
+- `Branch` and `JoinBranches`: multi-path pipelines
+- `Sink`: write JSONL, CSV, Parquet, Hub datasets, or collect records in memory
+- `Runner` and `RunConfig`: execution, batching, checkpoints, resume
+
+## Providers
+
+The package keeps direct provider coverage for:
+
+- `OpenAIProvider`
+- `AnthropicProvider`
+- `GeminiProvider`
+- `MistralProvider`
+- `OpenRouterProvider`
+- `OllamaProvider`
+
+Top-level factory helpers are also available: `openai`, `anthropic`, `gemini`, `mistral`, `openrouter`, `ollama`.
+
+## Optional Langfuse Tracing
+
+If you install the optional extra, Datafast can auto-enable Langfuse tracing through LiteLLM.
+
+`.env`
+
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+```
+
+Once those values are present, tracing is enabled automatically when you create a provider.
+
 ```python
-# Create LLM providers
-providers = [
-    OpenAIProvider(model_id="gpt-5-mini-2025-08-07"),
-    AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
-    GeminiProvider(model_id="gemini-2.0-flash")
-]
+from datafast import LLMStep, Seed, openrouter
+
+model = openrouter("z-ai/glm-4.6")
 ```
 
-### 5. Generate and Push Dataset
+If you prefer an explicit startup call, use:
+
 ```python
-# Generate dataset and local save
-dataset = ClassificationDataset(config)
-dataset.generate(providers)
+from datafast import configure_langfuse_tracing
 
-# Optional: Push to Hugging Face Hub
-dataset.push_to_hub(
-    repo_id="YOUR_USERNAME/YOUR_DATASET_NAME",
-    train_size=0.6
-)
+configure_langfuse_tracing()
 ```
 
-## Next Steps
+## Repo Layout
 
-Check out our guides for different dataset types:
+- `datafast/`: canonical source package
+- `examples/scripts/`: runnable pipeline examples
+- `docs/`: pipeline-first documentation
+- `datafast_new_design_document.md`: retained design reference
 
-* [How to Generate a Text Classification Dataset](https://patrickfleith.github.io/datafast/guides/generating_text_classification_datasets/)
-* [How to Create a Raw Text Dataset](https://patrickfleith.github.io/datafast/guides/generating_text_datasets/)
-* [How to Create a Preference Dataset](https://patrickfleith.github.io/datafast/guides/generating_preference_datasets/)
-* [How to Create a Multiple Choice Question (MCQ) Dataset](https://patrickfleith.github.io/datafast/guides/generating_mcq_datasets/)
-* [How to Create an Instruction (Ultrachat) Dataset](https://patrickfleith.github.io/datafast/guides/generating_ultrachat_datasets/)
-* Star and watch this github repo to get updates 🌟
+## Running Tests
 
-## Key Features
+`pytest` is not on PATH in this repo. Use the project virtualenv:
 
-* **Easy-to-use** and simple interface 🚀
-* **Multi-lingual** datasets generation 🌍
-* **Multiple LLMs** used to boost dataset diversity 🤖
-* **Flexible prompt**: use our default prompts or provide your own custom prompts 📝
-* **Prompt expansion**: Combinatorial variation of prompts to maximize diversity 🔄
-* **Hugging Face Integration**: Push generated datasets to the Hub 🤗
-
-> [!WARNING]
-> This library is in its early stages of development and might change significantly.
-
-## Contributing
-
-Contributions are welcome! If you are new to the project, pick an issue labelled "good first issue".
-
-How to proceed?
-1. Pick an issue
-2. Comment on the issue to let others know you are working on it
-3. Fork the repository
-4. Clone your fork locally
-5. Create a new branch and give it a name like `feature/my-awsome-feature`
-6. Make your changes
-7. If you feel like it, write a few tests for your changes
-8. To run the current tests, you can run `pytest` in the root directory. Don't pay attention to `UserWarning: Pydantic serializer warnings`. Note that for the LLMs test to run successfully you'll need to have:
-- openai API key
-- anthropic API key
-- gemini API key
-- mistral API key
-- an ollama server running (use `ollama serve` from command line)
-9. Commit your change, push to your fork and create a pull request from your fork branch to datafast main branch.
-10. Explain your pull request in a clear and concise way, I'll review it as soon as possible.
-
-## Roadmap:
-
-- RAG datasets
-- Personas
-- Seeds
-- More types of instructions datasets (not just ultrachat)
-- More LLM providers
-- Deduplication, filtering
-- Dataset cards generation
-
-## Creator
-
-Made with ❤️ by [Patrick Fleith](https://www.linkedin.com/in/patrick-fleith/).
-
-<hr> 
-
-This is volunteer work, star this repo to show your support! 🙏
-
-
-## Project Details
-- **Status:** Work in Progress (APIs may change)
-- **License:** [Apache 2.0](LICENSE)
+```bash
+.venv/bin/pytest
+```
