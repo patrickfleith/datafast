@@ -182,3 +182,6 @@ secrets.env
 
 # Include specific directories
 !datafast/examples/data/*
+
+examples/checkpoints/
+examples/outputs/
