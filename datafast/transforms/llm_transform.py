@@ -5,15 +5,16 @@ from typing import Any
 
 from loguru import logger
 
-from datafast_v2.core.config import LLMCall
-from datafast_v2.core.step import Step
-from datafast_v2.core.types import Record
-from datafast_v2.llm.provider import LLMProvider
-from datafast_v2.transforms.llm_eval import (
+from datafast.core.config import LLMCall
+from datafast.core.step import Step
+from datafast.core.types import Record
+from datafast.llm.provider import LLMProvider
+from datafast.tracing import build_trace_metadata
+from datafast.transforms.llm_eval import (
     _build_output_record,
     _normalize_models,
 )
-from datafast_v2.transforms.sample import Sample
+from datafast.transforms.sample import Sample
 
 # ---------------------------------------------------------------------------
 # Rewrite mode prompts
@@ -291,12 +292,23 @@ class Rewrite(Step):
         generated = 0
         errors = 0
 
-        for record in records:
+        for record_index, record in enumerate(records):
             for model in models:
                 for var_idx in range(self._num_variations):
                     try:
                         messages = self._build_messages(record)
-                        raw = model.generate(messages)
+                        raw = model.generate(
+                            messages,
+                            metadata=build_trace_metadata(
+                                model=model,
+                                component="step.process",
+                                trace_name=f"datafast.{self.name}",
+                                step_name=self.name,
+                                step_type=self.__class__.__name__,
+                                record_index=record_index,
+                                output_index=var_idx,
+                            ),
+                        )
 
                         fields: dict[str, Any] = {
                             self._output_column: raw.strip(),

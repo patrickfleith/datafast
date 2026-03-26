@@ -4,10 +4,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
-from datafast_v2.core.types import Record
+from datafast.core.types import Record
 
 if TYPE_CHECKING:
-    from datafast_v2.core.config import RunConfig
+    from datafast.core.config import RunConfig
 
 
 class Step(ABC):
@@ -91,7 +91,7 @@ class Pipeline(Step):
         Returns:
             List of output records.
         """
-        from datafast_v2.core.runner import run_pipeline
+        from datafast.core.runner import run_pipeline
 
         return run_pipeline(
             self,

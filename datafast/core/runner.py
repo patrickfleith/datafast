@@ -1,24 +1,26 @@
 """Pipeline execution engine with checkpointing and LLM batching."""
 
 import time
+import uuid
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from datafast_v2.core.checkpoint import (
+from datafast.core.checkpoint import (
     CheckpointManager,
     Manifest,
     PipelineChangedError,
     compute_pipeline_hash,
 )
-from datafast_v2.core.config import LLMCall, LLMStepProgress, RunConfig
-from datafast_v2.core.types import Record
+from datafast.core.config import LLMCall, LLMStepProgress, RunConfig
+from datafast.core.types import Record
+from datafast.tracing import build_trace_metadata
 
 if TYPE_CHECKING:
-    from datafast_v2.core.step import Pipeline, Step
-    from datafast_v2.llm.provider import LLMProvider
-    from datafast_v2.transforms.llm_step import LLMStep
+    from datafast.core.step import Pipeline, Step
+    from datafast.llm.provider import LLMProvider
+    from datafast.transforms.llm_step import LLMStep
 
 
 def chunked(iterable: list, size: int):
@@ -49,6 +51,7 @@ class Runner:
         self.pipeline = pipeline
         self.config = config or RunConfig()
         self._checkpoint_mgr: CheckpointManager | None = None
+        self._trace_session_id = f"datafast-run-{uuid.uuid4().hex}"
 
         if self.config.checkpoint_dir:
             self._checkpoint_mgr = CheckpointManager(self.config.checkpoint_dir)
@@ -229,7 +232,22 @@ class Runner:
                 batch_model_id = call.model_id
 
                 try:
-                    result = model.generate(call.messages)
+                    result = model.generate(
+                        call.messages,
+                        metadata=build_trace_metadata(
+                            model=model,
+                            component="pipeline.step",
+                            trace_name=f"datafast.{step_name}",
+                            session_id=self._trace_session_id,
+                            step_name=step_name,
+                            step_type=step.__class__.__name__,
+                            record_index=call.record_index,
+                            prompt_index=call.prompt_index,
+                            output_index=call.output_index,
+                            language_code=call.language_code or None,
+                            call_id=call.call_id,
+                        ),
+                    )
                     output_record = step.apply_result(call, result, model)
                     output_records.append(output_record)
                     progress.completed_call_ids.append(call.call_id)

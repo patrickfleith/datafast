@@ -6,12 +6,13 @@ from typing import Any
 
 from loguru import logger
 
-from datafast_v2.core.config import LLMCall
-from datafast_v2.core.step import Step
-from datafast_v2.core.types import Record
-from datafast_v2.llm.parsing import get_parser, OutputParser
-from datafast_v2.llm.provider import LLMProvider
-from datafast_v2.transforms.sample import Sample
+from datafast.core.config import LLMCall
+from datafast.core.step import Step
+from datafast.core.types import Record
+from datafast.llm.parsing import get_parser, OutputParser
+from datafast.llm.provider import LLMProvider
+from datafast.tracing import build_trace_metadata
+from datafast.transforms.sample import Sample
 
 
 class LLMStep(Step):
@@ -364,7 +365,7 @@ class LLMStep(Step):
         total_skipped = 0
         total_errors = 0
 
-        for record in records:
+        for record_index, record in enumerate(records):
             if self._skip_if and self._skip_if(record):
                 total_skipped += 1
                 continue
@@ -378,11 +379,24 @@ class LLMStep(Step):
                     for lang_code, lang_name in languages:
                         context = self._build_context(record, lang_code, lang_name)
 
-                        for _ in range(self._num_outputs):
+                        for output_index in range(self._num_outputs):
                             try:
                                 messages = self._build_messages(prompt_template, context)
 
-                                raw_output = model.generate(messages)
+                                raw_output = model.generate(
+                                    messages,
+                                    metadata=build_trace_metadata(
+                                        model=model,
+                                        component="step.process",
+                                        trace_name=f"datafast.{self.name}",
+                                        step_name=self.name,
+                                        step_type=self.__class__.__name__,
+                                        record_index=record_index,
+                                        prompt_index=prompt_idx,
+                                        output_index=output_index,
+                                        language_code=lang_code or None,
+                                    ),
+                                )
 
                                 parsed = self._parser.parse(
                                     raw_output, self._output_columns

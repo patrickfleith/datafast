@@ -9,8 +9,8 @@ from typing import Any
 
 from loguru import logger
 
-from datafast_v2.core.config import LLMStepProgress, RunConfig, StepStatus
-from datafast_v2.core.types import Record
+from datafast.core.config import LLMStepProgress, RunConfig, StepStatus
+from datafast.core.types import Record
 
 
 @dataclass

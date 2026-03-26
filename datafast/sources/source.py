@@ -5,8 +5,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from datafast_v2.core.step import Step
-from datafast_v2.core.types import Record
+from datafast.core.step import Step
+from datafast.core.types import Record
 
 
 class ListSource(Step):
