@@ -30,7 +30,7 @@ dependencies = [
     "anthropic",
     "openai",
     "pydantic",
-    "litellm",
+    "litellm==1.82.6",  # Pin to safe version - DO NOT UPDATE - versions 1.82.7 and 1.82.8 compromised with malware
     "gradio",
     "loguru",
 ]
