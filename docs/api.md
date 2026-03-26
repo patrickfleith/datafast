@@ -1,22 +1,84 @@
-# API Reference
+# API Overview
 
-🚧 **Under Construction** 🚧
+## Top-Level Package
 
-This API reference documentation is currently being developed.
+The recommended import surface is the top-level `datafast` package.
 
-## Available Resources
+```python
+from datafast import Source, LLMStep, Sink, openrouter
+```
 
-While waiting for the complete API documentation, please refer to these resources:
+## Core Types
 
-- [Quick Start Guide](index.md) - Basic usage examples to get started
-- [Core Concepts](concepts.md) - Understanding the underlying architecture and design
-- [Dataset Guides](guides/index.md) - Detailed instructions for each dataset type:
-    - [Text Classification](guides/generating_text_classification_datasets.md)
-    - [Text Generation](guides/generating_text_datasets.md)
-    - [Multiple Choice Questions](guides/generating_mcq_datasets.md)
-    - [Instruction Following](guides/generating_ultrachat_datasets.md)
-    - [Preference Pairs](guides/generating_preference_datasets.md)
-- [Prompt Expansion](guides/prompt_expansion.md) - Learn how to maximize dataset diversity
-- [LLM Providers](llms.md) - Details on supported providers and configuration
+- `Record`
+- `Step`
+- `Pipeline`
+- `RunConfig`
+- `Runner`
+- `run_pipeline`
+- `CheckpointManager`
 
-These resources contain code examples and explanations that should help you use the library effectively while the formal API documentation is being completed.
+## Sources and Seeds
+
+- `Source.list(...)`
+- `Source.file(...)`
+- `Source.jsonl(...)`
+- `Source.csv(...)`
+- `Source.parquet(...)`
+- `Source.tsv(...)`
+- `Source.txt(...)`
+- `Source.huggingface(...)`
+- `Seed.values(...)`
+- `Seed.product(...)`
+- `Seed.zip(...)`
+- `Seed.range(...)`
+
+## Data Operations
+
+- `Sample`
+- `Map`
+- `FlatMap`
+- `Filter`
+- `Group`
+- `Pair`
+- `Concat`
+- `Join`
+
+## LLM Operations
+
+- `LLMStep`
+- `Classify`
+- `Score`
+- `Compare`
+- `Rewrite`
+- `Extract`
+- `configure_langfuse_tracing(...)`
+- `is_langfuse_tracing_enabled()`
+
+## Branching and Sinks
+
+- `Branch`
+- `JoinBranches`
+- `Sink.jsonl(...)`
+- `Sink.csv(...)`
+- `Sink.parquet(...)`
+- `Sink.hub(...)`
+- `Sink.list()`
+
+## Providers
+
+- `OpenAIProvider`
+- `AnthropicProvider`
+- `GeminiProvider`
+- `MistralProvider`
+- `OpenRouterProvider`
+- `OllamaProvider`
+
+Factory helpers:
+
+- `openai(...)`
+- `anthropic(...)`
+- `gemini(...)`
+- `mistral(...)`
+- `openrouter(...)`
+- `ollama(...)`
