@@ -22,6 +22,11 @@ from litellm.utils import ModelResponse
 
 # Internal imports
 from .llm_utils import get_messages
+from .tracing import (
+    build_trace_metadata,
+    load_env_once,
+    maybe_configure_langfuse_tracing,
+)
 
 # Type aliases for Python 3.10+
 Message = dict[str, str]
@@ -42,7 +47,7 @@ class LLMProvider(ABC):
         frequency_penalty: float | None = None,
         rpm_limit: int | None = None,
         timeout: int | None = None,
-    ):
+        ):
         """Initialize the LLM provider with common parameters.
 
         Args:
@@ -54,6 +59,8 @@ class LLMProvider(ABC):
             frequency_penalty: Penalty for token frequency (-2.0 to 2.0)
         """
         self.model_id = model_id
+        load_env_once()
+        maybe_configure_langfuse_tracing(load_env=False)
         self.api_key = api_key or self._get_api_key()
 
         # Set generation parameters
@@ -73,6 +80,18 @@ class LLMProvider(ABC):
         self._configure_env()
         # Log successful initialization
         logger.info(f"Initialized {self.provider_name} | Model: {self.model_id}")
+
+    def _build_request_metadata(
+        self,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Build default tracing metadata for provider-level calls."""
+        return build_trace_metadata(
+            model=self,
+            component="provider.generate",
+            trace_name=f"datafast.{self.provider_name}",
+            metadata=metadata,
+        )
 
     @property
     @abstractmethod
@@ -174,6 +193,7 @@ class LLMProvider(ABC):
         prompt: str | list[str] | None = None,
         messages: list[Messages] | Messages | None = None,
         response_format: Type[T] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str | list[str] | T | list[T]:
         """
         Generate responses from the LLM using single or batch inference.
@@ -182,6 +202,7 @@ class LLMProvider(ABC):
             prompt: Single text prompt (str) or list of text prompts for batch processing
             messages: Single message list or list of message lists for batch processing
             response_format: Optional Pydantic model class for structured output
+            metadata: Optional LiteLLM metadata for tracing / observability
 
         Returns:
             Single string/model or list of strings/models depending on input type.
@@ -266,6 +287,7 @@ class LLMProvider(ABC):
                 "top_p": self.top_p,
                 "frequency_penalty": self.frequency_penalty,
                 "timeout": self.timeout,
+                "metadata": self._build_request_metadata(metadata),
             }
             if response_format is not None:
                 completion_params["response_format"] = response_format
@@ -447,6 +469,7 @@ class OpenAIProvider(LLMProvider):
         prompt: str | list[str] | None = None,
         messages: list[Messages] | Messages | None = None,
         response_format: Type[T] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str | list[str] | T | list[T]:
         """
         Generate responses from the LLM using the responses endpoint.
@@ -458,6 +481,7 @@ class OpenAIProvider(LLMProvider):
             prompt: Single text prompt (str) or list of text prompts for batch processing
             messages: Single message list or list of message lists for batch processing
             response_format: Optional Pydantic model class for structured output
+            metadata: Optional LiteLLM metadata for tracing / observability
 
         Returns:
             Single string/model or list of strings/models depending on input type.
@@ -534,6 +558,7 @@ class OpenAIProvider(LLMProvider):
                     "model": self._get_model_string(),
                     "input": message_list,
                     "reasoning": {"effort": self.reasoning_effort},
+                    "metadata": self._build_request_metadata(metadata),
                 }
                 
                 # Add max_output_tokens if specified
@@ -826,3 +851,56 @@ class MistralProvider(LLMProvider):
             rpm_limit=rpm_limit,
             timeout=timeout,
         )
+
+
+def openai(model_id: str = "gpt-5-mini-2025-08-07", **kwargs) -> OpenAIProvider:
+    """Create an OpenAI provider instance."""
+    return OpenAIProvider(model_id=model_id, **kwargs)
+
+
+def anthropic(
+    model_id: str = "claude-haiku-4-5-20251001",
+    **kwargs,
+) -> AnthropicProvider:
+    """Create an Anthropic provider instance."""
+    return AnthropicProvider(model_id=model_id, **kwargs)
+
+
+def gemini(model_id: str = "gemini-2.0-flash", **kwargs) -> GeminiProvider:
+    """Create a Gemini provider instance."""
+    return GeminiProvider(model_id=model_id, **kwargs)
+
+
+def ollama(model_id: str = "gemma3:4b", **kwargs) -> OllamaProvider:
+    """Create an Ollama provider instance."""
+    return OllamaProvider(model_id=model_id, **kwargs)
+
+
+def openrouter(
+    model_id: str = "openai/gpt-5-mini",
+    **kwargs,
+) -> OpenRouterProvider:
+    """Create an OpenRouter provider instance."""
+    return OpenRouterProvider(model_id=model_id, **kwargs)
+
+
+def mistral(model_id: str = "mistral-small-latest", **kwargs) -> MistralProvider:
+    """Create a Mistral provider instance."""
+    return MistralProvider(model_id=model_id, **kwargs)
+
+
+__all__ = [
+    "LLMProvider",
+    "OpenAIProvider",
+    "AnthropicProvider",
+    "GeminiProvider",
+    "OllamaProvider",
+    "OpenRouterProvider",
+    "MistralProvider",
+    "openai",
+    "anthropic",
+    "gemini",
+    "ollama",
+    "openrouter",
+    "mistral",
+]
