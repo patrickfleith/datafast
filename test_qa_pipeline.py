@@ -6,7 +6,7 @@ import litellm
 
 litellm.suppress_debug_info = True
 
-from datafast_v2 import (
+from datafast import (
     Source,
     Sample,
     LLMStep,
@@ -68,7 +68,7 @@ pipeline = (
     )
     .as_step("generate_answer")
     # Save to JSONL
-    >> Sink.jsonl("output/qa_dataset.jsonl")
+    >> Sink.jsonl("examples/outputs/qa_dataset.jsonl")
 )
 
 if __name__ == "__main__":
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     print()
     # Run with checkpointing
     results = pipeline.run(
-        checkpoint_dir="./checkpoints/qa_test",
+        checkpoint_dir="examples/checkpoints/qa_test",
         batch_size=2,
         llm_strategy="by_model",
     )
