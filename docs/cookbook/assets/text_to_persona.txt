@@ -1,0 +1,11 @@
+Infer one specific persona who is likely to read, write, or strongly engage with the following source text.
+
+Source text:
+{document}
+
+Requirements:
+1. Return a single persona, not a group.
+2. Make the persona specific and fine-grained rather than generic.
+3. Ground the persona in signals from the text such as domain, expertise, context, or likely motivation.
+4. Do not quote the source text in the persona field.
+

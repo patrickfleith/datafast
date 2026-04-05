@@ -1,0 +1,11 @@
+Guess a prompt that the following persona may ask an LLM to do.
+
+Persona:
+{related_persona}
+
+Requirements:
+1. The user prompt should be informative and specific.
+2. The request should sound like something this persona would genuinely ask.
+3. Keep it to a single prompt, not a conversation.
+4. Do not mention that the persona was inferred from another text.
+
