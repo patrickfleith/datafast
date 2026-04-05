@@ -185,3 +185,6 @@ secrets.env
 
 examples/checkpoints/
 examples/outputs/
+
+.codex/
+openspec/
