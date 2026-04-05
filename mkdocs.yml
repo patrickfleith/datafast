@@ -43,6 +43,9 @@ nav:
       - LLM Steps: guides/llm_steps.md
       - Checkpointing: guides/checkpointing.md
       - Langfuse Tracing: guides/langfuse_tracing.md
+  - Cookbook:
+      - cookbook/index.md
+      - Persona Generation: cookbook/persona_generation.md
   - Providers: llms.md
   - Models: models.md
   - API: api.md
