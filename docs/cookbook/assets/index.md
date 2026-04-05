@@ -9,9 +9,9 @@ This note records the supporting assets used by the persona-generation cookbook.
 - Text field: `document`
 - Summary field kept for inspection: `summary`
 - Selection rule: keep documents whose whitespace-tokenized word counts are between `300` and `500`
-- Cap: use the first `5` matching records
+- Cap: use the first `20` matching records
 
-This keeps the cookbook deterministic and small while still using a well-known Hugging Face corpus with article lengths that fit the demonstration.
+This keeps the cookbook deterministic and bounded while still using a well-known Hugging Face corpus with article lengths that fit the demonstration.
 
 `GEM/xsum` was the original candidate, but the current `datasets` stack in this repo no longer supports dataset-script based loading for that asset. The script therefore uses the scriptless `xsum` dataset, which exposes the same `document` and summary-style fields needed for the cookbook.
 

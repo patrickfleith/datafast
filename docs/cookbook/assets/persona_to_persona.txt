@@ -4,7 +4,7 @@ Persona:
 {persona}
 
 Requirements:
-1. Use one clear relationship such as patient-caregiver, coworker, family member, teacher-student, or client-service provider.
+1. Use one clear relationship.
 2. Choose a related persona that adds a meaningfully different perspective.
 3. Keep the related persona realistic and specific.
 4. Return only one relationship expansion.

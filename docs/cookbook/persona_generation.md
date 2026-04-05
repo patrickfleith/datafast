@@ -7,16 +7,18 @@ This cookbook shows how to implement a Persona Hub-inspired workflow with DataFa
 - Script: `examples/scripts/43_cookbook_persona_generation.py`
 - Prompt assets: [asset index](assets/index.md)
 - Output artifact: `examples/outputs/43_persona_cookbook.jsonl`
+- Dataset publication target: the Hugging Face dataset repo in `PERSONA_COOKBOOK_HF_REPO_ID`
 
 ## What The Script Does
 
 The pipeline is intentionally small:
 
 1. Load `xsum` articles from the `validation` split.
-2. Keep only the first `5` documents whose word counts fall between `300` and `500`.
+2. Keep only the first `20` documents whose word counts fall between `300` and `500`.
 3. Infer one likely persona from each article with a `Text-to-Persona` prompt.
 4. Expand that persona into a closely related persona with a `Persona-to-Persona` prompt.
 5. Generate one representative user prompt for the related persona.
+6. Write the final records to local JSONL and publish the same rows to Hugging Face Hub.
 
 ```text
 GEM/xsum article
@@ -35,15 +37,19 @@ Representative user prompt
 
 Prerequisites:
 
-- `OPENROUTER_API_KEY` is set
+- `MISTRAL_API_KEY` is set
+- `PERSONA_COOKBOOK_HF_REPO_ID` points at the target Hugging Face dataset repo, for example `your-name/persona-cookbook-43`
+- Hugging Face authentication is available through `HF_TOKEN` or a cached `huggingface_hub` login
 - the project environment has the base dependencies from `pyproject.toml`
-- the script uses OpenRouter model `nvidia/nemotron-3-super-120b-a12b`
+- the script uses the Mistral model `mistral-small-2603`
 
 Example:
 
 ```bash
 .venv/bin/python examples/scripts/43_cookbook_persona_generation.py
 ```
+
+By default the dataset push is private. Set `PERSONA_COOKBOOK_HF_PRIVATE=false` if you want the published dataset to be public.
 
 ## Prompt Summary
 
@@ -61,7 +67,7 @@ For downstream prompt generation, the repository publishes a prompt family for p
 
 ## Output Shape
 
-The JSONL output keeps the fields that matter for inspection:
+The local JSONL output and the published Hugging Face dataset keep the same fields for inspection:
 
 - `summary`
 - `document`
