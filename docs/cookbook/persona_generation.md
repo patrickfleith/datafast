@@ -1,80 +1,65 @@
 # Persona Generation
 
-This cookbook shows how to implement a Persona Hub-inspired workflow with DataFast without reusing Persona Hub code.
+Build personas from real articles and expand them through relationships. Inspired by the Persona Hub paper, implemented entirely with DataFast.
 
-## Runnable Source
+## Source
 
-- Script: `examples/scripts/43_cookbook_persona_generation.py`
-- Prompt assets: [asset index](assets/index.md)
-- Output artifact: `examples/outputs/43_persona_cookbook.jsonl`
-- Dataset publication target: the Hugging Face dataset repo in `PERSONA_COOKBOOK_HF_REPO_ID`
+- **Script:** `examples/scripts/43_cookbook_persona_generation.py`
+- **Prompt assets:** [asset index](assets/index.md)
+- **Output:** pushed to a private Hugging Face Hub dataset
 
-## What The Script Does
+## Pipeline
 
-The pipeline is intentionally small:
+1. Load `xsum` articles (`validation` split).
+2. Filter to documents between 300 and 500 words. Keep the first 5.
+3. **Text-to-Persona** — infer one persona from each article.
+4. **Persona-to-Persona** — expand that persona into a related individual.
+5. Push results to Hugging Face Hub.
 
-1. Load `xsum` articles from the `validation` split.
-2. Keep only the first `20` documents whose word counts fall between `300` and `500`.
-3. Infer one likely persona from each article with a `Text-to-Persona` prompt.
-4. Expand that persona into a closely related persona with a `Persona-to-Persona` prompt.
-5. Generate one representative user prompt for the related persona.
-6. Write the final records to local JSONL and publish the same rows to Hugging Face Hub.
+Each LLM step randomly picks one prompt variant per record using `Sample(prompts, n=1)`. This adds diversity across generations.
 
 ```text
-GEM/xsum article
-    |
-    v
-Text-to-Persona
-    |
-    v
-Persona-to-Persona
-    |
-    v
-Representative user prompt
+xsum article
+    │
+    ▼
+Text-to-Persona  (random prompt from 3 variants)
+    │
+    ▼
+Persona-to-Persona  (random prompt from 3 variants)
+    │
+    ▼
+Hugging Face Hub
 ```
 
 ## Run
 
 Prerequisites:
 
-- `MISTRAL_API_KEY` is set
-- `PERSONA_COOKBOOK_HF_REPO_ID` points at the target Hugging Face dataset repo, for example `your-name/persona-cookbook-43`
-- Hugging Face authentication is available through `HF_TOKEN` or a cached `huggingface_hub` login
-- the project environment has the base dependencies from `pyproject.toml`
-- the script uses the Mistral model `mistral-small-2603`
-
-Example:
+- `OPENROUTER_API_KEY` and `HF_TOKEN` set in a `.env` file
+- Base dependencies from `pyproject.toml` installed
 
 ```bash
-.venv/bin/python examples/scripts/43_cookbook_persona_generation.py
+python examples/scripts/43_cookbook_persona_generation.py
 ```
 
-By default the dataset push is private. Set `PERSONA_COOKBOOK_HF_PRIVATE=false` if you want the published dataset to be public.
+## Prompt Variants
 
-## Prompt Summary
+Each step draws from multiple prompt files stored under `docs/cookbook/assets/`. See the [asset index](assets/index.md) for the full list.
 
-The cookbook keeps full prompts in asset files rather than embedding them here.
+- **Text-to-Persona:** 3 variants (`text_to_persona_v1.txt`, `v2`, `v3`)
+- **Persona-to-Persona:** 3 variants (`persona_to_persona_v1.txt`, `v2`, `v3`)
 
-- [Text-to-Persona prompt](assets/text_to_persona.txt): a paper-aligned adaptation that infers one specific persona from a source text.
-- [Persona-to-Persona prompt](assets/persona_to_persona.txt): a paper-aligned adaptation that expands a persona through one close relationship.
-- [Persona-to-User-Prompt prompt](assets/persona_to_user_prompt.txt): a repository-derived prompt that asks for one realistic user request from the generated persona.
+Additional prompt variants for user-prompt generation are available (`persona_to_user_prompt_v2.txt`, `v3`) but not used in the current pipeline.
 
 ## Research Basis
 
-The Persona Hub paper introduces `Text-to-Persona` and `Persona-to-Persona` as scalable persona-construction methods from web text. It also states that the prompts shown in the paper figures are simplified rather than the exact strings used in experiments, so this cookbook treats those persona-construction prompts as paper-aligned adaptations rather than verbatim reproductions.
+The Persona Hub paper introduces Text-to-Persona and Persona-to-Persona as scalable methods for building personas from web text. The paper states that its published prompts are simplified, not the exact experiment strings. This cookbook treats them as paper-aligned adaptations. It does not reuse any Persona Hub code.
 
-For downstream prompt generation, the repository publishes a prompt family for persona-conditioned instruction generation. This cookbook adapts that idea to a DataFast JSON workflow and keeps the full asset path visible in the [asset index](assets/index.md).
+## Output Fields
 
-## Output Shape
-
-The local JSONL output and the published Hugging Face dataset keep the same fields for inspection:
-
-- `summary`
-- `document`
-- `word_count`
-- `persona`
-- `persona_basis`
-- `relationship_type`
-- `related_persona`
-- `user_prompt`
-- `prompt_basis`
+- `summary` — original article summary
+- `document` — source article text
+- `word_count` — whitespace token count
+- `persona_description` — inferred persona
+- `relationship_type` — link between the two personas
+- `related_persona_description` — the expanded related persona

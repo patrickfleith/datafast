@@ -11,4 +11,4 @@ The Python script is the source of truth. Each cookbook page explains:
 
 ## Available Cookbooks
 
-- [Persona Generation](persona_generation.md): infer personas from real source texts, expand them through relationships, and generate representative user prompts with DataFast.
+- [Persona Generation](persona_generation.md): infer personas from real articles and expand them through relationships using randomized prompt variants.
