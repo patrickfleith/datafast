@@ -1,0 +1,11 @@
+What is one realistic question or task that the persona described below would ask a large language model?
+
+Requirements:
+1. Provide a single standalone prompt, not a series of follow-ups.
+2. Make the request specific enough that the answer would genuinely help this persona.
+3. The wording should feel natural — as if the persona typed it themselves.
+
+Persona:
+{related_persona}
+
+Now come up with the prompt from that user.

@@ -1,0 +1,15 @@
+
+
+Imagine the following person:
+
+<person_description>
+{related_persona}
+</person_description>
+
+The person is sitting down to use an AI assistant. What single, specific request could they possibly type?
+
+Requirements:
+1. The prompt must be detailed and self-contained.
+2. It should reflect this persona's unique knowledge, needs, or curiosity.
+3. Output exactly one prompt, not a multi-turn dialogue.
+

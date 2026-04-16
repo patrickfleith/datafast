@@ -1,0 +1,14 @@
+Think of a person who regularly interacts with the following persona in a meaningful way.
+
+Rules:
+- Do not mention the original persona in the description of the related persona.
+- Do not mention the relationship between the two personas in the description, only in the relationship_type
+- Pick a single, concrete relationship type such as mentor-mentee, colleague, neighbor, supervisor-report, or service provider-client
+- The related person should bring a distinctly different viewpoint or expertise, and some uniqueness.
+- Keep the description realistic and standalone without mentionning with the original persona.
+- The related persona must be {related_life_stage}. Do not state a precise age, just reflect this life stage naturally.
+
+Original Persona:
+{persona_description}
+
+Now generate a related persona.

@@ -1,0 +1,16 @@
+<source_text>
+{document}
+</source_text>
+
+Identify one precise individual who would naturally encounter or write the <source_text>.
+
+Requirements:
+1. Describe exactly one person.
+2. Be as specific as possible: mention plausible occupation and/or life situation.
+3. Derive the persona strictly from cues in the text such as topic, jargon, tone, or implied audience as a potential writter / reader of this text.
+4. Do not copy or paraphrase the source text in the persona field.
+5. Only return 1 or 2 sentences maximum.
+6. The described person is not the subject of the text, but rather someone who would be encountering or writing such text as part of their life.
+7. Do not reference the source text, article, or its content in the persona description. The persona must stand on its own.
+8. The persona must be {life_stage}. Do not state a precise age, just reflect this life stage naturally.
+
