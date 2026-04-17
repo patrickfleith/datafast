@@ -187,3 +187,4 @@ examples/checkpoints/
 examples/outputs/
 
 .codex/
+.agents/
