@@ -6,11 +6,13 @@ Prompt files and dataset details used by the persona-generation cookbook.
 
 - **Source:** `xsum` (Hugging Face), `validation` split
 - **Fields used:** `document`, `summary`
-- **Filter:** 300–500 words, first 5 matches
+- **Filter:** 300–500 words, first 100 matches
+- **Local output:** `examples/outputs/43_persona_cookbook.jsonl`
+- **Hub output:** set `HF_REPO_ID` and the `repo_id` in `push_records_to_hub()` to repos under your own Hugging Face username or organization
 
 ## Prompt Variants
 
-Each LLM step picks one prompt at random per record. Multiple variants add diversity.
+Each LLM step picks one prompt at random per record. The script also assigns random `life_stage` and `related_life_stage` values before the corresponding LLM steps. Multiple variants add diversity.
 
 ### Text-to-Persona
 
@@ -32,8 +34,9 @@ Each LLM step picks one prompt at random per record. Multiple variants add diver
 
 | File | Style |
 | --- | --- |
-| [persona_to_user_prompt_v2.txt](persona_to_user_prompt_v2.txt) | XML-tagged person, AI assistant framing |
-| [persona_to_user_prompt_v3.txt](persona_to_user_prompt_v3.txt) | Requirements-first ordering |
+| [persona_to_user_prompt_v1.txt](persona_to_user_prompt_v1.txt) | Minimal direct instruction: takes a persona description and asks for one plausible LLM request |
+| [persona_to_user_prompt_v2.txt](persona_to_user_prompt_v2.txt) | XML-delimited persona input with assistant-oriented wording for cleaner prompt templating |
+| [persona_to_user_prompt_v3.txt](persona_to_user_prompt_v3.txt) | Constraint-first format that emphasizes specificity, realism, and single-turn output |
 
 ## Provenance
 

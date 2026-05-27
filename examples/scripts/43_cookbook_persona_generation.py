@@ -1,13 +1,12 @@
-"""Persona-generation cookbook: XSum article -> personas -> user prompts.
+"""Persona-generation cookbook: XSum article -> personas -> related personas.
 
 Demonstrates: Source.huggingface, Map, Filter, Sample, JSON-mode LLMSteps,
 and prompt assets stored under docs/cookbook/assets.
 
 Requires:
-- MISTRAL_API_KEY
-- PERSONA_COOKBOOK_HF_REPO_ID
+- OPENROUTER_API_KEY
 - Hugging Face authentication via HF_TOKEN or a cached `huggingface_hub` login
-- network access to Hugging Face and Mistral AI
+- network access to Hugging Face and OpenRouter
 """
 
 import random
