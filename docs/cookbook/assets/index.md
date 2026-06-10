@@ -33,16 +33,7 @@ Each LLM step picks one prompt at random per record. The script also assigns ran
 | [persona_to_persona_v2.txt](persona_to_persona_v2.txt) | Rule-list format, explicit separation of description and relationship |
 | [persona_to_persona_v3.txt](persona_to_persona_v3.txt) | XML-tagged input, concise vivid output |
 
-### Persona-to-User-Prompt (not in current pipeline)
-
-| File | Style |
-| --- | --- |
-| [persona_to_user_prompt_v1.txt](persona_to_user_prompt_v1.txt) | Minimal direct instruction: takes a persona description and asks for one plausible LLM request |
-| [persona_to_user_prompt_v2.txt](persona_to_user_prompt_v2.txt) | XML-delimited persona input with assistant-oriented wording for cleaner prompt templating |
-| [persona_to_user_prompt_v3.txt](persona_to_user_prompt_v3.txt) | Constraint-first format that emphasizes specificity, realism, and single-turn output |
-
 ## Provenance
 
 - Text-to-Persona and Persona-to-Persona prompts are paper-aligned adaptations. The Persona Hub paper states its published prompts are simplified, not exact.
-- User-prompt variants are derived from the repository's instruction-generation prompt family.
 - No Persona Hub code is reused. The workflow is built with datafast primitives.

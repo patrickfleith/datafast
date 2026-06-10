@@ -71,8 +71,6 @@ Each step draws from multiple prompt files stored under `docs/cookbook/assets/`.
 - **Text-to-Persona:** 3 variants (`text_to_persona_v1.txt`, `v2`, `v3`)
 - **Persona-to-Persona:** 3 variants (`persona_to_persona_v1.txt`, `v2`, `v3`)
 
-Additional prompt variants for user-prompt generation are available (`persona_to_user_prompt_v1.txt`, `v2`, `v3`) but not used in the current pipeline.
-
 ## Research Basis
 
 The Persona Hub paper introduces Text-to-Persona and Persona-to-Persona as scalable methods for building personas from web text. The paper states that its published prompts are simplified, not the exact experiment strings. This cookbook treats them as paper-aligned adaptations. It does not reuse any Persona Hub code.

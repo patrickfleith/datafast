@@ -36,10 +36,6 @@ PERSONA_TO_PERSONA_PROMPTS = [
     "docs/cookbook/assets/persona_to_persona_v2.txt",
     "docs/cookbook/assets/persona_to_persona_v3.txt",
 ]
-# PERSONA_TO_USER_PROMPTS = [
-#     "docs/cookbook/assets/persona_to_user_prompt_v2.txt",
-#     "docs/cookbook/assets/persona_to_user_prompt_v3.txt",
-# ]
 LIFE_STAGES = [
     "a teenager",
     "a young adult",
