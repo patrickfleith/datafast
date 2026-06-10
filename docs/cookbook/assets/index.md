@@ -5,10 +5,13 @@ Prompt files and dataset details used by the persona-generation cookbook.
 ## Dataset
 
 - **Source:** `xsum` (Hugging Face), `validation` split
-- **Fields used:** `document`, `summary`
+- **Fields used:** `id`, `document`, `summary`
 - **Filter:** 300–500 words, first 100 matches
 - **Local output:** `examples/outputs/43_persona_cookbook.jsonl`
+- **Checkpoints:** `examples/checkpoints/43_persona_cookbook`
 - **Hub output:** set `HF_REPO_ID` and the `repo_id` in `push_records_to_hub()` to repos under your own Hugging Face username or organization
+
+The example keeps first-match sampling for reproducibility. For local JSONL corpora with metadata such as `document_filename`, stratified sampling is usually a better fit.
 
 ## Prompt Variants
 
@@ -42,4 +45,4 @@ Each LLM step picks one prompt at random per record. The script also assigns ran
 
 - Text-to-Persona and Persona-to-Persona prompts are paper-aligned adaptations. The Persona Hub paper states its published prompts are simplified, not exact.
 - User-prompt variants are derived from the repository's instruction-generation prompt family.
-- No Persona Hub code is reused. The workflow is built with DataFast primitives.
+- No Persona Hub code is reused. The workflow is built with datafast primitives.

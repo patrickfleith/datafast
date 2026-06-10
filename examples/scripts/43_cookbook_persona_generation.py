@@ -24,6 +24,7 @@ litellm.suppress_debug_info = True
 
 MODEL_ID = "nvidia/nemotron-3-super-120b-a12b:nitro"
 OUTPUT_PATH = "examples/outputs/43_persona_cookbook.jsonl"
+CHECKPOINT_DIR = "examples/checkpoints/43_persona_cookbook"
 HF_REPO_ID = "patrickfleith/new-persona-cookbook-dataset"
 TEXT_TO_PERSONA_PROMPTS = [
     "docs/cookbook/assets/text_to_persona_v1.txt",
@@ -62,6 +63,7 @@ def assign_related_life_stage(record: dict) -> dict:
 
 def keep_output_fields(record: dict) -> dict:
     return {
+        "id": record["id"],
         "summary": record["summary"],
         "document": record["document"],
         "word_count": record["word_count"],
@@ -80,8 +82,11 @@ def build_pipeline():
         Source.huggingface(
             "xsum",
             split="validation",
-            columns=["document", "summary"],
+            columns=["id", "document", "summary"],
         )
+    # For a local JSONL corpus, replace the Hugging Face source with something
+    # like Source.file("data/articles.jsonl") and map your text field to
+    # "document" before add_word_count.
     >> Map(add_word_count).as_step("add_word_count")
     >> Filter(fn=lambda r: 300 <= r["word_count"] <= 500).as_step("filter_word_count")
     >> Sample(n=100, strategy="first").as_step("take_first_100")
@@ -123,7 +128,11 @@ def push_records_to_hub(records: list[dict]) -> None:
 
 
 def main() -> None:
-    records = build_pipeline().run(batch_size=1)
+    records = build_pipeline().run(
+        batch_size=1,
+        checkpoint_dir=CHECKPOINT_DIR,
+        resume=True,
+    )
     push_records_to_hub(records)
 
 
