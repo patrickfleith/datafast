@@ -140,7 +140,7 @@ def main() -> None:
         list(
             Sink.hub(
                 repo_id=HF_REPO_ID,
-                private=True,
+                private=False,
                 train_size=0.8,
                 seed=SEED,
                 shuffle=True,
