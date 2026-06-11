@@ -1,8 +1,10 @@
-# Persona Cookbook Assets
+# Cookbook Assets
 
-Prompt files and dataset details used by the persona-generation cookbook.
+Prompt files and dataset details used by cookbook examples.
 
-## Dataset
+## Persona Generation
+
+### Dataset
 
 - **Source:** `xsum` (Hugging Face), `validation` split
 - **Fields used:** `id`, `document`, `summary`
@@ -13,11 +15,11 @@ Prompt files and dataset details used by the persona-generation cookbook.
 
 The example keeps first-match sampling for reproducibility. For local JSONL corpora with metadata such as `document_filename`, stratified sampling is usually a better fit.
 
-## Prompt Variants
+### Prompt Variants
 
 Each LLM step picks one prompt at random per record. The script also assigns random `life_stage` and `related_life_stage` values before the corresponding LLM steps. Multiple variants add diversity.
 
-### Text-to-Persona
+#### Text-to-Persona
 
 | File | Style |
 | --- | --- |
@@ -25,7 +27,7 @@ Each LLM step picks one prompt at random per record. The script also assigns ran
 | [text_to_persona_v2.txt](text_to_persona_v2.txt) | XML-tagged source text, writer/reader framing |
 | [text_to_persona_v3.txt](text_to_persona_v3.txt) | System-role preamble, search-interest angle |
 
-### Persona-to-Persona
+#### Persona-to-Persona
 
 | File | Style |
 | --- | --- |
@@ -33,7 +35,26 @@ Each LLM step picks one prompt at random per record. The script also assigns ran
 | [persona_to_persona_v2.txt](persona_to_persona_v2.txt) | Rule-list format, explicit separation of description and relationship |
 | [persona_to_persona_v3.txt](persona_to_persona_v3.txt) | XML-tagged input, concise vivid output |
 
-## Provenance
+### Provenance
 
 - Text-to-Persona and Persona-to-Persona prompts are paper-aligned adaptations. The Persona Hub paper states its published prompts are simplified, not exact.
 - No Persona Hub code is reused. The workflow is built with datafast primitives.
+
+## Space Engineering Text Generation
+
+### Dataset
+
+- **Source:** seed dimensions created with `Seed.product`
+- **Dimensions:** document type, topic, expertise level, and language
+- **Local output:** `examples/outputs/44_space_text_generation_cookbook.jsonl`
+- **Checkpoints:** `examples/checkpoints/44_space_text_generation_cookbook`
+- **Hub output:** optional, controlled by `DATAFAST_PUSH_TO_HUB=1`
+
+### Prompt
+
+The text-generation cookbook uses one compact prompt and relies on seed
+dimensions for variation.
+
+| File | Style |
+| --- | --- |
+| [space_text_generation.txt](space_text_generation.txt) | Minimal variable-driven request |

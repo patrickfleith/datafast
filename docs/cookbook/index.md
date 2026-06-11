@@ -12,3 +12,4 @@ The Python script is the source of truth. Each cookbook page explains:
 ## Available Cookbooks
 
 - [Persona Generation](persona_generation.md): infer personas from real articles and expand them through relationships using randomized prompt variants.
+- [Space Engineering Text Generation](space_text_generation.md): generate a raw multilingual technical text corpus from seed dimensions.

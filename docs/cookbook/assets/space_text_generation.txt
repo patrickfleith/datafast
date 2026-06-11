@@ -1,0 +1,1 @@
+Write one {document_type} excerpt about {topic} for {expertise_level} in {language_name}.

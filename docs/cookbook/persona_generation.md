@@ -18,7 +18,7 @@ Build personas from real articles and expand them through relationships. Inspire
 4. **Text-to-Persona** — infer one persona from each article and life stage.
 5. Assign a random life stage to the related persona.
 6. **Persona-to-Persona** — expand that persona into a related individual.
-7. Keep the final output fields, write JSONL, checkpoint progress, and push results to Hugging Face Hub.
+7. Keep the final output fields, add a row UUID, write JSONL, checkpoint progress, and push results to Hugging Face Hub.
 
 Each LLM step randomly picks one prompt variant per record using `Sample(prompts, n=1)`. This adds diversity across generations.
 
@@ -77,8 +77,9 @@ The Persona Hub paper introduces Text-to-Persona and Persona-to-Persona as scala
 
 ## Output Fields
 
+- `id` — generated row UUID
+- `source_id` — original XSum record identifier
 - `summary` — original article summary
-- `id` — original XSum record identifier
 - `document` — source article text
 - `word_count` — whitespace token count
 - `life_stage` — randomly selected life stage for the inferred persona

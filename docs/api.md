@@ -36,6 +36,7 @@ from datafast import Source, LLMStep, Sink, openrouter
 ## Data Operations
 
 - `Sample`
+- `AddUUID`
 - `Map`
 - `FlatMap`
 - `Filter`

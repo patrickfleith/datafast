@@ -13,7 +13,7 @@ import random
 
 from dotenv import load_dotenv
 
-from datafast import Filter, LLMStep, Map, Sample, Sink, Source, openrouter
+from datafast import AddUUID, Filter, LLMStep, Map, Sample, Sink, Source, openrouter
 
 import litellm
 
@@ -59,7 +59,7 @@ def assign_related_life_stage(record: dict) -> dict:
 
 def keep_output_fields(record: dict) -> dict:
     return {
-        "id": record["id"],
+        "source_id": record["id"],
         "summary": record["summary"],
         "document": record["document"],
         "word_count": record["word_count"],
@@ -85,7 +85,7 @@ def build_pipeline():
     # "document" before add_word_count.
     >> Map(add_word_count).as_step("add_word_count")
     >> Filter(fn=lambda r: 300 <= r["word_count"] <= 500).as_step("filter_word_count")
-    >> Sample(n=100, strategy="first").as_step("take_first_100")
+    >> Sample(n=10, strategy="first").as_step("take_first_100")
     >> Map(assign_life_stage).as_step("assign_life_stage")
     >> LLMStep(
         prompt=Sample(TEXT_TO_PERSONA_PROMPTS, n=1),
@@ -105,6 +105,7 @@ def build_pipeline():
         on_parse_error="raise",
     ).as_step("persona_to_persona")
     >> Map(keep_output_fields).as_step("keep_output_fields")
+    >> AddUUID(column="id", overwrite=True).as_step("add_uuid")
     >> Sink.jsonl(OUTPUT_PATH)
     >> Sink.hub(HF_REPO_ID, private=True)
 )
@@ -127,7 +128,7 @@ def main() -> None:
     records = build_pipeline().run(
         batch_size=1,
         checkpoint_dir=CHECKPOINT_DIR,
-        resume=True,
+        resume=False,
     )
     push_records_to_hub(records)
 

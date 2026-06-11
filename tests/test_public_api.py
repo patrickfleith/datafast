@@ -1,4 +1,5 @@
 from datafast import (
+    AddUUID,
     Branch,
     Classify,
     Compare,
@@ -70,6 +71,7 @@ def test_factory_exports_are_available(monkeypatch):
     assert Sink is not None
     assert Seed is not None
     assert Sample is not None
+    assert AddUUID is not None
     assert Map is not None
     assert FlatMap is not None
     assert Filter is not None

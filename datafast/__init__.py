@@ -31,7 +31,7 @@ from datafast.tracing import (
     is_langfuse_tracing_enabled,
 )
 from datafast.transforms.branch import Branch, JoinBranches
-from datafast.transforms.data_ops import Map, FlatMap, Filter, Group, Pair, Concat, Join
+from datafast.transforms.data_ops import AddUUID, Map, FlatMap, Filter, Group, Pair, Concat, Join
 from datafast.transforms.llm_eval import Classify, Score, Compare
 from datafast.transforms.llm_extract import Extract
 from datafast.transforms.llm_step import LLMStep
@@ -64,6 +64,7 @@ __all__ = [
     "Seed",
     "SeedDimension",
     "Sample",
+    "AddUUID",
     "Map",
     "FlatMap",
     "Filter",

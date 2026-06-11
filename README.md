@@ -5,7 +5,7 @@ Datafast is a python library for synthetic data generation using llms.
 The old dataset-class API has been removed. The canonical package is `datafast`, and the primary model is:
 
 - create records with `Source` or `Seed`
-- transform them with composable steps
+- transform them with composable steps such as `AddUUID`, `Map`, and `Filter`
 - call LLMs with `LLMStep`, `Classify`, `Score`, `Compare`, `Rewrite`, or `Extract`
 - persist results with `Sink`
 
@@ -53,7 +53,7 @@ pipeline.run(batch_size=4)
 
 - `Source`: load records from Python lists, files, or Hugging Face datasets
 - `Seed`: generate record combinations declaratively
-- `Map`, `FlatMap`, `Filter`, `Group`, `Pair`, `Concat`, `Join`: data operations
+- `AddUUID`, `Map`, `FlatMap`, `Filter`, `Group`, `Pair`, `Concat`, `Join`: data operations
 - `LLMStep`: free-form generation
 - `Classify`, `Score`, `Compare`, `Rewrite`, `Extract`: higher-level LLM transforms
 - `Branch` and `JoinBranches`: multi-path pipelines
