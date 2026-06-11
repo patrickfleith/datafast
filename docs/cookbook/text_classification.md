@@ -79,9 +79,10 @@ DATAFAST_PUSH_TO_HUB=1 python examples/scripts/45_cookbook_text_classification.p
 The run uses `checkpoint_dir` and `resume=True`. If generation is interrupted,
 run the command again to continue from saved checkpoints.
 
-If you want to use provider-specific clients directly, replace `make_models()`
-with providers such as `openai(...)` or `anthropic(...)`. The default setup
-uses multiple OpenRouter-backed models so it works with one API key.
+If you want to use provider-specific clients directly, replace `MODEL_IDS` or
+the `model=MODELS` argument in `LLMStep` with providers such as `openai(...)`
+or `anthropic(...)`. The default setup uses multiple OpenRouter-backed models
+so it works with one API key.
 
 ## Prompt
 
@@ -110,8 +111,6 @@ If you want an extra quality-control pass, add a downstream `Classify` and
 
 - `id` - generated row UUID
 - `label` - target trail-condition label
-- `label_description` - human-readable label definition used in the prompt
-- `label_source` - fixed to `synthetic`
 - `trail_type` - prompt expansion axis for the trail setting
 - `style` - prompt expansion axis for the report style
 - `language` - language code emitted by `LLMStep`

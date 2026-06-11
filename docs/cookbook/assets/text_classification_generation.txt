@@ -1,6 +1,6 @@
 Write one realistic hiker report in {language_name}.
 
-Target category: {label_name}
+Target category: {label}
 Category definition: {label_description}
 
 Constraints:
