@@ -1,4 +1,4 @@
-"""Text-classification cookbook: seed grid -> multilingual trail reports.
+"""Text-classification cookbook: seed grid -> multilingual trail comments.
 
 Demonstrates: Seed.product, prompt expansion via seed dimensions, multi-model
 generation, multi-language generation, checkpointing, JSONL output, and

@@ -12,7 +12,7 @@ Build a multilingual trail-conditions classification dataset with `datafast`.
 
 ## Use Case
 
-This cookbook generates short hiker reports across four trail-condition labels
+This cookbook generates short trail comments across four trail-condition labels
 so teams can monitor trail quality and surface issues quickly.
 
 The default setup is:
@@ -25,7 +25,7 @@ The default setup is:
 ## Pipeline
 
 1. Create a seed grid from labels, trail types, and writing styles.
-2. Generate one short hiker report for each seed across all configured models
+2. Generate one short trail comment for each seed across all configured models
    and languages.
 3. Keep the label and prompt-variation provenance in flat output columns.
 4. Add a UUID, write JSONL locally, and optionally push to Hugging Face Hub.
@@ -89,7 +89,7 @@ so it works with one API key.
 The cookbook uses one prompt file and drives diversity through seed dimensions:
 
 ```text
-Write one realistic hiker report in {language_name}.
+Write one realistic trail comment in {language_name}.
 ```
 
 See [text_classification_generation.txt](assets/text_classification_generation.txt)
@@ -99,20 +99,20 @@ for the full prompt.
 
 - `LABELS` defines the target classes and their prompt descriptions.
 - `TRAIL_TYPES` controls the trail settings used in generation.
-- `STYLES` controls the voice and format of each report.
+- `STYLES` controls the voice and format of each comment.
 - `LANGUAGES` controls language expansion.
 - `MODEL_IDS` controls which models generate records.
 - `HF_REPO_ID` controls the optional Hugging Face Hub destination.
 
 If you want an extra quality-control pass, add a downstream `Classify` and
-`Filter` stage to verify that generated reports match their intended label.
+`Filter` stage to verify that generated comments match their intended label.
 
 ## Output Fields
 
 - `id` - generated row UUID
 - `label` - target trail-condition label
 - `trail_type` - prompt expansion axis for the trail setting
-- `style` - prompt expansion axis for the report style
+- `style` - prompt expansion axis for the comment style
 - `language` - language code emitted by `LLMStep`
 - `model` - model ID emitted by `LLMStep`
-- `text` - generated hiker report
+- `text` - generated trail comment
