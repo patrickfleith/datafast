@@ -2,6 +2,26 @@
 
 Prompt files and dataset details used by cookbook examples.
 
+## Text Classification
+
+### Dataset
+
+- **Source:** seed dimensions created with `Seed.product`
+- **Dimensions:** label, trail type, style, language, and model
+- **Local output:** `examples/outputs/45_text_classification_cookbook.jsonl`
+- **Checkpoints:** `examples/checkpoints/45_text_classification_cookbook`
+- **Hub output:** optional, controlled by `DATAFAST_PUSH_TO_HUB=1`
+
+This cookbook models variation directly as seed dimensions so the label, trail
+type, style, language, and model are all explicit in the
+pipeline.
+
+### Prompt
+
+| File | Style |
+| --- | --- |
+| [text_classification_generation.txt](text_classification_generation.txt) | One short trail report per call, with label, trail type, style, and language injected |
+
 ## Persona Generation
 
 ### Dataset

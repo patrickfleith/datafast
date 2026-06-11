@@ -1,0 +1,13 @@
+Write one realistic hiker report in {language_name}.
+
+Target category: {label_name}
+Category definition: {label_description}
+
+Constraints:
+- The report must clearly match the target category.
+- The setting must be a {trail_type}.
+- The writing style must be {style}.
+- Keep it to 1 or 2 sentences.
+- Do not mention the category name directly.
+- Do not use bullets, numbering, or explanations.
+- Make the report concrete and varied.
