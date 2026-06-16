@@ -3,6 +3,7 @@
 import time
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -19,7 +20,6 @@ from datafast.tracing import build_trace_metadata
 
 if TYPE_CHECKING:
     from datafast.core.step import Pipeline, Step
-    from datafast.llm.provider import LLMProvider
     from datafast.transforms.llm_step import LLMStep
 
 
@@ -27,6 +27,12 @@ def chunked(iterable: list, size: int):
     """Yield successive chunks of size from iterable."""
     for i in range(0, len(iterable), size):
         yield iterable[i : i + size]
+
+
+@dataclass
+class _LLMBatchStats:
+    generated: int = 0
+    errors: int = 0
 
 
 class Runner:
@@ -218,76 +224,205 @@ class Runner:
         if self._checkpoint_mgr and not skip_call_ids:
             self._checkpoint_mgr.clear_step_file(step_index, step_name)
 
-        completed_in_batch = 0
+        completed_since_checkpoint = 0
         errors = 0
         generated_total = len(skip_call_ids)
 
         for batch in chunked(calls, self.config.batch_size):
             batch_start = time.perf_counter()
-            batch_generated = 0
-            batch_model_id = batch[0].model_id if batch else "unknown"
-
-            for call in batch:
-                model = models_map[call.model_id]
-                batch_model_id = call.model_id
-
-                try:
-                    result = model.generate(
-                        messages=call.messages,
-                        metadata=build_trace_metadata(
-                            model=model,
-                            component="pipeline.step",
-                            trace_name=f"datafast.{step_name}",
-                            session_id=self._trace_session_id,
-                            step_name=step_name,
-                            step_type=step.__class__.__name__,
-                            record_index=call.record_index,
-                            prompt_index=call.prompt_index,
-                            output_index=call.output_index,
-                            language_code=call.language_code or None,
-                            call_id=call.call_id,
-                        ),
-                    )
-                    output_record = step.apply_result(call, result, model)
-                    output_records.append(output_record)
-                    progress.completed_call_ids.append(call.call_id)
-                    completed_in_batch += 1
-                    batch_generated += 1
-                    generated_total += 1
-
-                    # Append record immediately to JSONL
-                    if self._checkpoint_mgr:
-                        self._checkpoint_mgr.append_record(
-                            step_index, step_name, output_record
-                        )
-
-                except Exception as e:
-                    errors += 1
-                    logger.warning(
-                        f"LLM call failed | Model: {call.model_id} | "
-                        f"Call: {call.call_id} | Error: {e}"
-                    )
+            batch_model_id = (
+                batch[0].model_id
+                if len({call.model_id for call in batch}) == 1
+                else "mixed"
+            )
+            stats = self._execute_llm_batch(
+                step=step,
+                step_name=step_name,
+                step_index=step_index,
+                batch=batch,
+                models_map=models_map,
+                progress=progress,
+                output_records=output_records,
+            )
+            completed_since_checkpoint += stats.generated
+            errors += stats.errors
+            generated_total += stats.generated
 
             batch_duration = time.perf_counter() - batch_start
             logger.info(
-                f"Generated {batch_generated} samples (total: {generated_total}) | "
+                f"Generated {stats.generated} samples (total: {generated_total}) | "
                 f"model: {batch_model_id} | duration: {batch_duration:.2f}s"
             )
 
             if (
                 self._checkpoint_mgr
                 and manifest
-                and completed_in_batch >= self.config.checkpoint_every
+                and completed_since_checkpoint >= self.config.checkpoint_every
             ):
                 self._checkpoint_mgr.save_llm_progress(
                     step_index, step_name, progress, output_records
                 )
-                completed_in_batch = 0
+                completed_since_checkpoint = 0
 
         logger.info(
             f"LLMStep complete: {len(output_records)} outputs, {errors} errors"
         )
         return output_records
+
+    def _execute_llm_batch(
+        self,
+        *,
+        step: "LLMStep",
+        step_name: str,
+        step_index: int,
+        batch: list[LLMCall],
+        models_map: dict[str, object],
+        progress: LLMStepProgress,
+        output_records: list[Record],
+    ) -> _LLMBatchStats:
+        """Execute and apply one runner batch, preserving input order."""
+        batch_results, errors = self._collect_llm_batch_results(
+            step=step,
+            step_name=step_name,
+            batch=batch,
+            models_map=models_map,
+        )
+        stats = self._apply_llm_batch_results(
+            step=step,
+            step_name=step_name,
+            step_index=step_index,
+            batch=batch,
+            batch_results=batch_results,
+            models_map=models_map,
+            progress=progress,
+            output_records=output_records,
+        )
+        stats.errors += errors
+        return stats
+
+    def _collect_llm_batch_results(
+        self,
+        *,
+        step: "LLMStep",
+        step_name: str,
+        batch: list[LLMCall],
+        models_map: dict[str, object],
+    ) -> tuple[list[object | None], int]:
+        batch_results: list[object | None] = [None] * len(batch)
+        errors = 0
+        grouped_indexes: dict[str, list[int]] = defaultdict(list)
+
+        for index, call in enumerate(batch):
+            grouped_indexes[call.model_id].append(index)
+
+        for model_id, indexes in grouped_indexes.items():
+            group_calls = [batch[index] for index in indexes]
+            model = models_map[model_id]
+            try:
+                group_results = self._generate_llm_group(
+                    step=step,
+                    step_name=step_name,
+                    model=model,
+                    group_calls=group_calls,
+                )
+            except Exception as e:
+                errors += len(group_calls)
+                self._log_llm_failures(group_calls, e)
+                continue
+
+            for result_index, result in zip(indexes, group_results):
+                batch_results[result_index] = result
+
+        return batch_results, errors
+
+    def _generate_llm_group(
+        self,
+        *,
+        step: "LLMStep",
+        step_name: str,
+        model: object,
+        group_calls: list[LLMCall],
+    ) -> list[object]:
+        group_metadata = [
+            self._build_llm_call_metadata(step, step_name, call, model)
+            for call in group_calls
+        ]
+        if hasattr(model, "generate_batch"):
+            return list(
+                model.generate_batch(  # type: ignore[attr-defined]
+                    [call.messages for call in group_calls],
+                    metadata=group_metadata,
+                )
+            )
+        return [
+            model.generate(  # type: ignore[attr-defined]
+                messages=call.messages,
+                metadata=metadata,
+            )
+            for call, metadata in zip(group_calls, group_metadata)
+        ]
+
+    def _apply_llm_batch_results(
+        self,
+        *,
+        step: "LLMStep",
+        step_name: str,
+        step_index: int,
+        batch: list[LLMCall],
+        batch_results: list[object | None],
+        models_map: dict[str, object],
+        progress: LLMStepProgress,
+        output_records: list[Record],
+    ) -> _LLMBatchStats:
+        stats = _LLMBatchStats()
+
+        for call, result in zip(batch, batch_results):
+            if result is None:
+                continue
+            try:
+                output_record = step.apply_result(call, result, models_map[call.model_id])
+                output_records.append(output_record)
+                progress.completed_call_ids.append(call.call_id)
+                stats.generated += 1
+
+                if self._checkpoint_mgr:
+                    self._checkpoint_mgr.append_record(
+                        step_index, step_name, output_record
+                    )
+            except Exception as e:
+                stats.errors += 1
+                self._log_llm_failures([call], e)
+
+        return stats
+
+    def _build_llm_call_metadata(
+        self,
+        step: "LLMStep",
+        step_name: str,
+        call: LLMCall,
+        model: object,
+    ) -> dict[str, object]:
+        return build_trace_metadata(
+            model=model,
+            component="pipeline.step",
+            trace_name=f"datafast.{step_name}",
+            session_id=self._trace_session_id,
+            step_name=step_name,
+            step_type=step.__class__.__name__,
+            record_index=call.record_index,
+            prompt_index=call.prompt_index,
+            output_index=call.output_index,
+            language_code=call.language_code or None,
+            call_id=call.call_id,
+        )
+
+    @staticmethod
+    def _log_llm_failures(calls: list[LLMCall], error: Exception) -> None:
+        for call in calls:
+            logger.warning(
+                f"LLM call failed | Model: {call.model_id} | "
+                f"Call: {call.call_id} | Error: {error}"
+            )
 
     def _order_calls(self, calls: list[LLMCall]) -> list[LLMCall]:
         """Order calls according to execution strategy."""

@@ -105,6 +105,7 @@ configure_langfuse_tracing()
 
 - `datafast/`: canonical source package
 - `examples/scripts/`: runnable pipeline examples
+- `examples/providers/`: direct provider usage examples
 - `docs/`: pipeline-first documentation
 - `datafast_new_design_document.md`: retained design reference
 
