@@ -85,6 +85,25 @@ Models are usually not good candidates when they:
 - are deprecated or not intended for ongoing support
 - are only one of many near-identical variants from the same provider
 
+### Current Catalog Decisions
+
+Current agreed shortlist as of June 2026:
+
+- OpenAI: `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`
+- Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`
+- Gemini: `gemini-2.5-pro`, `gemini-3.5-flash`, `gemini-3.1-flash-lite`
+- Mistral hosted: `mistral-medium-3-5`, `mistral-large-2512`, `mistral-small-2603`
+- Mistral local / self-hosted: `ministral-14b-2512`, `ministral-8b-2512`, `ministral-3b-2512`
+
+Current exclusions / constraints:
+
+- Exclude Anthropic `claude-fable-5` and `claude-opus-4-8` due to cost.
+- Exclude Gemini `gemini-2.5-flash`.
+- Keep the catalog curated for capability coverage, not exhaustive by provider inventory.
+- Keep hosted Mistral and local Mistral entries separate in the catalog.
+- Treat local-server capability expectations as backend-specific, especially for `vLLM`, `llama.cpp`, and other OpenAI-compatible servers.
+- If a compact local Mistral subset is needed later, start with `ministral-8b-2512` and `ministral-3b-2512`.
+
 ## Live Acceptance Suite
 
 These should run against the curated selected-model catalog.
