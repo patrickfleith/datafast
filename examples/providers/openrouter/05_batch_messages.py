@@ -20,10 +20,6 @@ BATCH_MESSAGES = [
     ],
     [
         {
-            "role": "system",
-            "content": "You answer for engineers in one sentence.",
-        },
-        {
             "role": "user",
             "content": "What is structured output?",
         },
