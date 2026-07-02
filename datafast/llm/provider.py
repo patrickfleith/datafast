@@ -47,6 +47,15 @@ JSON_INSTRUCTIONS = (
     "\nReturn only valid JSON. Do not include markdown fences. Use double quotes "
     "for keys and string values, escape internal newlines, and avoid trailing commas."
 )
+LITELLM_SUPPRESS_DEBUG_ENV = "DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO"
+
+
+def _configure_litellm_debug_output() -> None:
+    """Suppress LiteLLM provider help text unless explicitly opted out."""
+    setting = os.getenv(LITELLM_SUPPRESS_DEBUG_ENV, "1").strip().lower()
+    if setting in {"0", "false", "no", "off"}:
+        return
+    litellm.suppress_debug_info = True
 
 
 class LLMProvider:
@@ -147,6 +156,7 @@ class LLMProvider:
             if value is not None
         }
 
+        _configure_litellm_debug_output()
         load_env_once()
         maybe_configure_langfuse_tracing(load_env=False)
         logger.info(

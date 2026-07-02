@@ -105,6 +105,24 @@ def test_factories_resolve_expected_targets():
     assert local.api_base_url == "http://localhost:8000/v1"
 
 
+def test_provider_suppresses_litellm_debug_info_by_default(monkeypatch):
+    monkeypatch.delenv(provider_module.LITELLM_SUPPRESS_DEBUG_ENV, raising=False)
+    monkeypatch.setattr(provider_module.litellm, "suppress_debug_info", False)
+
+    provider_module.OpenRouterProvider(model_id="demo-model", api_key="test-key")
+
+    assert provider_module.litellm.suppress_debug_info is True
+
+
+def test_provider_allows_litellm_debug_opt_out(monkeypatch):
+    monkeypatch.setenv(provider_module.LITELLM_SUPPRESS_DEBUG_ENV, "0")
+    monkeypatch.setattr(provider_module.litellm, "suppress_debug_info", False)
+
+    provider_module.OpenRouterProvider(model_id="demo-model", api_key="test-key")
+
+    assert provider_module.litellm.suppress_debug_info is False
+
+
 def test_openai_compatible_backend_profiles_are_distinct():
     generic = openai_compatible(
         "local-model",
