@@ -20,7 +20,11 @@ Run:
 .venv/bin/python examples/providers/openrouter/04_structured_output.py
 .venv/bin/python examples/providers/openrouter/05_batch_messages.py
 .venv/bin/python examples/providers/openrouter/06_generation_metadata.py
-.venv/bin/python examples/providers/openrouter/08_structured_batch.py
+.venv/bin/python examples/providers/openrouter/07_structured_batch.py
+.venv/bin/python examples/providers/openrouter/08_unsupported_params_policies.py
+.venv/bin/python examples/providers/openrouter/09_multimodal_image_input.py
+.venv/bin/python examples/providers/openrouter/10_raw_vs_normalized_response.py
+.venv/bin/python examples/providers/openrouter/11_timeout_and_rate_limit.py
 ```
 
 Files:
@@ -31,4 +35,8 @@ Files:
 - `04_structured_output.py`: validated Pydantic output
 - `05_batch_messages.py`: a batch of independent message lists
 - `06_generation_metadata.py`: `generate_response(...)` and normalized metadata
-- `08_structured_batch.py`: batched structured responses
+- `07_structured_batch.py`: batched structured responses
+- `08_unsupported_params_policies.py`: `warn`, `quiet`, and `fail` handling for an unsupported parameter
+- `09_multimodal_image_input.py`: text plus image input using `ContentPart`
+- `10_raw_vs_normalized_response.py`: compare normalized fields with the underlying raw payload fields
+- `11_timeout_and_rate_limit.py`: three separate requests through one provider instance, with `rpm_limit=2` so the third request shows client-side throttling
