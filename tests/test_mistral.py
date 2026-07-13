@@ -553,10 +553,10 @@ class TestMistralProvider:
     def test_batch_validation_errors(self):
         provider = MistralProvider()
 
-        with pytest.raises(ValueError, match="Either prompts or messages must be provided"):
+        with pytest.raises(ValueError, match="Either prompt or messages must be provided"):
             provider.generate()
 
-        with pytest.raises(ValueError, match="Provide either prompts or messages, not both"):
+        with pytest.raises(ValueError, match="Provide either prompt or messages, not both"):
             provider.generate(
                 prompt=["test"],
                 messages=[[{"role": "user", "content": "test"}]]

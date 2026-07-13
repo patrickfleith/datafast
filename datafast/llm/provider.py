@@ -132,7 +132,9 @@ class LLMProvider:
         self.provider_name = provider
         self.model_id = model_id
         self.env_key_name = env_key_name
-        self.api_key = api_key or (os.getenv(env_key_name) if env_key_name else None)
+        env_api_key = os.getenv(env_key_name) if env_key_name else None
+        # `or None` so an empty env var is treated as unset, not sent as "".
+        self.api_key = api_key or env_api_key or None
         self.api_base_url = api_base_url
         self.temperature = temperature
         self.max_completion_tokens = max_completion_tokens
@@ -182,22 +184,7 @@ class LLMProvider:
             previous_response_id=previous_response_id,
             response_format=response_format,
         )
-        try:
-            results = self._generate_requests(requests, response_format=response_format)
-        except ValueError:
-            raise
-        except Exception as exc:
-            error_trace = traceback.format_exc()
-            logger.error(
-                "Generation failed | Provider: {} | Model: {} | Error: {}",
-                self.provider_name,
-                self.model_id,
-                exc,
-            )
-            raise RuntimeError(
-                f"Error generating response with {self.provider_name}:\n{error_trace}"
-            ) from exc
-
+        results = self._generate_requests(requests, response_format=response_format)
         if single_input:
             return results[0]
         return results
@@ -215,7 +202,11 @@ class LLMProvider:
             return []
 
         metadata_items = _normalize_metadata(metadata, len(messages))
-        previous_ids = previous_response_ids or [None] * len(messages)
+        previous_ids = (
+            previous_response_ids
+            if previous_response_ids is not None
+            else [None] * len(messages)
+        )
         if len(previous_ids) != len(messages):
             raise ValueError("previous_response_ids length must match messages length")
 
@@ -247,7 +238,7 @@ class LLMProvider:
             previous_response_id=previous_response_id,
             response_format=None,
         )
-        responses = self._generate_normalized_responses(
+        responses = self._execute_normalized(
             requests,
             response_format=None,
         )
@@ -267,7 +258,11 @@ class LLMProvider:
             return []
 
         metadata_items = _normalize_metadata(metadata, len(messages))
-        previous_ids = previous_response_ids or [None] * len(messages)
+        previous_ids = (
+            previous_response_ids
+            if previous_response_ids is not None
+            else [None] * len(messages)
+        )
         if len(previous_ids) != len(messages):
             raise ValueError("previous_response_ids length must match messages length")
 
@@ -279,7 +274,7 @@ class LLMProvider:
             )
             for index, item in enumerate(messages)
         ]
-        return self._generate_normalized_responses(requests, response_format=None)
+        return self._execute_normalized(requests, response_format=None)
 
     def _generate_requests(
         self,
@@ -287,7 +282,7 @@ class LLMProvider:
         *,
         response_format: type[T] | None,
     ) -> list[str] | list[T]:
-        responses = self._generate_normalized_responses(
+        responses = self._execute_normalized(
             requests,
             response_format=response_format,
         )
@@ -295,6 +290,34 @@ class LLMProvider:
             self._parse_response(response, response_format=response_format)
             for response in responses
         ]
+
+    def _execute_normalized(
+        self,
+        requests: list[NormalizedRequest],
+        *,
+        response_format: type[T] | None,
+    ) -> list[NormalizedResponse]:
+        """Run requests with the shared error contract: ValueError passes
+        through (validation/policy), everything else is logged and wrapped in
+        RuntimeError."""
+        try:
+            return self._generate_normalized_responses(
+                requests,
+                response_format=response_format,
+            )
+        except ValueError:
+            raise
+        except Exception as exc:
+            error_trace = traceback.format_exc()
+            logger.error(
+                "Generation failed | Provider: {} | Model: {} | Error: {}",
+                self.provider_name,
+                self.model_id,
+                exc,
+            )
+            raise RuntimeError(
+                f"Error generating response with {self.provider_name}:\n{error_trace}"
+            ) from exc
 
     def _generate_normalized_responses(
         self,
@@ -383,6 +406,11 @@ class LLMProvider:
         *,
         response_format: type[T] | None,
     ) -> list[NormalizedResponse]:
+        if any(request.previous_response_id is not None for request in requests):
+            # batch_completion shares one param set across items, so
+            # per-request response ids cannot be carried on this path.
+            self._handle_unsupported_param("previous_response_id")
+
         params = self._build_chat_params(
             NormalizedRequest(
                 messages=[],
@@ -391,6 +419,9 @@ class LLMProvider:
             response_format,
         )
         params["messages"] = [request.messages for request in requests]
+        params["max_workers"] = max(
+            1, min(self.config.max_concurrent, len(requests))
+        )
         response = self._call_litellm(
             litellm.batch_completion,
             params,
@@ -402,7 +433,18 @@ class LLMProvider:
         normalized: list[NormalizedResponse] = []
         for index, item in enumerate(response):
             if isinstance(item, Exception):
-                raise RuntimeError(f"Batch item {index} failed: {item}") from item
+                # batch_completion returns per-item exceptions instead of
+                # raising, which bypasses the retry policy; re-run the item
+                # through the single-request path so retries/backoff apply.
+                normalized.append(
+                    self._retry_failed_batch_item(
+                        requests[index],
+                        index=index,
+                        error=item,
+                        response_format=response_format,
+                    )
+                )
+                continue
             normalized.append(
                 NormalizedResponse(
                     text=_extract_chat_text(item),
@@ -415,6 +457,29 @@ class LLMProvider:
             )
         return normalized
 
+    def _retry_failed_batch_item(
+        self,
+        request: NormalizedRequest,
+        *,
+        index: int,
+        error: Exception,
+        response_format: type[T] | None,
+    ) -> NormalizedResponse:
+        if not (
+            _is_retryable_error(error)
+            or (
+                self.config.unsupported_params != UnsupportedParamsPolicy.FAIL
+                and _is_unsupported_params_error(error)
+            )
+        ):
+            raise RuntimeError(f"Batch item {index} failed: {error}") from error
+        try:
+            return self._execute_single(request, response_format=response_format)
+        except Exception as retry_error:
+            raise RuntimeError(
+                f"Batch item {index} failed after retries: {retry_error}"
+            ) from retry_error
+
     def _build_chat_params(
         self,
         request: NormalizedRequest,
@@ -426,16 +491,14 @@ class LLMProvider:
             "metadata": self._build_request_metadata(request.metadata),
         }
         if request.previous_response_id is not None:
-            self._add_supported_param(
-                params,
-                "previous_response_id",
-                request.previous_response_id,
-                endpoint=EndpointMode.CHAT,
-            )
+            # previous_response_id is a Responses-API concept; chat completions
+            # endpoints reject it regardless of what the target supports.
+            self._handle_unsupported_param("previous_response_id")
         self._add_transport_params(params, endpoint=EndpointMode.CHAT)
         self._add_common_generation_params(params, endpoint=EndpointMode.CHAT)
         self._add_chat_structured_output(params, response_format)
         params.update(self.config.provider_params)
+        self._apply_reasoning_allowlist(params)
         return _without_none(params)
 
     def _build_responses_params(
@@ -445,8 +508,11 @@ class LLMProvider:
     ) -> dict[str, Any]:
         params: dict[str, Any] = {
             "model": self._get_model_string(),
-            "input": request.messages,
-            "metadata": self._build_request_metadata(request.metadata),
+            "input": _to_responses_input(request.messages),
+            # For the Responses API, "metadata" is a wire parameter forwarded
+            # to the provider (OpenAI requires string values); trace metadata
+            # goes through LiteLLM's logging-only litellm_metadata instead.
+            "litellm_metadata": self._build_request_metadata(request.metadata),
         }
         if request.previous_response_id is not None:
             self._add_supported_param(
@@ -511,6 +577,23 @@ class LLMProvider:
             endpoint=endpoint,
         )
 
+    def _apply_reasoning_allowlist(self, params: dict[str, Any]) -> None:
+        """Force reasoning_effort past LiteLLM's per-model param filter.
+
+        Some targets (e.g. Mistral's mistral-medium/small) accept reasoning_effort
+        server-side, but the installed LiteLLM only recognises it for a subset of
+        models and would otherwise drop it. allowed_openai_params tells LiteLLM to
+        forward the parameter anyway.
+        """
+        if not self.capabilities.reasoning_requires_allowlist:
+            return
+        if "reasoning_effort" not in params:
+            return
+        allowed = list(params.get("allowed_openai_params") or [])
+        if "reasoning_effort" not in allowed:
+            allowed.append("reasoning_effort")
+            params["allowed_openai_params"] = allowed
+
     def _add_chat_structured_output(
         self,
         params: dict[str, Any],
@@ -524,8 +607,6 @@ class LLMProvider:
             params["response_format"] = response_format
         elif mode == StructuredOutputMode.JSON_OBJECT:
             params["response_format"] = {"type": "json_object"}
-            if self.provider_name == "ollama":
-                params["format"] = "json"
         elif mode == StructuredOutputMode.PROMPTED_JSON:
             warnings.warn(
                 (
@@ -570,9 +651,15 @@ class LLMProvider:
             )
         if self.api_base_url is not None:
             params["api_base"] = self.api_base_url
-        if self.api_key is not None:
+        # no_api_key only waives auth for self-hosted targets (custom base
+        # URL); hosted endpoints still require a key even if the resolved
+        # capability profile is a keyless local one.
+        api_key_optional = self.capabilities.no_api_key and (
+            self.api_base_url is not None or self.env_key_name is None
+        )
+        if self.api_key:
             params["api_key"] = self.api_key
-        elif self.env_key_name and not self.capabilities.no_api_key:
+        elif self.env_key_name and not api_key_optional:
             env_key = os.getenv(self.env_key_name)
             if env_key:
                 params["api_key"] = env_key
@@ -692,7 +779,13 @@ class LLMProvider:
         if not messages:
             raise ValueError("messages cannot be empty")
 
-        normalized = [_normalize_message(message) for message in copy.deepcopy(messages)]
+        normalized = [
+            _normalize_message(
+                message,
+                include_media_uuid=self.capabilities.supports_media_uuid,
+            )
+            for message in copy.deepcopy(messages)
+        ]
         self._validate_modalities(normalized)
 
         if response_format is not None and self.capabilities.structured_output in {
@@ -767,14 +860,13 @@ class LLMProvider:
 
     def _call_with_retries(self, func, *, request_count: int) -> Any:
         retry_policy = self.config.retry_policy
-        attempts = max(1, retry_policy.max_retries)
+        # max_retries counts retries after the initial attempt.
+        attempts = max(1, retry_policy.max_retries + 1)
 
         for attempt in range(attempts):
             self._respect_rate_limit(request_count)
             try:
-                response = func()
-                self._record_requests(request_count)
-                return response
+                return func()
             except Exception as exc:
                 if attempt >= attempts - 1 or not _is_retryable_error(exc):
                     raise
@@ -802,39 +894,38 @@ class LLMProvider:
         if self.config.rpm_limit is None:
             return
 
-        with self._rate_lock:
-            now = time.monotonic()
-            self._request_timestamps = [
-                timestamp
-                for timestamp in self._request_timestamps
-                if now - timestamp < 60
-            ]
+        # A request block larger than the whole budget can only run once the
+        # window is empty; it is still recorded in full so later requests wait.
+        needed = min(request_count, self.config.rpm_limit)
 
-            while len(self._request_timestamps) + request_count > self.config.rpm_limit:
-                earliest = self._request_timestamps[0]
-                sleep_time = max(0.0, 60 - (now - earliest))
-                if sleep_time > 0:
-                    logger.warning(
-                        "Rate limit reached | Provider: {} | Model: {} | "
-                        "Waiting {:.2f}s",
-                        self.provider_name,
-                        self.model_id,
-                        sleep_time,
-                    )
-                    self._sleep(sleep_time)
+        while True:
+            with self._rate_lock:
                 now = time.monotonic()
                 self._request_timestamps = [
                     timestamp
                     for timestamp in self._request_timestamps
                     if now - timestamp < 60
                 ]
+                if len(self._request_timestamps) + needed <= self.config.rpm_limit:
+                    # Reserve before dispatch so concurrent workers and failed
+                    # attempts count against the budget.
+                    self._request_timestamps.extend([now] * request_count)
+                    return
+                earliest = self._request_timestamps[0]
+                # +1s margin so we never release exactly on the boundary,
+                # where the provider's server-side window may still count
+                # the expiring request.
+                sleep_time = max(0.0, 60 - (now - earliest)) + 1.0
 
-    def _record_requests(self, request_count: int = 1) -> None:
-        if self.config.rpm_limit is None:
-            return
-        with self._rate_lock:
-            now = time.monotonic()
-            self._request_timestamps.extend([now] * request_count)
+            if sleep_time > 0:
+                logger.warning(
+                    "Rate limit reached | Provider: {} | Model: {} | "
+                    "Waiting {:.2f}s",
+                    self.provider_name,
+                    self.model_id,
+                    sleep_time,
+                )
+                self._sleep(sleep_time)
 
     def _parse_response(
         self,
@@ -1087,35 +1178,42 @@ def _is_batch_messages(value: Any) -> bool:
     return isinstance(value, list) and bool(value) and isinstance(value[0], list)
 
 
-def _normalize_message(message: Message) -> Message:
+def _normalize_message(message: Message, *, include_media_uuid: bool = False) -> Message:
     if not isinstance(message, dict):
         raise ValueError("Each message must be a dictionary")
 
     normalized = dict(message)
     content = normalized.get("content")
     if isinstance(content, list):
-        normalized["content"] = [_normalize_content_part(part) for part in content]
+        normalized["content"] = [
+            _normalize_content_part(part, include_media_uuid=include_media_uuid)
+            for part in content
+        ]
     elif content is not None and not isinstance(content, str):
         raise ValueError("message content must be a string, list of parts, or None")
     return normalized
 
 
-def _normalize_content_part(part: Any) -> dict[str, Any]:
+def _normalize_content_part(
+    part: Any,
+    *,
+    include_media_uuid: bool = False,
+) -> dict[str, Any]:
     part = _content_part_to_dict(part)
     part_type = part.get("type")
 
-    normalizers = {
-        "text": _normalize_text_part,
-        "image": _normalize_image_part,
-        "audio": _normalize_audio_part,
-        "video": _normalize_video_part,
-        "file": _normalize_file_part,
-        "document": _normalize_file_part,
-    }
     if part_type in {"image_url", "input_audio", "video_url"}:
         return _without_none(part)
-    if part_type in normalizers:
-        return normalizers[part_type](part)
+    if part_type == "text":
+        return _normalize_text_part(part)
+    if part_type == "image":
+        return _normalize_image_part(part, include_media_uuid=include_media_uuid)
+    if part_type == "audio":
+        return _normalize_audio_part(part)
+    if part_type == "video":
+        return _normalize_video_part(part, include_media_uuid=include_media_uuid)
+    if part_type in {"file", "document"}:
+        return _normalize_file_part(part)
     return part
 
 
@@ -1140,33 +1238,74 @@ def _normalize_text_part(part: dict[str, Any]) -> dict[str, Any]:
     return _without_none({"type": "text", "text": part.get("text")})
 
 
-def _normalize_image_part(part: dict[str, Any]) -> dict[str, Any]:
-    image_url: dict[str, Any] = {"url": part.get("url") or part.get("data")}
+def _normalize_image_part(
+    part: dict[str, Any],
+    *,
+    include_media_uuid: bool = False,
+) -> dict[str, Any]:
+    image_url: dict[str, Any] = {
+        "url": _media_url_from_part(part, kind="image"),
+    }
     if part.get("format") or part.get("media_type"):
         image_url["format"] = part.get("format") or part.get("media_type")
     if part.get("detail"):
         image_url["detail"] = part["detail"]
     normalized = {"type": "image_url", "image_url": _without_none(image_url)}
-    if part.get("media_id"):
+    if include_media_uuid and part.get("media_id"):
         normalized["uuid"] = part["media_id"]
     return normalized
 
 
 def _normalize_audio_part(part: dict[str, Any]) -> dict[str, Any]:
+    data = part.get("data")
+    if not data:
+        raise ValueError(
+            "audio content parts require base64 'data'; URL-only audio input "
+            "is not supported by chat audio APIs"
+        )
+    audio_format = part.get("format") or part.get("media_type") or "wav"
+    # Accept MIME types ("audio/wav") but send the bare format ("wav").
+    if "/" in audio_format:
+        audio_format = audio_format.split("/", 1)[1]
     return {
         "type": "input_audio",
-        "input_audio": _without_none({
-            "data": part.get("data"),
-            "format": part.get("format") or part.get("media_type") or "wav",
-        }),
+        "input_audio": {"data": data, "format": audio_format},
     }
 
 
-def _normalize_video_part(part: dict[str, Any]) -> dict[str, Any]:
-    normalized = {"type": "video_url", "video_url": {"url": part.get("url")}}
-    if part.get("media_id"):
+def _normalize_video_part(
+    part: dict[str, Any],
+    *,
+    include_media_uuid: bool = False,
+) -> dict[str, Any]:
+    normalized = {
+        "type": "video_url",
+        "video_url": {"url": _media_url_from_part(part, kind="video")},
+    }
+    if include_media_uuid and part.get("media_id"):
         normalized["uuid"] = part["media_id"]
     return normalized
+
+
+def _media_url_from_part(part: dict[str, Any], *, kind: str) -> str:
+    url = part.get("url")
+    if url:
+        return url
+
+    data = part.get("data")
+    if data:
+        if data.startswith("data:"):
+            return data
+        media_type = part.get("media_type") or part.get("format")
+        if not media_type:
+            raise ValueError(
+                f"{kind} content parts with raw base64 'data' need 'media_type' "
+                "(e.g. 'image/png') to build a data URI, or pass a full "
+                "'data:' URI directly"
+            )
+        return f"data:{media_type};base64,{data}"
+
+    raise ValueError(f"{kind} content parts require either 'url' or 'data'")
 
 
 def _normalize_file_part(part: dict[str, Any]) -> dict[str, Any]:
@@ -1177,6 +1316,60 @@ def _normalize_file_part(part: dict[str, Any]) -> dict[str, Any]:
     else:
         file_payload = {"file_id": part.get("url")}
     return {"type": "file", "file": _without_none(file_payload)}
+
+
+def _to_responses_input(messages: Messages) -> Messages:
+    """Convert chat-normalized messages into Responses API input items.
+
+    The Responses API rejects chat-completions part types: it expects
+    input_text/input_image/input_file for user input and output_text for
+    assistant history. String content passes through unchanged.
+    """
+    converted: Messages = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            converted.append(message)
+            continue
+
+        text_type = (
+            "output_text" if message.get("role") == "assistant" else "input_text"
+        )
+        parts = [_to_responses_part(part, text_type=text_type) for part in content]
+        new_message = dict(message)
+        new_message["content"] = parts
+        converted.append(new_message)
+    return converted
+
+
+def _to_responses_part(part: dict[str, Any], *, text_type: str) -> dict[str, Any]:
+    part_type = part.get("type")
+
+    if part_type == "text":
+        return {"type": text_type, "text": part.get("text")}
+
+    if part_type == "image_url":
+        image_url = part.get("image_url")
+        url = image_url.get("url") if isinstance(image_url, dict) else image_url
+        new_part: dict[str, Any] = {"type": "input_image", "image_url": url}
+        if isinstance(image_url, dict) and image_url.get("detail"):
+            new_part["detail"] = image_url["detail"]
+        if part.get("uuid"):
+            new_part["uuid"] = part["uuid"]
+        return new_part
+
+    if part_type == "file":
+        payload = dict(part.get("file") or {})
+        new_part = {"type": "input_file"}
+        file_id = payload.pop("file_id", None)
+        if isinstance(file_id, str) and file_id.startswith(("http://", "https://")):
+            new_part["file_url"] = file_id
+        elif file_id is not None:
+            new_part["file_id"] = file_id
+        new_part.update(payload)
+        return new_part
+
+    return part
 
 
 def _modality_for_part(part: dict[str, Any]) -> Modality:

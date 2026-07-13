@@ -7,11 +7,14 @@ from datafast.llm import (
     ContentPart,
     EndpointMode,
     Modality,
+    MistralProvider,
+    OllamaProvider,
     OpenAIProvider,
     OpenRouterProvider,
     openai,
     openai_compatible,
 )
+from datafast.llm.capabilities import resolve_capabilities
 
 
 class SimpleSchema(BaseModel):
@@ -240,6 +243,163 @@ def test_openrouter_thinking_warns_and_omits_reasoning_param(monkeypatch):
     assert "reasoning" not in captured
 
 
+def test_mistral_reasoning_capability_resolution():
+    # Reasoning-capable Mistral targets: magistral family plus the documented
+    # mistral-medium/small snapshots.
+    for model_id in (
+        "mistral-medium-3-5",
+        "mistral-small-2603",
+        "magistral-medium-2509",
+        "magistral-small-latest",
+    ):
+        caps = resolve_capabilities("mistral", model_id)
+        assert caps.supports_reasoning is True
+        assert "reasoning_effort" in caps.supported_params
+        assert caps.reasoning_requires_allowlist is True
+
+    # Non-reasoning Mistral targets keep the plain hosted-chat profile.
+    for model_id in ("mistral-large-2512", "mistral-tiny"):
+        caps = resolve_capabilities("mistral", model_id)
+        assert caps.supports_reasoning is False
+        assert "reasoning_effort" not in caps.supported_params
+
+
+def test_mistral_reasoning_effort_is_forwarded_with_allowlist(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok", reasoning_content="chain of thought")
+
+    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+
+    provider = MistralProvider(
+        model_id="mistral-medium-3-5",
+        api_key="test-key",
+        reasoning_effort="high",
+    )
+
+    response = provider.generate_response(prompt="think it through")
+
+    assert captured["reasoning_effort"] == "high"
+    # LiteLLM only forwards reasoning_effort for a subset of Mistral models; the
+    # allowlist forces it through for the rest.
+    assert "reasoning_effort" in captured["allowed_openai_params"]
+    assert response.reasoning_content == "chain of thought"
+
+
+def test_mistral_without_reasoning_effort_stays_plain(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+
+    provider = MistralProvider(model_id="mistral-medium-3-5", api_key="test-key")
+
+    assert provider.generate(prompt="ping") == "ok"
+    assert "reasoning_effort" not in captured
+    assert "allowed_openai_params" not in captured
+
+
+def test_mistral_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+
+    provider = MistralProvider(
+        model_id="mistral-large-2512",
+        api_key="test-key",
+        reasoning_effort="high",
+    )
+
+    with pytest.warns(UserWarning, match="reasoning_effort"):
+        assert provider.generate(prompt="ping") == "ok"
+
+    assert "reasoning_effort" not in captured
+    assert "allowed_openai_params" not in captured
+
+
+def test_ollama_reasoning_capability_resolution():
+    # Thinking-capable Ollama families gain a mapped reasoning control; models
+    # tagged "-thinking" (e.g. lfm2.5-thinking) match too.
+    for model_id in (
+        "deepseek-r1:8b",
+        "qwen3:8b",
+        "gpt-oss:20b",
+        "magistral:latest",
+        "gemma4:12b",
+        "lfm2.5-thinking:1.2b",
+    ):
+        caps = resolve_capabilities("ollama", model_id)
+        assert caps.supports_reasoning is True
+        assert "reasoning_effort" in caps.supported_params
+
+    # Other Ollama models keep the plain chat profile.
+    for model_id in ("gemma3:4b", "llama3.2"):
+        caps = resolve_capabilities("ollama", model_id)
+        assert caps.supports_reasoning is False
+        assert "reasoning_effort" not in caps.supported_params
+
+
+def test_ollama_reasoning_effort_is_forwarded(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok", reasoning_content="chain of thought")
+
+    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+
+    provider = OllamaProvider(model_id="deepseek-r1:8b", reasoning_effort="high")
+
+    response = provider.generate_response(prompt="think it through")
+
+    assert captured["reasoning_effort"] == "high"
+    # LiteLLM maps reasoning_effort onto Ollama's think param natively, so no
+    # allowlist escape hatch is needed.
+    assert "allowed_openai_params" not in captured
+    assert response.reasoning_content == "chain of thought"
+
+
+def test_ollama_thinking_true_defaults_to_low_effort(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+
+    provider = OllamaProvider(model_id="qwen3:8b", thinking=True)
+
+    assert provider.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == "low"
+
+
+def test_ollama_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+
+    provider = OllamaProvider(model_id="gemma3:4b", reasoning_effort="high")
+
+    with pytest.warns(UserWarning, match="reasoning_effort"):
+        assert provider.generate(prompt="ping") == "ok"
+
+    assert "reasoning_effort" not in captured
+
+
 def test_provider_params_escape_hatch_is_forwarded(monkeypatch):
     captured = {}
 
@@ -444,7 +604,11 @@ def test_responses_endpoint_maps_reasoning_state_and_structured_output(monkeypat
     assert captured["reasoning"] == {"effort": "low"}
     assert captured["max_output_tokens"] == 64
     assert captured["text_format"] is SimpleSchema
-    assert captured["metadata"]["purpose"] == "test"
+    # Trace metadata must stay off the Responses wire (OpenAI requires
+    # string-only metadata); it rides LiteLLM's logging-only kwarg instead.
+    assert "metadata" not in captured
+    assert captured["litellm_metadata"]["purpose"] == "test"
+    assert captured["input"] == [{"role": "user", "content": "capital?"}]
 
 
 def test_fallback_batching_preserves_order(monkeypatch):

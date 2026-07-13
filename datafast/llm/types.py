@@ -74,6 +74,8 @@ class TargetCapabilities:
     cache_mode: CacheMode = CacheMode.NONE
     supports_reasoning: bool = False
     supports_thinking: bool = False
+    reasoning_requires_allowlist: bool = False
+    supports_media_uuid: bool = False
     no_api_key: bool = False
     requires_chat_template: bool = False
     notes: tuple[str, ...] = ()

@@ -1,5 +1,20 @@
+import pytest
+
+import datafast.llm.provider as provider_module
 import datafast.llms as llms_module
 from datafast.llms import OpenRouterProvider
+
+
+@pytest.fixture(autouse=True)
+def _disable_provider_side_effects(monkeypatch):
+    # Patch the bindings LLMProvider.__init__ actually calls (imported into
+    # datafast.llm.provider); patching datafast.llms would be a no-op.
+    monkeypatch.setattr(provider_module, "load_env_once", lambda: None)
+    monkeypatch.setattr(
+        provider_module,
+        "maybe_configure_langfuse_tracing",
+        lambda load_env=False: False,
+    )
 
 
 class _DummyMessage:
@@ -20,13 +35,6 @@ class _DummyResponse:
 
 
 def test_openrouter_single_messages_use_completion(monkeypatch):
-    monkeypatch.setattr(llms_module, "load_env_once", lambda: None)
-    monkeypatch.setattr(
-        llms_module,
-        "maybe_configure_langfuse_tracing",
-        lambda load_env=False: False,
-    )
-
     calls = {"completion": 0, "batch_completion": 0}
 
     def fake_completion(**kwargs):
@@ -50,13 +58,6 @@ def test_openrouter_single_messages_use_completion(monkeypatch):
 
 
 def test_openrouter_batch_messages_use_batch_completion(monkeypatch):
-    monkeypatch.setattr(llms_module, "load_env_once", lambda: None)
-    monkeypatch.setattr(
-        llms_module,
-        "maybe_configure_langfuse_tracing",
-        lambda load_env=False: False,
-    )
-
     calls = {"completion": 0, "batch_completion": 0}
 
     def fake_completion(**kwargs):
@@ -83,13 +84,6 @@ def test_openrouter_batch_messages_use_batch_completion(monkeypatch):
 
 
 def test_openrouter_generate_response_reads_reasoning_field(monkeypatch):
-    monkeypatch.setattr(llms_module, "load_env_once", lambda: None)
-    monkeypatch.setattr(
-        llms_module,
-        "maybe_configure_langfuse_tracing",
-        lambda load_env=False: False,
-    )
-
     monkeypatch.setattr(
         llms_module.litellm,
         "completion",
