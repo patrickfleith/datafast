@@ -4,11 +4,11 @@
 
 - Capability-aware LLM provider layer: per-target capability resolution (provider + endpoint + model), one common config surface, `unsupported_params` policy (`fail`/`warn`/`quiet`).
 - Provider factories: `openai`, `anthropic`, `gemini`, `mistral`, `openrouter`, `ollama`, `openai_compatible`.
-- Chat and Responses endpoint modes, structured output (Pydantic), reasoning controls (`thinking` / `reasoning_effort`).
+- Chat and Responses endpoint modes, structured output (Pydantic), reasoning controls (`thinking` / `reasoning_effort`); first-class reasoning across anthropic, gemini, mistral, ollama.
 - Multimodal **input** normalization: text, image, video, file/document content parts.
 - Native batching with warned fallback concurrency; retries, backoff, jitter, timeout, client-side RPM throttling.
-- Example suites (11 scripts each) for openai, anthropic, mistral, ollama, openrouter.
-- Mocked contract/capability/adapter tests (C*/K*/A* coverage in `tests/test_llm_provider_contract.py`).
+- Example suites (11 scripts each) for openai, anthropic, gemini, mistral, ollama, openrouter.
+- Mocked contract/capability/adapter/reliability tests in `tests/test_llm_provider_contract.py` (reliability: bounded retries, backoff growth, jitter range, timeout forwarding, RPM throttling, batch-retry ordering).
 
 ## In progress
 
@@ -55,13 +55,6 @@ run alongside them.
 
 ### Provider hardening & tests
 
-- **Mocked reliability tests (R01–R07).** Cover retry/backoff/rate-limit code that already exists but is untested.
-  - R01 retryable error triggers bounded retries; R02 non-retryable fails immediately.
-  - R03 backoff grows across attempts; R04 jitter stays within range (inject `_sleep`, assert delays).
-  - R05 timeout is forwarded and timeout failure surfaces clearly.
-  - R06 `rpm_limit` throttles before dispatch (mocked clock/sleep, no live call).
-  - R07 batch retry preserves output ordering (per-item batch failure re-runs through single path).
-- **Gemini example suite.** Add `examples/providers/gemini/` mirroring the other providers (11 scripts + README + sample image).
 - **Capability-driven live test catalogue (L01–L10).** A curated model catalog + shared live suite parametrized over it, so adding a model is one catalog entry. Replaces ad-hoc per-provider `integration` tests; wire the `live` marker.
 
 ### Documentation (launch)
