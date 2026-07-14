@@ -74,7 +74,9 @@ MISTRAL_REASONING_CHAT = TargetCapabilities(
 GEMINI_CHAT = TargetCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
-    supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
+    supported_params=(
+        COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS | frozenset({"reasoning_effort"})
+    ),
     modalities=frozenset({
         Modality.TEXT,
         Modality.IMAGE,
@@ -85,6 +87,11 @@ GEMINI_CHAT = TargetCapabilities(
     structured_output=StructuredOutputMode.JSON_SCHEMA,
     batch_mode=BatchMode.LITELLM_BATCH,
     cache_mode=CacheMode.PROVIDER_PROMPT,
+    supports_reasoning=True,
+    notes=(
+        "Reasoning is forwarded natively via reasoning_effort (thinking=True "
+        "maps to effort 'low'); LiteLLM handles gemini/* without an allowlist.",
+    ),
 )
 
 
