@@ -16,7 +16,7 @@ from datafast.llm import ContentPart
 
 # Swap this for any vision-capable Ollama model (e.g. gemma3, llama3.2-vision).
 MODEL_ID = "gemma4:12b"
-IMAGE_PATH = Path(__file__).parent / "sample_sunflower.jpg"
+IMAGE_PATH = Path(__file__).parent / "sample_lighthouse.jpg"
 
 
 def main() -> None:

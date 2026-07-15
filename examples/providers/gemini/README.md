@@ -37,6 +37,6 @@ Files:
 - `06_generation_metadata.py`: `generate_response(...)` and normalized metadata with native reasoning via `reasoning_effort`
 - `07_structured_batch.py`: batched structured responses
 - `08_unsupported_params_policies.py`: `warn`, `quiet`, and `fail` handling for an unsupported parameter
-- `09_multimodal_image_input.py`: text plus image input using `ContentPart`, sending the bundled `sample_sunflower.jpg` as base64 bytes
+- `09_multimodal_image_input.py`: text plus image input using `ContentPart`, sending the bundled `sample_red_panda.jpg` as base64 bytes
 - `10_raw_vs_normalized_response.py`: compare normalized fields with the underlying raw payload fields
 - `11_timeout_and_rate_limit.py`: three separate requests through one provider instance, with `rpm_limit=2` so the third request shows client-side throttling

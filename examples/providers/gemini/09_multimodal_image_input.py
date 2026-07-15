@@ -15,8 +15,8 @@ from datafast.llm import ContentPart
 
 
 # Swap this for any Gemini model that supports image input.
-MODEL_ID = "gemini-2.5-pro"
-IMAGE_PATH = Path(__file__).parent / "sample_sunflower.jpg"
+MODEL_ID = "gemini-3.5-flash"
+IMAGE_PATH = Path(__file__).parent / "sample_red_panda.jpg"
 
 
 def main() -> None:

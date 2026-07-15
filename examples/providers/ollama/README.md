@@ -55,6 +55,6 @@ Files:
 - `06_generation_metadata.py`: `generate_response(...)` metadata for a thinking model, with first-class reasoning via `reasoning_effort="high"` normalized into `reasoning_content`
 - `07_structured_batch.py`: batched structured responses
 - `08_unsupported_params_policies.py`: `warn`, `quiet`, and `fail` handling for `reasoning_effort` on a non-reasoning model (`ministral-3:3b`), which does not map it
-- `09_multimodal_image_input.py`: text plus image input using `ContentPart`, sending the bundled `sample_sunflower.jpg` as base64 bytes (needs a vision-capable model)
+- `09_multimodal_image_input.py`: text plus image input using `ContentPart`, sending the bundled `sample_lighthouse.jpg` as base64 bytes (needs a vision-capable model)
 - `10_raw_vs_normalized_response.py`: compare normalized fields with the raw payload, including Ollama's timing/token counters
 - `11_timeout_and_rate_limit.py`: three separate requests through one provider instance, with `rpm_limit=2` so the third request shows client-side throttling
