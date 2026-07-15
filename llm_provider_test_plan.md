@@ -91,7 +91,7 @@ Current agreed shortlist as of June 2026:
 
 - OpenAI: `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.4-nano`
 - Anthropic: `claude-sonnet-4-6`, `claude-haiku-4-5`
-- Gemini: `gemini-2.5-pro`, `gemini-3.5-flash`, `gemini-3.1-flash-lite`
+- Gemini: `gemini-3.5-flash`, `gemini-3.1-flash-lite`
 - Mistral hosted: `mistral-medium-3-5`, `mistral-large-2512`, `mistral-small-2603`
 - Mistral local / self-hosted: `ministral-14b-2512`, `ministral-8b-2512`, `ministral-3b-2512`
 

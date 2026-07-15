@@ -252,7 +252,6 @@ _CATALOG: dict[tuple[str, str], TargetCapabilities] = {
     ("openai", "gpt-5.4-nano"): OPENAI_RESPONSES,
     ("anthropic", "claude-sonnet-4-6"): ANTHROPIC_CHAT,
     ("anthropic", "claude-haiku-4-5"): ANTHROPIC_CHAT,
-    ("gemini", "gemini-2.5-pro"): GEMINI_CHAT,
     ("gemini", "gemini-3.5-flash"): GEMINI_CHAT,
     ("gemini", "gemini-3.1-flash-lite"): GEMINI_CHAT,
     ("mistral", "mistral-medium-3-5"): MISTRAL_REASONING_CHAT,

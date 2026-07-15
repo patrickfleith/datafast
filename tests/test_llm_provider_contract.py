@@ -405,7 +405,7 @@ def test_ollama_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatch
 
 def test_gemini_reasoning_capability_resolution():
     # All catalogued Gemini models support reasoning natively.
-    for model_id in ("gemini-2.5-pro", "gemini-3.5-flash", "gemini-3.1-flash-lite"):
+    for model_id in ("gemini-3.5-flash", "gemini-3.1-flash-lite"):
         caps = resolve_capabilities("gemini", model_id)
         assert caps.supports_reasoning is True
         assert "reasoning_effort" in caps.supported_params
@@ -421,7 +421,7 @@ def test_gemini_reasoning_effort_is_forwarded(monkeypatch):
     monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
 
     provider = GeminiProvider(
-        model_id="gemini-2.5-pro", api_key="test-key", reasoning_effort="high"
+        model_id="gemini-3.5-flash", api_key="test-key", reasoning_effort="high"
     )
 
     response = provider.generate_response(prompt="think it through")
@@ -442,7 +442,7 @@ def test_gemini_thinking_true_defaults_to_low_effort(monkeypatch):
     monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
 
     provider = GeminiProvider(
-        model_id="gemini-2.5-pro", api_key="test-key", thinking=True
+        model_id="gemini-3.5-flash", api_key="test-key", thinking=True
     )
 
     assert provider.generate(prompt="ping") == "ok"

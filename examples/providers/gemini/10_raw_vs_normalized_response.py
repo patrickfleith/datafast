@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from datafast import gemini
 
 
-MODEL_ID = "gemini-2.5-pro"
+MODEL_ID = "gemini-3.5-flash"
 PROMPT = (
     "A train travels 60 miles per hour for 2.5 hours. "
     "Work it out carefully, then give the final answer in one short sentence."
