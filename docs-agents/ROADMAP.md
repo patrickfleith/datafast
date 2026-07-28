@@ -22,22 +22,19 @@ run alongside them.
 
 ### Pipeline execution correctness
 
-- **Wire up or remove dead execution controls.** Several `RunConfig` / `run()`
-  parameters are accepted and documented but have no effect — silent no-ops are worse
-  than missing features. For each: implement it, or delete it and document the real path.
-  - `limit` — currently ignored; must truncate source records at step 0. Highest
-    priority: `examples/scripts/37_limit_stop_and_strategies.py` leads with
-    `run(limit=3)` and today processes the full seed set (~20 LLM calls instead of 3).
-  - `rate_limits` — stored in the manifest and documented on `run()`, but never
-    throttles. Either apply it in the runner batch loop, or remove it and document
-    that throttling lives on the provider (`rpm_limit`).
-  - `resume_from` — documented ("resume from a named step, discard later steps"),
-    referenced nowhere. Implement or remove.
-  - `max_concurrent` — implies runner-level batch concurrency that does not exist
-    (batches run sequentially; concurrency is provider-internal). Implement or remove.
-- **Execution & resume tests.** Cover the headline features that are currently
-  untested: checkpoint save/resume (including mid-LLM-step resume), `limit`,
-  `stop_after`, and `llm_strategy` ordering (by_model / round_robin / by_record).
+- **Dead execution controls — resolved.** The `RunConfig` / `run()` parameters that
+  were silent no-ops are now either implemented or removed:
+  - `limit` — implemented; truncates source records at step 0 (`runner.execute`).
+  - `resume_from` — implemented; re-runs from a named step, discarding it and later
+    steps while reusing completed upstream checkpoints (`CheckpointManager.reset_from_step`).
+  - `rate_limits` — removed; throttling lives on the provider (`rpm_limit`), which is
+    already enforced on every pipeline call.
+  - `max_concurrent` (runner-level) — removed; concurrency lives on the provider
+    (`max_concurrent`), which parallelizes requests within a batch. Runner batches stay
+    sequential to keep in-order checkpointing correct.
+- **Execution & resume tests — done.** `tests/test_runner_execution.py` covers `limit`,
+  `resume_from`, `stop_after`, `llm_strategy` ordering (by_model / round_robin /
+  by_record), full checkpoint resume, and mid-LLM-step crash/resume.
 
 ### Pipeline architecture
 
@@ -47,11 +44,15 @@ run alongside them.
   (`examples/scripts/42`). Either have the runner recurse into branch paths, or clearly
   document the limitation and its cost (a crash mid-Branch re-runs every branch call
   on resume).
-- **Pipeline validation / `compile()`.** No structural checks today; mistakes surface
-  as deep runtime `KeyError`s or silent empty output. Add validation: source first /
-  sink last, `input_columns` & `forward_columns` references exist, `by` columns exist
-  (Sample/Group/Pair), and Branch↔JoinBranches pairing — all with actionable error
-  messages raised before execution.
+- **Pipeline validation / `compile()` — done.** `Pipeline.compile()`
+  (`datafast/core/validation.py`) runs automatically at the start of `run()` and raises
+  an actionable `PipelineValidationError` before execution. Checks: source first /
+  sink last, Branch↔JoinBranches pairing, and column references (`input_columns` /
+  `forward_columns` / `by`) against a statically-tracked schema. Column tracking is
+  conservative — it starts from the source's columns (Seed/list) and resets to
+  "unknown" at any opaque step (Map/FlatMap/Group/Pair/Join/Concat/LLM-eval), so a
+  reference is never wrongly flagged. Does not yet recurse into Branch/Join/Concat
+  sub-pipelines.
 
 ### Provider hardening & tests
 
