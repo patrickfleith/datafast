@@ -1,0 +1,16 @@
+Here is the description of someone:
+<description>
+{persona_description}
+</description>
+
+Come up with one other description of an individual who could be part of this persona's life.
+We want the description to be detailed but super concise (max 2 sentences) and vivid.
+But we want to have the a standalone description of that new persona without mentioning the original persona or a reason in the description.
+
+Requirements:
+1. Define a clear interpersonal link such as friend, advisor, competitor, family member, or collaborator.
+2. The new persona should offer a complementary or contrasting perspective.
+3. Make the related persona vivid and believable, avoid generic archetypes.
+4. Describe the relation in relationship_type field, not in the description.
+5. The related persona must be {related_life_stage}. Do not state a precise age, just reflect this life stage naturally.
+

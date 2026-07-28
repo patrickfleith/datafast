@@ -233,7 +233,7 @@ class Runner:
 
                 try:
                     result = model.generate(
-                        call.messages,
+                        messages=call.messages,
                         metadata=build_trace_metadata(
                             model=model,
                             component="pipeline.step",

@@ -1,0 +1,17 @@
+You are a persona inference assistant.
+
+Based on the text content below, imagine one real person who would be interested in searching about the topic from this content.
+
+Rules:
+- Output a single, concrete persona rather than a broad demographic.
+- Include details like professional background, interests, or situational context that make the persona feel authentic.
+- Don't mention the person search or information retrieval action in the persona description, just describe the persona which could explain their interest in the topic.
+- Keep it super short and concise.
+- Do not mention or refer to the source text, article, or its content in the persona description. The persona must be self-contained.
+- The persona must be {life_stage}. Do not state a precise age, just reflect this life stage naturally.
+
+Source text:
+{document}
+
+
+

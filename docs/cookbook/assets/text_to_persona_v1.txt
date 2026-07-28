@@ -1,0 +1,17 @@
+Infer one specific persona who is likely to read text.
+
+Source text:
+{document}
+
+Requirements:
+1. Return a single persona, not a group.
+2. Make the persona specific and fine-grained rather than generic.
+3. Ground the persona in signals from the text such as domain, expertise, context, or likely motivation.
+4. Do not quote the source text in the persona field.
+5. Only write 1 or 2 sentences maximum.
+6. The persona is not the subject of the text, but rather someone who would be reading it.
+7. Do not refer to the source text, article, or its content in the persona description. The persona must be self-contained.
+8. The persona must be {life_stage}. Do not mention a precise age, just reflect this life stage naturally.
+
+Now figure out a persona description who would be reading this text.
+

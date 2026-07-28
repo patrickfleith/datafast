@@ -3,11 +3,12 @@
 ## Minimal Pipeline
 
 ```python
-from datafast import Map, Sink, Source
+from datafast import AddUUID, Map, Sink, Source
 
 pipeline = (
     Source.list([{"text": "hello"}])
     >> Map(lambda r: {**r, "length": len(r["text"])})
+    >> AddUUID()
     >> Sink.list()
 )
 
@@ -38,6 +39,7 @@ seed = Seed.product(
 
 ## Core Data Operations
 
+- `AddUUID`: add a UUID field to each record
 - `Map`: one record in, one record out
 - `FlatMap`: one record in, many records out
 - `Filter`: keep or drop records

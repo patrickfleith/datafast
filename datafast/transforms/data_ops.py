@@ -3,6 +3,7 @@
 import itertools
 import random
 import re
+import uuid
 from collections import defaultdict
 from collections.abc import Callable, Iterable
 from typing import Any
@@ -60,6 +61,34 @@ class FlatMap(Step):
         """Apply the transformation and flatten results."""
         for record in records:
             yield from self._fn(record)
+
+
+class AddUUID(Step):
+    """Add a UUID field to each record."""
+
+    def __init__(self, column: str = "id", overwrite: bool = False) -> None:
+        """
+        Initialize an AddUUID step.
+
+        Args:
+            column: Field name to write the UUID into.
+            overwrite: If True, replace existing values in the target column.
+
+        Examples:
+            >>> AddUUID()
+            >>> AddUUID(column="example_id", overwrite=True)
+        """
+        super().__init__()
+        self._column = column
+        self._overwrite = overwrite
+
+    def process(self, records: Iterable[Record]) -> Iterable[Record]:
+        """Add UUIDs while preserving all other fields."""
+        for record in records:
+            if self._column in record and not self._overwrite:
+                yield record
+            else:
+                yield {**record, self._column: str(uuid.uuid4())}
 
 
 class Filter(Step):

@@ -18,7 +18,6 @@ from pydantic import BaseModel
 # LiteLLM
 import litellm
 from litellm.exceptions import RateLimitError
-from litellm.utils import ModelResponse
 
 # Internal imports
 from .llm_utils import get_messages
@@ -292,17 +291,23 @@ class LLMProvider(ABC):
             if response_format is not None:
                 completion_params["response_format"] = response_format
 
-            # Call LiteLLM completion with batch messages - retry on rate limit
+            # Call LiteLLM completion with retry on rate limit.
+            # OpenRouter accepts single message requests via completion(), but
+            # rejects the same payload when wrapped in batch_completion().
             max_retries = 3
             retry_delay = 5  # Start with 5 seconds
             response = None
-            
+
             for attempt in range(max_retries):
                 try:
-                    response: list[ModelResponse] = litellm.batch_completion(
-                        **completion_params)
+                    if len(batch_to_send) == 1:
+                        response = [litellm.completion(
+                            **{**completion_params, "messages": batch_to_send[0]}
+                        )]
+                    else:
+                        response = litellm.batch_completion(**completion_params)
                     break  # Success, exit retry loop
-                except RateLimitError as e:
+                except RateLimitError:
                     if attempt < max_retries - 1:
                         wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
                         logger.warning(
@@ -316,7 +321,7 @@ class LLMProvider(ABC):
                             f"Provider: {self.provider_name} | Model: {self.model_id}"
                         )
                         raise
-            
+
             if response is None:
                 raise RuntimeError("Failed to get response after retries")
 
