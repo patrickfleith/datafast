@@ -50,8 +50,15 @@ pipeline = (
 - `MISTRAL_API_KEY`
 - `OPENROUTER_API_KEY`
 - `OLLAMA_API_BASE`
+- `DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO`
 
 Ollama typically does not require an API key and instead uses the local API base.
+
+`DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO` defaults to enabled. Datafast sets
+LiteLLM's `suppress_debug_info` flag when a provider is created so example runs do
+not print LiteLLM provider help text such as the OpenRouter provider list banner.
+Set `DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO=0` if you want LiteLLM's debug/help
+output back while troubleshooting.
 
 ## Optional Langfuse Tracing
 

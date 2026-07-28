@@ -61,13 +61,24 @@ class Pipeline(Step):
         """Return the list of steps in this pipeline."""
         return self._steps
 
+    def compile(self) -> "Pipeline":
+        """Validate pipeline structure and column references before execution.
+
+        Raises PipelineValidationError on the first problem found; returns self
+        so it can be chained. Called automatically by run().
+        """
+        from datafast.core.validation import validate_pipeline
+
+        validate_pipeline(self._steps)
+        return self
+
     def run(
         self,
         checkpoint_dir: str | None = None,
         resume: bool = False,
         batch_size: int = 4,
         llm_strategy: str = "by_model",
-        rate_limits: dict[str, int] | None = None,
+        resume_from: str | None = None,
         limit: int | None = None,
         stop_after: int | str | None = None,
         **kwargs,
@@ -83,7 +94,8 @@ class Pipeline(Step):
                 - "by_model": All calls for model A, then B (default)
                 - "round_robin": Interleave models
                 - "by_record": Process each record completely
-            rate_limits: Requests per minute per model ID.
+            resume_from: Re-run from this step name, discarding it and later
+                steps (reuses completed upstream steps; requires a checkpoint).
             limit: Process only first N source records.
             stop_after: Stop after step (index or name).
             **kwargs: Additional RunConfig parameters.
@@ -91,6 +103,8 @@ class Pipeline(Step):
         Returns:
             List of output records.
         """
+        self.compile()
+
         from datafast.core.runner import run_pipeline
 
         return run_pipeline(
@@ -99,7 +113,7 @@ class Pipeline(Step):
             resume=resume,
             batch_size=batch_size,
             llm_strategy=llm_strategy,
-            rate_limits=rate_limits,
+            resume_from=resume_from,
             limit=limit,
             stop_after=stop_after,
             **kwargs,

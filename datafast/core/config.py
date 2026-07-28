@@ -29,26 +29,21 @@ class RunConfig:
     """Whether to resume from existing checkpoint."""
     
     resume_from: str | None = None
-    """Step name to resume from (discards later steps)."""
-    
+    """Re-run from this step name, discarding it and all later steps.
+    Reuses completed upstream steps (requires an existing checkpoint)."""
+
     stop_after: int | str | None = None
     """Stop after this step (index or name)."""
-    
+
     limit: int | None = None
     """Process only first N records from source."""
-    
+
     batch_size: int = 4
     """Number of LLM calls per batch."""
-    
-    max_concurrent: int = 1
-    """Maximum concurrent batches (for async execution)."""
-    
+
     llm_strategy: str = "by_model"
     """LLM execution strategy: 'by_model', 'round_robin', or 'by_record'."""
-    
-    rate_limits: dict[str, int] | None = None
-    """Requests per minute per model ID. Example: {"gpt-4o-mini": 60}."""
-    
+
     checkpoint_every: int = 100
     """Checkpoint LLM progress every N calls."""
     

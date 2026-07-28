@@ -366,7 +366,7 @@ class Classify(Step):
                 try:
                     messages = self._build_messages(record)
                     raw = model.generate(
-                        messages,
+                        messages=messages,
                         metadata=build_trace_metadata(
                             model=model,
                             component="step.process",
@@ -657,7 +657,7 @@ class Score(Step):
                 try:
                     messages = self._build_messages(record)
                     raw = model.generate(
-                        messages,
+                        messages=messages,
                         metadata=build_trace_metadata(
                             model=model,
                             component="step.process",
@@ -1011,7 +1011,7 @@ class Compare(Step):
                 try:
                     messages = self._build_messages(record)
                     raw = model.generate(
-                        messages,
+                        messages=messages,
                         metadata=build_trace_metadata(
                             model=model,
                             component="step.process",

@@ -103,8 +103,6 @@ class CheckpointManager:
             "llm_strategy": config.llm_strategy,
             "checkpoint_every": config.checkpoint_every,
         }
-        if config.rate_limits:
-            config_dict["rate_limits"] = config.rate_limits
 
         manifest = Manifest(
             pipeline_hash=pipeline_hash,
@@ -233,6 +231,34 @@ class CheckpointManager:
         manifest.steps[step_index].status = "in_progress"
         manifest.current_step = step_index
         self.save_manifest(manifest)
+
+    def reset_from_step(self, manifest: Manifest, step_name: str) -> int:
+        """Mark the named step and all later steps pending, discarding their
+        saved records so execution re-runs from that step.
+
+        Returns the index of the reset step. Raises ValueError if the name is
+        not a step in the pipeline.
+        """
+        index = next(
+            (s.index for s in manifest.steps if s.name == step_name), None
+        )
+        if index is None:
+            names = ", ".join(s.name for s in manifest.steps)
+            raise ValueError(
+                f"resume_from step '{step_name}' not found. Steps: {names}"
+            )
+
+        for step in manifest.steps:
+            if step.index >= index:
+                step.status = "pending"
+                step.records_in = None
+                step.records_out = None
+                self._step_file_path(step.index, step.name).unlink(missing_ok=True)
+                self._progress_file_path(step.index, step.name).unlink(missing_ok=True)
+
+        manifest.current_step = index
+        self.save_manifest(manifest)
+        return index
 
     def find_resume_point(
         self, manifest: Manifest

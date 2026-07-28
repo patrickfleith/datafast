@@ -384,7 +384,7 @@ class LLMStep(Step):
                                 messages = self._build_messages(prompt_template, context)
 
                                 raw_output = model.generate(
-                                    messages,
+                                    messages=messages,
                                     metadata=build_trace_metadata(
                                         model=model,
                                         component="step.process",

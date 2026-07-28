@@ -1,13 +1,16 @@
-Write one realistic hiker report in {language_name}.
+Write one realistic trail comment in {language_name} that sounds like something
+an actual hiker would write after being on the trail.
 
 Target category: {label}
 Category definition: {label_description}
 
 Constraints:
-- The report must clearly match the target category.
+- The comment must clearly match the target category.
 - The setting must be a {trail_type}.
 - The writing style must be {style}.
 - Keep it to 1 or 2 sentences.
+- Make it sound first-hand, natural, and slightly informal when appropriate.
+- Do not sound like an official report, safety bulletin, or structured form.
 - Do not mention the category name directly.
 - Do not use bullets, numbering, or explanations.
-- Make the report concrete and varied.
+- Make the comment concrete and varied.

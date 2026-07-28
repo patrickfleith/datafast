@@ -33,6 +33,7 @@ dependencies = [
     "litellm",
     "gradio",
     "loguru",
+    "botocore",
 ]
 
 [project.optional-dependencies]

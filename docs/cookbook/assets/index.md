@@ -20,7 +20,7 @@ pipeline.
 
 | File | Style |
 | --- | --- |
-| [text_classification_generation.txt](text_classification_generation.txt) | One short trail report per call, with label, trail type, style, and language injected |
+| [text_classification_generation.txt](text_classification_generation.txt) | One short trail comment per call, with label, trail type, style, and language injected |
 
 ## Persona Generation
 
