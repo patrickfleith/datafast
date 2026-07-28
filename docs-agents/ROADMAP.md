@@ -9,6 +9,8 @@
 - Native batching with warned fallback concurrency; retries, backoff, jitter, timeout, client-side RPM throttling.
 - Example suites (11 scripts each) for openai, anthropic, gemini, mistral, ollama, openrouter.
 - Mocked contract/capability/adapter/reliability tests in `tests/test_llm_provider_contract.py` (reliability: bounded retries, backoff growth, jitter range, timeout forwarding, RPM throttling, batch-retry ordering).
+- Pipeline execution controls: `limit` and `resume_from` implemented; dead `rate_limits` / runner-level `max_concurrent` removed (throughput lives on the provider). Covered by `tests/test_runner_execution.py` (limit, resume_from, stop_after, llm_strategy ordering, full + mid-LLM-step checkpoint resume).
+- Pipeline pre-flight validation: `Pipeline.compile()` (`datafast/core/validation.py`) runs before execution and raises an actionable `PipelineValidationError` — source-first / sink-last, Branch↔JoinBranches pairing, and conservative column-reference checks (`tests/test_pipeline_validation.py`).
 
 ## In progress
 
@@ -16,25 +18,10 @@
 
 ## Next up
 
-Launch checklist, grouped by area. Pipeline execution correctness and architecture
-are the newest additions and gate the release; provider hardening and documentation
-run alongside them.
-
-### Pipeline execution correctness
-
-- **Dead execution controls — resolved.** The `RunConfig` / `run()` parameters that
-  were silent no-ops are now either implemented or removed:
-  - `limit` — implemented; truncates source records at step 0 (`runner.execute`).
-  - `resume_from` — implemented; re-runs from a named step, discarding it and later
-    steps while reusing completed upstream checkpoints (`CheckpointManager.reset_from_step`).
-  - `rate_limits` — removed; throttling lives on the provider (`rpm_limit`), which is
-    already enforced on every pipeline call.
-  - `max_concurrent` (runner-level) — removed; concurrency lives on the provider
-    (`max_concurrent`), which parallelizes requests within a batch. Runner batches stay
-    sequential to keep in-order checkpointing correct.
-- **Execution & resume tests — done.** `tests/test_runner_execution.py` covers `limit`,
-  `resume_from`, `stop_after`, `llm_strategy` ordering (by_model / round_robin /
-  by_record), full checkpoint resume, and mid-LLM-step crash/resume.
+Launch checklist, grouped by area. Pipeline execution correctness and `compile()`
+validation have landed (see Shipped); Branch runner integration is the remaining
+pipeline-architecture item gating the release, with provider hardening and
+documentation alongside.
 
 ### Pipeline architecture
 
@@ -44,15 +31,9 @@ run alongside them.
   (`examples/scripts/42`). Either have the runner recurse into branch paths, or clearly
   document the limitation and its cost (a crash mid-Branch re-runs every branch call
   on resume).
-- **Pipeline validation / `compile()` — done.** `Pipeline.compile()`
-  (`datafast/core/validation.py`) runs automatically at the start of `run()` and raises
-  an actionable `PipelineValidationError` before execution. Checks: source first /
-  sink last, Branch↔JoinBranches pairing, and column references (`input_columns` /
-  `forward_columns` / `by`) against a statically-tracked schema. Column tracking is
-  conservative — it starts from the source's columns (Seed/list) and resets to
-  "unknown" at any opaque step (Map/FlatMap/Group/Pair/Join/Concat/LLM-eval), so a
-  reference is never wrongly flagged. Does not yet recurse into Branch/Join/Concat
-  sub-pipelines.
+- **`compile()` sub-pipeline coverage.** `Pipeline.compile()` validates the top-level
+  pipeline but does not yet recurse into Branch / Join / Concat sub-pipelines; extend
+  it once Branch runner integration settles their execution model.
 
 ### Provider hardening & tests
 
