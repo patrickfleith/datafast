@@ -78,9 +78,27 @@ class Runner:
         llm_progress: LLMStepProgress | None = None
         manifest: Manifest | None = None
 
+        resume_from = self.config.resume_from
+        if resume_from is not None and not self._checkpoint_mgr:
+            raise ValueError("resume_from requires checkpoint_dir to be set.")
+
         if self._checkpoint_mgr:
+            if resume_from is not None and not self._checkpoint_mgr.has_checkpoint():
+                raise ValueError(
+                    f"resume_from='{resume_from}' requires an existing "
+                    f"checkpoint in {self.config.checkpoint_dir}."
+                )
             manifest = self._setup_checkpoint(step_names, step_types)
-            if self.config.resume and manifest:
+            if resume_from is not None and manifest:
+                self._checkpoint_mgr.reset_from_step(manifest, resume_from)
+                start_step, records, llm_progress = self._checkpoint_mgr.find_resume_point(
+                    manifest
+                )
+                logger.info(
+                    f"resume_from '{resume_from}': resuming at step "
+                    f"{start_step} ({step_names[start_step]}); later steps discarded"
+                )
+            elif self.config.resume and manifest:
                 start_step, records, llm_progress = self._checkpoint_mgr.find_resume_point(
                     manifest
                 )
@@ -119,6 +137,11 @@ class Runner:
             else:
                 records = list(step.process(iter(records)))
 
+            # Step 0 is the source; truncate here so downstream steps see
+            # only the first N records.
+            if i == 0 and self.config.limit is not None:
+                records = records[: self.config.limit]
+
             elapsed = time.time() - start_time
             logger.info(
                 f"Step {i} ({step_name}): {records_in} → {len(records)} records "
@@ -153,7 +176,7 @@ class Runner:
             existing = self._checkpoint_mgr.load_manifest()
             if existing:
                 if existing.pipeline_hash != pipeline_hash:
-                    if self.config.resume:
+                    if self.config.resume or self.config.resume_from is not None:
                         raise PipelineChangedError(
                             "Pipeline structure has changed since checkpoint. "
                             "Use resume=False to start fresh."
@@ -472,7 +495,7 @@ def run_pipeline(
     resume: bool = False,
     batch_size: int = 4,
     llm_strategy: str = "by_model",
-    rate_limits: dict[str, int] | None = None,
+    resume_from: str | None = None,
     limit: int | None = None,
     stop_after: int | str | None = None,
     **kwargs,
@@ -486,7 +509,8 @@ def run_pipeline(
         resume: Whether to resume from checkpoint.
         batch_size: LLM calls per batch.
         llm_strategy: "by_model", "round_robin", or "by_record".
-        rate_limits: Requests per minute per model ID.
+        resume_from: Re-run from this step name, discarding it and later steps
+            (reuses completed upstream steps; requires an existing checkpoint).
         limit: Process only first N source records.
         stop_after: Stop after step (index or name).
         **kwargs: Additional RunConfig parameters.
@@ -499,7 +523,7 @@ def run_pipeline(
         resume=resume,
         batch_size=batch_size,
         llm_strategy=llm_strategy,
-        rate_limits=rate_limits,
+        resume_from=resume_from,
         limit=limit,
         stop_after=stop_after,
         **kwargs,
