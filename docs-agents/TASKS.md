@@ -4,7 +4,7 @@
 
 ## To do
 
-- [ ] Manually test all Gemini example scripts <!-- examples/providers/gemini -->
+- [X] Manually test all Gemini example scripts <!-- examples/providers/gemini -->
 - [ ] Review the documentation and identify missing blocks before publishing the new version of datafast
 - [ ] <task> <!-- optional (context) -->
 
