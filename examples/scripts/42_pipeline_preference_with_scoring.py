@@ -16,7 +16,7 @@ litellm.suppress_debug_info = True
 model = openrouter("mistralai/ministral-14b-2512", temperature=0.7)
 
 pipeline = (
-    Seed.values("topic", ["gravity", "photosynthesis", "machine learning"])
+    Seed.product(Seed.values("topic", ["gravity", "photosynthesis", "machine learning"]))
 
     # Generate a question per topic
     >> LLMStep(
