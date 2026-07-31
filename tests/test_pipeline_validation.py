@@ -3,7 +3,9 @@ import pytest
 from datafast import (
     AddUUID,
     Branch,
+    Concat,
     Filter,
+    Join,
     JoinBranches,
     LLMStep,
     ListSink,
@@ -94,3 +96,134 @@ def test_columns_added_upstream_are_available():
         >> Filter(where={"result": "ok"})
     )
     assert pipeline.compile() is pipeline
+
+
+# ---------------------------------------------------------------------------
+# Branch paths (inherited sub-pipelines)
+# ---------------------------------------------------------------------------
+
+
+def _branch(**paths):
+    return Source.list([{"topic": "x"}]) >> Branch(**paths) >> JoinBranches()
+
+
+def test_valid_branch_paths_compile():
+    pipeline = _branch(a=_llm(["topic"]), b=Map(lambda r: r))
+    assert pipeline.compile() is pipeline
+
+
+def test_unknown_column_inside_branch_path_rejected():
+    """A path's column references are checked against the branch's input schema."""
+    with pytest.raises(PipelineValidationError, match=r"references column\(s\) \['nope'\]"):
+        _branch(a=_llm(["nope"]), b=Map(lambda r: r)).compile()
+
+
+def test_branch_path_error_names_the_path():
+    with pytest.raises(PipelineValidationError, match="inside Branch path 'a'"):
+        _branch(a=_llm(["nope"]), b=Map(lambda r: r)).compile()
+
+
+def test_columns_added_before_branch_are_available_in_paths():
+    pipeline = (
+        Source.list([{"topic": "x"}])
+        >> _llm(["topic"])  # adds "result"
+        >> Branch(a=Filter(where={"result": "ok"}), b=Map(lambda r: r))
+        >> JoinBranches()
+    )
+    assert pipeline.compile() is pipeline
+
+
+def test_source_inside_branch_path_rejected():
+    with pytest.raises(PipelineValidationError, match="discards upstream records"):
+        _branch(a=Source.list([{"topic": "y"}]), b=Map(lambda r: r)).compile()
+
+
+def test_sink_inside_branch_path_rejected():
+    with pytest.raises(PipelineValidationError, match="not allowed inside Branch path"):
+        _branch(a=Map(lambda r: r) >> ListSink(), b=Map(lambda r: r)).compile()
+
+
+def test_multi_step_branch_path_is_validated():
+    """Recursion reaches every step of a multi-step path, not just the first."""
+    path = Map(lambda r: r) >> AddUUID() >> ListSink()
+    with pytest.raises(PipelineValidationError, match="not allowed inside Branch path"):
+        _branch(a=path, b=Map(lambda r: r)).compile()
+
+
+def test_join_branches_inside_branch_path_rejected():
+    with pytest.raises(PipelineValidationError, match="no matching Branch"):
+        _branch(
+            a=Map(lambda r: r) >> JoinBranches(),
+            b=Map(lambda r: r),
+        ).compile()
+
+
+def test_nested_branch_rejected():
+    """A Branch inside a branch path clobbers the outer branch metadata."""
+    inner = Branch(x=Map(lambda r: r), y=Map(lambda r: r)) >> JoinBranches()
+    with pytest.raises(PipelineValidationError, match="nesting a Branch"):
+        _branch(a=inner, b=Map(lambda r: r)).compile()
+
+
+# ---------------------------------------------------------------------------
+# Concat sources and Join right sides (sourced sub-pipelines)
+# ---------------------------------------------------------------------------
+
+
+def test_valid_concat_compiles():
+    pipeline = (
+        Concat(
+            Source.list([{"topic": "x"}]) >> _llm(["topic"]),
+            Source.list([{"topic": "y"}]),
+        )
+        >> ListSink()
+    )
+    assert pipeline.compile() is pipeline
+
+
+def test_concat_source_without_source_rejected():
+    pipeline = Concat(Map(lambda r: r), Source.list([{"topic": "x"}])) >> ListSink()
+    with pytest.raises(PipelineValidationError, match="Concat source 0 must start with a source"):
+        pipeline.compile()
+
+
+def test_unknown_column_inside_concat_source_rejected():
+    pipeline = Concat(Source.list([{"topic": "x"}]) >> _llm(["nope"])) >> ListSink()
+    with pytest.raises(PipelineValidationError, match="inside Concat source 0"):
+        pipeline.compile()
+
+
+def test_sink_inside_concat_source_rejected():
+    pipeline = Concat(Source.list([{"topic": "x"}]) >> ListSink()) >> ListSink()
+    with pytest.raises(PipelineValidationError, match="not allowed inside Concat source 0"):
+        pipeline.compile()
+
+
+def test_valid_join_compiles():
+    pipeline = (
+        Source.list([{"topic": "x", "key": 1}])
+        >> Join(Source.list([{"key": 1, "extra": "e"}]), on="key")
+        >> ListSink()
+    )
+    assert pipeline.compile() is pipeline
+
+
+def test_join_key_missing_on_left_rejected():
+    pipeline = Source.list([{"topic": "x"}]) >> Join(
+        Source.list([{"key": 1}]), on="key"
+    )
+    with pytest.raises(PipelineValidationError, match=r"references column\(s\) \['key'\]"):
+        pipeline.compile()
+
+
+def test_join_right_side_without_source_rejected():
+    pipeline = Source.list([{"key": 1}]) >> Join(Map(lambda r: r), on="key")
+    with pytest.raises(PipelineValidationError, match="Join right side .* must start with a source"):
+        pipeline.compile()
+
+
+def test_unknown_column_inside_join_right_side_rejected():
+    right = Source.list([{"other": 1}]) >> _llm(["nope"])
+    pipeline = Source.list([{"key": 1}]) >> Join(right, on="key")
+    with pytest.raises(PipelineValidationError, match="inside Join right side"):
+        pipeline.compile()
