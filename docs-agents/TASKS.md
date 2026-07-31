@@ -4,6 +4,8 @@
 
 ## To do
 
+- [ ] Fix `43_cookbook_persona_generation.py`: it chains two sinks (`Sink.jsonl >> Sink.hub`), which `compile()` rejects — decide whether to split into two runs or let a pipeline end in several sinks
+- [ ] Consider supporting nested `Branch` inside a branch path — needs a metadata stack; `compile()` rejects the shape today because the inner branch overwrites the outer `_branch_id`
 - [X] Manually test all Gemini example scripts <!-- examples/providers/gemini -->
 - [ ] Review the documentation and identify missing blocks before publishing the new version of datafast
 - [ ] <task> <!-- optional (context) -->

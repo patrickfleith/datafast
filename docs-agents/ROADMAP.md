@@ -11,29 +11,18 @@
 - Mocked contract/capability/adapter/reliability tests in `tests/test_llm_provider_contract.py` (reliability: bounded retries, backoff growth, jitter range, timeout forwarding, RPM throttling, batch-retry ordering).
 - Pipeline execution controls: `limit` and `resume_from` implemented; dead `rate_limits` / runner-level `max_concurrent` removed (throughput lives on the provider). Covered by `tests/test_runner_execution.py` (limit, resume_from, stop_after, llm_strategy ordering, full + mid-LLM-step checkpoint resume).
 - Pipeline pre-flight validation: `Pipeline.compile()` (`datafast/core/validation.py`) runs before execution and raises an actionable `PipelineValidationError` — source-first / sink-last, Branch↔JoinBranches pairing, and conservative column-reference checks (`tests/test_pipeline_validation.py`).
+- Branch runner integration: the runner recurses into `Branch` paths (and nested sub-pipelines), so LLM steps inside a path get batching, `llm_strategy` ordering and per-call checkpoint/resume. Nested steps share the parent manifest entry and own checkpoint files keyed by dotted path name; the pipeline hash now covers branch-path structure (`tests/test_runner_branch.py`).
+- `compile()` sub-pipeline coverage: validation recurses into Branch paths (inherited input — no source, no sink, column refs checked against the branch's incoming schema) and into Concat sources / Join right sides (self-contained — must start with a source, no sink). Errors name the location (`inside Branch path 'chosen'`). Also validates Join's `on` against the left schema and rejects Branch-inside-Branch, which silently drops every record (`tests/test_pipeline_validation.py`).
 
 ## In progress
 
-- LLM provider redesign hardening on branch `feat/implement-new-and-robust-llm-providers`.
+- Nothing in flight.
 
 ## Next up
 
-Launch checklist, grouped by area. Pipeline execution correctness and `compile()`
-validation have landed (see Shipped); Branch runner integration is the remaining
-pipeline-architecture item gating the release, with provider hardening and
-documentation alongside.
-
-### Pipeline architecture
-
-- **Branch runner integration.** LLM steps nested inside `Branch` execute via
-  `step.process()` directly, bypassing the runner's batching, checkpoint/resume, rate
-  limiting, and execution strategy — this hits the flagship preference-data pipeline
-  (`examples/scripts/42`). Either have the runner recurse into branch paths, or clearly
-  document the limitation and its cost (a crash mid-Branch re-runs every branch call
-  on resume).
-- **`compile()` sub-pipeline coverage.** `Pipeline.compile()` validates the top-level
-  pipeline but does not yet recurse into Branch / Join / Concat sub-pipelines; extend
-  it once Branch runner integration settles their execution model.
+Launch checklist, grouped by area. All pipeline-architecture items gating the
+release have landed (see Shipped); what remains is provider hardening and
+documentation.
 
 ### Provider hardening & tests
 
@@ -61,7 +50,9 @@ Gaps to close, roughly in priority order:
     Classify / Score / Compare (llm-vs-fn dual mode, rubric/criteria, output modes,
     include_explanation/confidence); Rewrite (modes); Extract (custom fields vs
     predefined extractors, flatten).
-  - Branch / JoinBranches — tagging, cartesian join, suffixes, inner/outer, runner caveat.
+  - Branch / JoinBranches — tagging, cartesian join, suffixes, inner/outer, and how
+    the runner drives paths (nested batching + resume, determinism requirement for
+    non-LLM path steps).
 - **Execution & configuration guide.** Everything `run()` / `RunConfig` exposes after
   the Tier-1 cleanup, and exactly what each does: checkpoint_dir, resume, batch_size,
   llm_strategy, limit, stop_after, and where rate limiting actually lives (provider
