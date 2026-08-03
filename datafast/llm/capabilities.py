@@ -63,10 +63,15 @@ MISTRAL_REASONING_CHAT = ServedModelCapabilities(
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
     reasoning_requires_allowlist=True,
+    reasoning_effort_on="high",
+    reasoning_off_param=("reasoning_effort", "none"),
+    reasoning_efforts=frozenset({"high", "none"}),
     notes=(
         "Reasoning is opt-in via reasoning_effort. Magistral models enable it "
         "natively; mistral-medium/small accept it server-side but LiteLLM only "
         "forwards it through the allowed_openai_params escape hatch.",
+        "The Mistral API accepts only 'high' and 'none'; 'low'/'medium' are "
+        "rejected with a 400.",
     ),
 )
 
@@ -88,9 +93,12 @@ GEMINI_CHAT = ServedModelCapabilities(
     batch_mode=BatchMode.LITELLM_BATCH,
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
+    reasoning_off_param=("reasoning_effort", "none"),
     notes=(
         "Reasoning is forwarded natively via reasoning_effort (thinking=True "
         "maps to effort 'low'); LiteLLM handles gemini/* without an allowlist.",
+        "Reasoning must be turned off explicitly: Gemini 3 models think by "
+        "default, so omitting the parameter still bills reasoning tokens.",
     ),
 )
 
@@ -177,12 +185,17 @@ OLLAMA_REASONING_CHAT = ServedModelCapabilities(
     cache_mode=CacheMode.LOCAL_KV,
     no_api_key=True,
     supports_reasoning=True,
+    reasoning_off_param=("think", False),
     notes=(
         "Thinking-capable models (deepseek-r1, qwen3, gpt-oss, magistral) accept "
         "reasoning via thinking/reasoning_effort; LiteLLM maps it onto Ollama's "
         "think parameter and normalizes the trace into reasoning_content.",
         "gpt-oss honors the effort level (low/medium/high); other thinking models "
         "treat any level as on/off.",
+        "Reasoning must be turned off explicitly: omitting the parameter leaves "
+        "the model default, which is on for qwen3. think=false is passed "
+        "directly because LiteLLM's reasoning_effort mapping sends the literal "
+        "string for gpt-oss, which Ollama rejects.",
     ),
 )
 

@@ -554,11 +554,12 @@ class ServedModel:
         )
 
         if self.config.thinking is False:
+            off_param = self.capabilities.reasoning_off_param
+            if off_param is not None:
+                params[off_param[0]] = off_param[1]
             return
 
-        effort = self.config.reasoning_effort
-        if effort is None and self.config.thinking is True:
-            effort = "low"
+        effort = self._resolve_reasoning_effort()
 
         if endpoint == EndpointMode.RESPONSES and effort is not None:
             self._add_supported_param(
@@ -576,6 +577,28 @@ class ServedModel:
             effort,
             endpoint=endpoint,
         )
+
+    def _resolve_reasoning_effort(self) -> str | None:
+        """Resolve the reasoning_effort value to send, or None to omit it.
+
+        thinking=True means the served model's own "on" level rather than a
+        fixed one: Mistral's reasoning models accept only 'high' and 'none' and
+        reject 'low' with a 400.
+        """
+        effort = self.config.reasoning_effort
+        if effort is None:
+            if self.config.thinking is not True:
+                return None
+            effort = self.capabilities.reasoning_effort_on
+
+        supported = self.capabilities.reasoning_efforts
+        if supported is not None and effort not in supported:
+            raise ValueError(
+                f"reasoning_effort '{effort}' is not supported by "
+                f"{self.provider_id}/{self.model_id}. Supported values: "
+                f"{', '.join(sorted(supported))}."
+            )
+        return effort
 
     def _apply_reasoning_allowlist(self, params: dict[str, Any]) -> None:
         """Force reasoning_effort past LiteLLM's per-model param filter.

@@ -75,6 +75,14 @@ class ServedModelCapabilities:
     supports_reasoning: bool = False
     supports_thinking: bool = False
     reasoning_requires_allowlist: bool = False
+    # reasoning_effort value that thinking=True maps to.
+    reasoning_effort_on: str = "low"
+    # (name, value) request param that turns reasoning off for thinking=False.
+    # None omits it, which leaves the served model's own default in force —
+    # correct only where that default is "no reasoning".
+    reasoning_off_param: tuple[str, Any] | None = None
+    # Accepted reasoning_effort values, or None to forward any value unchecked.
+    reasoning_efforts: frozenset[str] | None = None
     supports_media_uuid: bool = False
     no_api_key: bool = False
     requires_chat_template: bool = False
