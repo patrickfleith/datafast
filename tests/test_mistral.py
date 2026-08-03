@@ -1,4 +1,4 @@
-from datafast.llms import MistralProvider
+from datafast import mistral
 from dotenv import load_dotenv
 import pytest
 from tests.test_schemas import (
@@ -17,7 +17,7 @@ class TestMistralLarge:
     """Test suite for mistral-large-2512 model."""
 
     def test_persona_content_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.5,
             max_completion_tokens=2000,
@@ -37,7 +37,7 @@ class TestMistralLarge:
         assert len(response.bio) > 20
 
     def test_qa_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -57,7 +57,7 @@ class TestMistralLarge:
             assert len(qa.answer) > 10
 
     def test_mcq_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -82,7 +82,7 @@ class TestMistralLarge:
             assert all(len(ans) > 0 for ans in mcq.incorrect_answers)
 
     def test_structured_landmark_info(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.1,
             max_completion_tokens=800
@@ -117,7 +117,7 @@ class TestMistralLarge:
         assert 0 <= response.visitor_rating <= 5
 
     def test_simple_response_structured(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.3,
             max_completion_tokens=500
@@ -131,7 +131,7 @@ class TestMistralLarge:
         assert len(response.reasoning) > 20
 
     def test_batch_structured_output(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.5,
             max_completion_tokens=1000
@@ -157,7 +157,7 @@ class TestMagistralMedium:
     """Test suite for magistral-medium-2509 model."""
 
     def test_persona_content_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.5,
             max_completion_tokens=2000,
@@ -177,7 +177,7 @@ class TestMagistralMedium:
         assert len(response.bio) > 20
 
     def test_qa_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -198,7 +198,7 @@ class TestMagistralMedium:
             assert len(qa.answer) > 10
 
     def test_mcq_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -223,7 +223,7 @@ class TestMagistralMedium:
             assert all(len(ans) > 0 for ans in mcq.incorrect_answers)
 
     def test_structured_landmark_info(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.1,
             max_completion_tokens=800
@@ -258,7 +258,7 @@ class TestMagistralMedium:
         assert 0 <= response.visitor_rating <= 5
 
     def test_simple_response_structured(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.3,
             max_completion_tokens=500
@@ -272,7 +272,7 @@ class TestMagistralMedium:
         assert len(response.reasoning) > 20
 
     def test_batch_structured_output(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.5,
             max_completion_tokens=1000
@@ -293,7 +293,7 @@ class TestMagistralMedium:
         assert all(len(r.reasoning) > 10 for r in responses)
 
     def test_batch_qa_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.5,
             max_completion_tokens=2000
@@ -316,7 +316,7 @@ class TestMagistralMedium:
                 assert len(qa.answer) > 10
 
     def test_batch_mcq_generation(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="magistral-medium-2509",
             temperature=0.5,
             max_completion_tokens=2000
@@ -342,17 +342,17 @@ class TestMagistralMedium:
 
 
 @pytest.mark.integration
-class TestMistralProvider:
+class TestMistralServedModel:
     """General Mistral provider tests mirroring OpenAI/Anthropic structure."""
 
     def test_basic_text_response(self):
-        provider = MistralProvider()
+        provider = mistral()
         response = provider.generate(
             prompt="What is the capital of France? Answer in one word.")
         assert "Paris" in response
 
     def test_structured_output(self):
-        provider = MistralProvider()
+        provider = mistral()
         prompt = """What is the capital of France? 
         Provide a short answer and a brief explanation of why Paris is the capital.
         Format your response as JSON with 'answer' and 'reasoning' fields."""
@@ -367,7 +367,7 @@ class TestMistralProvider:
         assert len(response.reasoning) > 10
 
     def test_with_messages(self):
-        provider = MistralProvider()
+        provider = mistral()
         messages = [
             {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
             {"role": "user", "content": "What is the capital of France? Answer in one word."}
@@ -377,7 +377,7 @@ class TestMistralProvider:
         assert "Paris" in response
 
     def test_messages_with_structured_output(self):
-        provider = MistralProvider()
+        provider = mistral()
         messages = [
             {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
             {"role": "user", "content": """What is the capital of France? 
@@ -395,7 +395,7 @@ class TestMistralProvider:
         assert len(response.reasoning) > 10
 
     def test_with_all_parameters(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.3,
             max_completion_tokens=100,
@@ -407,7 +407,7 @@ class TestMistralProvider:
         assert "Paris" in response
 
     def test_structured_landmark_info(self):
-        provider = MistralProvider(temperature=0.1, max_completion_tokens=800)
+        provider = mistral(temperature=0.1, max_completion_tokens=800)
 
         prompt = """
         Provide detailed information about the Eiffel Tower in Paris.
@@ -443,7 +443,7 @@ class TestMistralProvider:
         assert 0 <= response.visitor_rating <= 5
 
     def test_batch_prompts(self):
-        provider = MistralProvider()
+        provider = mistral()
         prompt = [
             "What is the capital of France? Answer in one word.",
             "What is the capital of Spain? Answer in one word.",
@@ -460,7 +460,7 @@ class TestMistralProvider:
         assert "Lisbon" in responses[2]
 
     def test_batch_messages(self):
-        provider = MistralProvider()
+        provider = mistral()
         messages = [
             [
                 {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
@@ -481,7 +481,7 @@ class TestMistralProvider:
         assert "Canberra" in responses[1]
 
     def test_batch_structured_output(self):
-        provider = MistralProvider()
+        provider = mistral()
         prompt = [
             """What is the capital of Germany? 
             Provide a short answer and brief reasoning.
@@ -504,7 +504,7 @@ class TestMistralProvider:
         assert len(responses[1].reasoning) > 5
 
     def test_batch_messages_with_structured_output(self):
-        provider = MistralProvider()
+        provider = mistral()
         messages = [
             [
                 {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
@@ -533,7 +533,7 @@ class TestMistralProvider:
         assert len(responses[1].reasoning) > 5
 
     def test_batch_with_all_parameters(self):
-        provider = MistralProvider(
+        provider = mistral(
             model_id="mistral-large-2512",
             temperature=0.1,
             max_completion_tokens=50
@@ -551,7 +551,7 @@ class TestMistralProvider:
         assert "Helsinki" in responses[1]
 
     def test_batch_validation_errors(self):
-        provider = MistralProvider()
+        provider = mistral()
 
         with pytest.raises(ValueError, match="Either prompt or messages must be provided"):
             provider.generate()
@@ -563,7 +563,7 @@ class TestMistralProvider:
             )
 
     def test_persona_content_generation(self):
-        provider = MistralProvider(max_completion_tokens=1000)
+        provider = mistral(max_completion_tokens=1000)
         
         prompt = """
         Generate social media content for the following persona:
@@ -582,7 +582,7 @@ class TestMistralProvider:
         assert len(response.bio) > 20
 
     def test_qa_generation(self):
-        provider = MistralProvider(max_completion_tokens=1500)
+        provider = mistral(max_completion_tokens=1500)
         
         prompt = """
         Generate exactly 5 questions and their correct answers about machine learning topics.
@@ -601,7 +601,7 @@ class TestMistralProvider:
             assert len(qa.answer) > 10
 
     def test_mcq_generation(self):
-        provider = MistralProvider(max_completion_tokens=1500)
+        provider = mistral(max_completion_tokens=1500)
         
         prompt = """
         Generate exactly 3 multiple choice questions about machine learning.

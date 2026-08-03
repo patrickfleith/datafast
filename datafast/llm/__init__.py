@@ -1,14 +1,7 @@
-"""LLM providers and output parsers for datafast."""
+"""Served models and output parsers for datafast."""
 
-from datafast.llm.provider import (
-    LLMProvider,
-    OpenAIProvider,
-    AnthropicProvider,
-    GeminiProvider,
-    MistralProvider,
-    OpenRouterProvider,
-    OllamaProvider,
-    OpenAICompatibleProvider,
+from datafast.llm.served_model import (
+    ServedModel,
     openai,
     anthropic,
     gemini,
@@ -25,9 +18,9 @@ from datafast.llm.types import (
     Modality,
     NormalizedResponse,
     RetryPolicy,
+    ServedModelCapabilities,
+    ServedModelConfig,
     StructuredOutputMode,
-    TargetCapabilities,
-    TargetConfig,
     UnsupportedParamsPolicy,
 )
 from datafast.llm.parsing import (
@@ -38,14 +31,7 @@ from datafast.llm.parsing import (
 )
 
 __all__ = [
-    "LLMProvider",
-    "OpenAIProvider",
-    "AnthropicProvider",
-    "GeminiProvider",
-    "MistralProvider",
-    "OpenRouterProvider",
-    "OllamaProvider",
-    "OpenAICompatibleProvider",
+    "ServedModel",
     "openai",
     "anthropic",
     "gemini",
@@ -60,9 +46,9 @@ __all__ = [
     "Modality",
     "NormalizedResponse",
     "RetryPolicy",
+    "ServedModelCapabilities",
+    "ServedModelConfig",
     "StructuredOutputMode",
-    "TargetCapabilities",
-    "TargetConfig",
     "UnsupportedParamsPolicy",
     "OutputParser",
     "TextParser",

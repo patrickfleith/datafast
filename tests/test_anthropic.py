@@ -1,4 +1,4 @@
-from datafast.llms import AnthropicProvider
+from datafast import anthropic
 from dotenv import load_dotenv
 import pytest
 from tests.test_schemas import (
@@ -17,7 +17,7 @@ class TestAnthropicSonnet45:
     """Anthropic tests for claude-sonnet-4-5-20250929."""
 
     def test_persona_content_generation(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-sonnet-4-5-20250929",
             temperature=0.5,
             max_completion_tokens=2000,
@@ -37,7 +37,7 @@ class TestAnthropicSonnet45:
         assert len(response.bio) > 20
 
     def test_qa_generation(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-sonnet-4-5-20250929",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -58,7 +58,7 @@ class TestAnthropicSonnet45:
             assert len(qa.answer) > 10
 
     def test_mcq_generation(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-sonnet-4-5-20250929",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -88,7 +88,7 @@ class TestAnthropicHaiku45:
     """Anthropic tests for claude-haiku-4-5-20251001."""
 
     def test_persona_content_generation(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-haiku-4-5-20251001",
             temperature=0.5,
             max_completion_tokens=2000,
@@ -108,7 +108,7 @@ class TestAnthropicHaiku45:
         assert len(response.bio) > 20
 
     def test_qa_generation(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-haiku-4-5-20251001",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -129,7 +129,7 @@ class TestAnthropicHaiku45:
             assert len(qa.answer) > 10
 
     def test_mcq_generation(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-haiku-4-5-20251001",
             temperature=0.5,
             max_completion_tokens=1500,
@@ -155,17 +155,17 @@ class TestAnthropicHaiku45:
 
 
 @pytest.mark.integration
-class TestAnthropicProvider:
+class TestAnthropicServedModel:
     """General Anthropic provider tests mirroring OpenRouter structure."""
 
     def test_basic_text_response(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         response = provider.generate(
             prompt="What is the capital of France? Answer in one word.")
         assert "Paris" in response
 
     def test_structured_output(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         prompt = """What is the capital of France? 
         Provide a short answer and a brief explanation of why Paris is the capital.
         Format your response as JSON with 'answer' and 'reasoning' fields."""
@@ -180,7 +180,7 @@ class TestAnthropicProvider:
         assert len(response.reasoning) > 10
 
     def test_with_messages(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         messages = [
             {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
             {"role": "user", "content": "What is the capital of France? Answer in one word."}
@@ -190,7 +190,7 @@ class TestAnthropicProvider:
         assert "Paris" in response
 
     def test_messages_with_structured_output(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         messages = [
             {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
             {"role": "user", "content": """What is the capital of France? 
@@ -208,7 +208,7 @@ class TestAnthropicProvider:
         assert len(response.reasoning) > 10
 
     def test_with_all_parameters(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-haiku-4-5-20251001",
             temperature=0.3,
             max_completion_tokens=100,
@@ -220,7 +220,7 @@ class TestAnthropicProvider:
         assert "Paris" in response
 
     def test_structured_landmark_info(self):
-        provider = AnthropicProvider(temperature=0.1, max_completion_tokens=800)
+        provider = anthropic(temperature=0.1, max_completion_tokens=800)
 
         prompt = """
         Provide detailed information about the Golden Gate Bridge in San Francisco.
@@ -259,7 +259,7 @@ class TestAnthropicProvider:
         assert 0 <= response.visitor_rating <= 5
 
     def test_batch_prompts(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         prompt = [
             "What is the capital of France? Answer in one word.",
             "What is the capital of Spain? Answer in one word.",
@@ -276,7 +276,7 @@ class TestAnthropicProvider:
         assert "Lisbon" in responses[2]
 
     def test_batch_messages(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         messages = [
             [
                 {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
@@ -297,7 +297,7 @@ class TestAnthropicProvider:
         assert "Canberra" in responses[1]
 
     def test_batch_structured_output(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         prompt = [
             """What is the capital of Germany? 
             Provide a short answer and brief reasoning.
@@ -320,7 +320,7 @@ class TestAnthropicProvider:
         assert len(responses[1].reasoning) > 5
 
     def test_batch_messages_with_structured_output(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
         messages = [
             [
                 {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
@@ -349,7 +349,7 @@ class TestAnthropicProvider:
         assert len(responses[1].reasoning) > 5
 
     def test_batch_with_all_parameters(self):
-        provider = AnthropicProvider(
+        provider = anthropic(
             model_id="claude-haiku-4-5-20251001",
             temperature=0.1,
             max_completion_tokens=50
@@ -367,7 +367,7 @@ class TestAnthropicProvider:
         assert "Helsinki" in responses[1]
 
     def test_batch_validation_errors(self):
-        provider = AnthropicProvider()
+        provider = anthropic()
 
         # Test no inputs provided
         with pytest.raises(ValueError, match="Either prompts or messages must be provided"):

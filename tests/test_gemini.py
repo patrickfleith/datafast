@@ -1,4 +1,4 @@
-from datafast.llms import GeminiProvider
+from datafast import gemini
 from dotenv import load_dotenv
 import pytest
 from tests.test_schemas import (
@@ -15,7 +15,7 @@ load_dotenv()
 @pytest.mark.integration
 def test_gemini_provider():
     """Test the Gemini provider with text response."""
-    provider = GeminiProvider()
+    provider = gemini()
     response = provider.generate(
         prompt="What is the capital of France? Answer in one word.")
     assert "Paris" in response
@@ -24,11 +24,11 @@ def test_gemini_provider():
 @pytest.mark.slow
 @pytest.mark.integration
 def test_gemini_rpm_limit_real():
-    """Test GeminiProvider RPM limit (15 requests/minute) is enforced with real waiting."""
+    """Test the gemini served model's RPM limit (15 requests/minute) is enforced with real waiting."""
     import time
     prompts_count = 17
     rpm = 15
-    provider = GeminiProvider(
+    provider = gemini(
         model_id="gemini-2.5-flash-lite-preview-06-17", rpm_limit=rpm)
     prompt = [f"Test request {i}" for i in range(prompts_count)]
     start = time.monotonic()
@@ -42,7 +42,7 @@ def test_gemini_rpm_limit_real():
 @pytest.mark.integration
 def test_gemini_structured_output():
     """Test the Gemini provider with structured output."""
-    provider = GeminiProvider()
+    provider = gemini()
     prompt = """What is the capital of France? 
     Provide a short answer and a brief explanation of why Paris is the capital.
     Format your response as JSON with 'answer' and 'reasoning' fields."""
@@ -60,7 +60,7 @@ def test_gemini_structured_output():
 @pytest.mark.integration
 def test_gemini_with_messages():
     """Test Gemini provider with messages input instead of prompt."""
-    provider = GeminiProvider()
+    provider = gemini()
     messages = [
         {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
         {"role": "user", "content": "What is the capital of France? Answer in one word."}
@@ -72,7 +72,7 @@ def test_gemini_with_messages():
 @pytest.mark.integration
 def test_gemini_messages_with_structured_output():
     """Test the Gemini provider with messages input and structured output."""
-    provider = GeminiProvider()
+    provider = gemini()
     messages = [
         {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
         {"role": "user", "content": """What is the capital of France? 
@@ -93,7 +93,7 @@ def test_gemini_messages_with_structured_output():
 @pytest.mark.integration
 def test_gemini_with_all_parameters():
     """Test Gemini provider with all optional parameters specified."""
-    provider = GeminiProvider(
+    provider = gemini(
         model_id="gemini-2.0-flash",
         temperature=0.4,
         max_completion_tokens=150,
@@ -110,7 +110,7 @@ def test_gemini_with_all_parameters():
 @pytest.mark.integration
 def test_gemini_structured_landmark_info():
     """Test Gemini with a structured landmark info response."""
-    provider = GeminiProvider(temperature=0.1, max_completion_tokens=800)
+    provider = gemini(temperature=0.1, max_completion_tokens=800)
 
     prompt = """
     Provide detailed information about the Great Wall of China.
@@ -152,7 +152,7 @@ def test_gemini_structured_landmark_info():
 @pytest.mark.integration
 def test_gemini_batch_prompts():
     """Test the Gemini provider with batch prompts."""
-    provider = GeminiProvider()
+    provider = gemini()
     prompt = [
         "What is 2+2? Answer with just the number.",
         "What is 3+3? Answer with just the number.",
@@ -172,7 +172,7 @@ def test_gemini_batch_prompts():
 @pytest.mark.integration
 def test_gemini_batch_messages():
     """Test Gemini provider with batch messages."""
-    provider = GeminiProvider()
+    provider = gemini()
     messages = [
         [
             {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
@@ -196,7 +196,7 @@ def test_gemini_batch_messages():
 @pytest.mark.integration
 def test_gemini_batch_structured_output():
     """Test Gemini provider with batch structured output."""
-    provider = GeminiProvider()
+    provider = gemini()
     prompt = [
         """What is 8*3? Provide the answer and show your work.
         Format as JSON with 'answer' and 'reasoning' fields.""",
@@ -220,7 +220,7 @@ def test_gemini_batch_structured_output():
 @pytest.mark.integration
 def test_gemini_batch_messages_with_structured_output():
     """Test Gemini provider with batch messages and structured output."""
-    provider = GeminiProvider()
+    provider = gemini()
     messages = [
         [
             {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
@@ -250,7 +250,7 @@ def test_gemini_batch_messages_with_structured_output():
 @pytest.mark.integration
 def test_gemini_batch_with_all_parameters():
     """Test Gemini provider with batch processing and all optional parameters."""
-    provider = GeminiProvider(
+    provider = gemini(
         model_id="gemini-2.0-flash",
         temperature=0.1,
         max_completion_tokens=50,
@@ -273,7 +273,7 @@ def test_gemini_batch_with_all_parameters():
 @pytest.mark.integration
 def test_gemini_persona_content_generation():
     """Test generating tweets and bio for a persona using Gemini."""
-    provider = GeminiProvider(
+    provider = gemini(
         temperature=0.7,
         max_completion_tokens=1000
     )
@@ -298,7 +298,7 @@ def test_gemini_persona_content_generation():
 @pytest.mark.integration
 def test_gemini_qa_generation():
     """Test generating Q&A pairs on machine learning using Gemini."""
-    provider = GeminiProvider(
+    provider = gemini(
         temperature=0.5,
         max_completion_tokens=1500
     )
@@ -323,7 +323,7 @@ def test_gemini_qa_generation():
 @pytest.mark.integration
 def test_gemini_mcq_generation():
     """Test generating multiple choice questions using Gemini."""
-    provider = GeminiProvider(
+    provider = gemini(
         temperature=0.5,
         max_completion_tokens=1500
     )

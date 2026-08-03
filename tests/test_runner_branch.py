@@ -9,7 +9,7 @@ from datafast.core.checkpoint import PipelineChangedError
 class RecordingModel:
     """Model that records the batches the runner hands it."""
 
-    provider_name = "fake"
+    provider_id = "fake"
 
     def __init__(self, model_id: str = "fake-model") -> None:
         self.model_id = model_id
@@ -32,7 +32,7 @@ class _Crash(BaseException):
 
 
 class CrashOnNthModel:
-    provider_name = "fake"
+    provider_id = "fake"
     model_id = "crash-model"
 
     def __init__(self, crash_on: int) -> None:

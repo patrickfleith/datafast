@@ -30,8 +30,8 @@ from datafast.llm.types import (
     NormalizedResponse,
     RetryPolicy,
     StructuredOutputMode,
-    TargetCapabilities,
-    TargetConfig,
+    ServedModelCapabilities,
+    ServedModelConfig,
     UnsupportedParamsPolicy,
 )
 from datafast.tracing import (
@@ -58,15 +58,15 @@ def _configure_litellm_debug_output() -> None:
     litellm.suppress_debug_info = True
 
 
-class LLMProvider:
-    """One Datafast provider target resolved to LiteLLM request adapters."""
+class ServedModel:
+    """One provider-and-model pair resolved to LiteLLM request adapters."""
 
     def __init__(
         self,
-        provider: str,
+        provider_id: str,
         model_id: str,
         *,
-        litellm_provider: str,
+        litellm_route: str,
         env_key_name: str | None,
         endpoint_mode: str | EndpointMode = EndpointMode.AUTO,
         temperature: float | None = None,
@@ -84,7 +84,7 @@ class LLMProvider:
         unsupported_params: str | UnsupportedParamsPolicy = UnsupportedParamsPolicy.WARN,
         provider_params: dict[str, Any] | None = None,
         max_concurrent: int = 4,
-        capabilities: TargetCapabilities | None = None,
+        capabilities: ServedModelCapabilities | None = None,
         **extra_provider_params: Any,
     ) -> None:
         if max_completion_tokens is None and max_tokens is not None:
@@ -102,10 +102,10 @@ class LLMProvider:
 
         unsupported_policy = _coerce_unsupported_policy(unsupported_params)
 
-        self.config = TargetConfig(
-            provider=provider,
+        self.config = ServedModelConfig(
+            provider_id=provider_id,
             model_id=model_id,
-            litellm_provider=litellm_provider,
+            litellm_route=litellm_route,
             env_key_name=env_key_name,
             endpoint_mode=_coerce_endpoint_mode(endpoint_mode),
             temperature=temperature,
@@ -122,14 +122,14 @@ class LLMProvider:
             max_concurrent=max_concurrent,
         )
         self.capabilities = resolve_capabilities(
-            provider,
+            provider_id,
             model_id,
             api_base_url=api_base_url,
             explicit=capabilities,
         )
         self.endpoint_mode = self._resolve_endpoint_mode(self.config.endpoint_mode)
 
-        self.provider_name = provider
+        self.provider_id = provider_id
         self.model_id = model_id
         self.env_key_name = env_key_name
         env_api_key = os.getenv(env_key_name) if env_key_name else None
@@ -163,7 +163,7 @@ class LLMProvider:
         maybe_configure_langfuse_tracing(load_env=False)
         logger.info(
             "Initialized {} | Model: {} | Endpoint: {}",
-            self.provider_name,
+            self.provider_id,
             self.model_id,
             self.endpoint_mode.value,
         )
@@ -311,12 +311,12 @@ class LLMProvider:
             error_trace = traceback.format_exc()
             logger.error(
                 "Generation failed | Provider: {} | Model: {} | Error: {}",
-                self.provider_name,
+                self.provider_id,
                 self.model_id,
                 exc,
             )
             raise RuntimeError(
-                f"Error generating response with {self.provider_name}:\n{error_trace}"
+                f"Error generating response with {self.provider_id}:\n{error_trace}"
             ) from exc
 
     def _generate_normalized_responses(
@@ -342,8 +342,8 @@ class LLMProvider:
 
         warnings.warn(
             (
-                f"{self.provider_name}/{self.model_id} does not expose native "
-                "same-target batching for this endpoint. Falling back to bounded "
+                f"{self.provider_id}/{self.model_id} does not expose native "
+                "batching for this endpoint. Falling back to bounded "
                 "parallel single requests."
             ),
             UserWarning,
@@ -492,7 +492,7 @@ class LLMProvider:
         }
         if request.previous_response_id is not None:
             # previous_response_id is a Responses-API concept; chat completions
-            # endpoints reject it regardless of what the target supports.
+            # endpoints reject it regardless of what the served model supports.
             self._handle_unsupported_param("previous_response_id")
         self._add_transport_params(params, endpoint=EndpointMode.CHAT)
         self._add_common_generation_params(params, endpoint=EndpointMode.CHAT)
@@ -550,7 +550,7 @@ class LLMProvider:
             "max_completion_tokens",
             self.config.max_completion_tokens,
             endpoint=endpoint,
-            target_name=token_param,
+            param_name=token_param,
         )
 
         if self.config.thinking is False:
@@ -566,7 +566,7 @@ class LLMProvider:
                 "reasoning_effort",
                 {"effort": effort},
                 endpoint=endpoint,
-                target_name="reasoning",
+                param_name="reasoning",
             )
             return
 
@@ -580,7 +580,7 @@ class LLMProvider:
     def _apply_reasoning_allowlist(self, params: dict[str, Any]) -> None:
         """Force reasoning_effort past LiteLLM's per-model param filter.
 
-        Some targets (e.g. Mistral's mistral-medium/small) accept reasoning_effort
+        Some served models (e.g. Mistral's mistral-medium/small) accept reasoning_effort
         server-side, but the installed LiteLLM only recognises it for a subset of
         models and would otherwise drop it. allowed_openai_params tells LiteLLM to
         forward the parameter anyway.
@@ -610,7 +610,7 @@ class LLMProvider:
         elif mode == StructuredOutputMode.PROMPTED_JSON:
             warnings.warn(
                 (
-                    f"{self.provider_name}/{self.model_id} has no declared native "
+                    f"{self.provider_id}/{self.model_id} has no declared native "
                     "schema support. Using prompted JSON plus Pydantic validation."
                 ),
                 UserWarning,
@@ -618,7 +618,7 @@ class LLMProvider:
             )
         else:
             raise ValueError(
-                f"{self.provider_name}/{self.model_id} does not support structured output"
+                f"{self.provider_id}/{self.model_id} does not support structured output"
             )
 
     def _add_responses_structured_output(
@@ -631,7 +631,7 @@ class LLMProvider:
 
         if self.capabilities.structured_output != StructuredOutputMode.JSON_SCHEMA:
             raise ValueError(
-                f"{self.provider_name}/{self.model_id} does not support native "
+                f"{self.provider_id}/{self.model_id} does not support native "
                 "Responses structured output"
             )
         params["text_format"] = response_format
@@ -651,7 +651,7 @@ class LLMProvider:
             )
         if self.api_base_url is not None:
             params["api_base"] = self.api_base_url
-        # no_api_key only waives auth for self-hosted targets (custom base
+        # no_api_key only waives auth for self-hosted served models (custom base
         # URL); hosted endpoints still require a key even if the resolved
         # capability profile is a keyless local one.
         api_key_optional = self.capabilities.no_api_key and (
@@ -666,7 +666,7 @@ class LLMProvider:
             else:
                 raise ValueError(
                     f"{self.env_key_name} environment variable not set. "
-                    "Set it or provide api_key when initializing the provider."
+                    "Set it or provide api_key when initializing the served model."
                 )
 
     def _add_supported_param(
@@ -676,7 +676,7 @@ class LLMProvider:
         value: Any,
         *,
         endpoint: EndpointMode,
-        target_name: str | None = None,
+        param_name: str | None = None,
     ) -> None:
         if value is None:
             return
@@ -703,12 +703,12 @@ class LLMProvider:
             self._handle_unsupported_param(source_name)
             return
 
-        params[target_name or source_name] = value
+        params[param_name or source_name] = value
 
     def _handle_unsupported_param(self, name: str) -> None:
         message = (
-            f"Parameter '{name}' is not supported by resolved target "
-            f"{self.provider_name}/{self.model_id} and will be omitted."
+            f"Parameter '{name}' is not supported by resolved served model "
+            f"{self.provider_id}/{self.model_id} and will be omitted."
         )
         if self.config.unsupported_params == UnsupportedParamsPolicy.FAIL:
             raise ValueError(message)
@@ -807,7 +807,7 @@ class LLMProvider:
                 if modality not in supported:
                     raise ValueError(
                         f"Modality '{modality.value}' is not supported by "
-                        f"{self.provider_name}/{self.model_id}"
+                        f"{self.provider_id}/{self.model_id}"
                     )
 
     def _resolve_endpoint_mode(self, endpoint_mode: EndpointMode) -> EndpointMode:
@@ -815,7 +815,7 @@ class LLMProvider:
             return self.capabilities.default_endpoint_mode
         if not self.capabilities.supports_endpoint(endpoint_mode):
             raise ValueError(
-                f"{self.provider_name}/{self.model_id} does not support "
+                f"{self.provider_id}/{self.model_id} does not support "
                 f"endpoint_mode='{endpoint_mode.value}'"
             )
         return endpoint_mode
@@ -879,7 +879,7 @@ class LLMProvider:
                 logger.warning(
                     "Retryable LLM error | Provider: {} | Model: {} | "
                     "Attempt: {}/{} | Waiting: {:.2f}s | Error: {}",
-                    self.provider_name,
+                    self.provider_id,
                     self.model_id,
                     attempt + 1,
                     attempts,
@@ -921,7 +921,7 @@ class LLMProvider:
                 logger.warning(
                     "Rate limit reached | Provider: {} | Model: {} | "
                     "Waiting {:.2f}s",
-                    self.provider_name,
+                    self.provider_id,
                     self.model_id,
                     sleep_time,
                 )
@@ -959,13 +959,13 @@ class LLMProvider:
     ) -> dict[str, Any]:
         return build_trace_metadata(
             model=self,
-            component="provider.generate",
-            trace_name=f"datafast.{self.provider_name}",
+            component="served_model.generate",
+            trace_name=f"datafast.{self.provider_id}",
             metadata=metadata,
         )
 
     def _get_model_string(self) -> str:
-        prefix = f"{self.config.litellm_provider}/"
+        prefix = f"{self.config.litellm_route}/"
         if self.model_id.startswith(prefix):
             return self.model_id
         return f"{prefix}{self.model_id}"
@@ -984,116 +984,116 @@ class LLMProvider:
         return content.strip()
 
 
-class OpenAIProvider(LLMProvider):
+class _OpenAIServedModel(ServedModel):
     def __init__(self, model_id: str = "gpt-5.5", **kwargs: Any) -> None:
         super().__init__(
             "openai",
             model_id,
-            litellm_provider="openai",
+            litellm_route="openai",
             env_key_name="OPENAI_API_KEY",
             **kwargs,
         )
 
 
-class AnthropicProvider(LLMProvider):
+class _AnthropicServedModel(ServedModel):
     def __init__(self, model_id: str = "claude-haiku-4-5", **kwargs: Any) -> None:
         super().__init__(
             "anthropic",
             model_id,
-            litellm_provider="anthropic",
+            litellm_route="anthropic",
             env_key_name="ANTHROPIC_API_KEY",
             **kwargs,
         )
 
 
-class GeminiProvider(LLMProvider):
+class _GeminiServedModel(ServedModel):
     def __init__(self, model_id: str = "gemini-3.1-flash-lite", **kwargs: Any) -> None:
         super().__init__(
             "gemini",
             model_id,
-            litellm_provider="gemini",
+            litellm_route="gemini",
             env_key_name="GEMINI_API_KEY",
             **kwargs,
         )
 
 
-class MistralProvider(LLMProvider):
+class _MistralServedModel(ServedModel):
     def __init__(self, model_id: str = "mistral-small-2603", **kwargs: Any) -> None:
         super().__init__(
             "mistral",
             model_id,
-            litellm_provider="mistral",
+            litellm_route="mistral",
             env_key_name="MISTRAL_API_KEY",
             **kwargs,
         )
 
 
-class OpenRouterProvider(LLMProvider):
+class _OpenRouterServedModel(ServedModel):
     def __init__(self, model_id: str = "openai/gpt-5.4-mini", **kwargs: Any) -> None:
         super().__init__(
             "openrouter",
             model_id,
-            litellm_provider="openrouter",
+            litellm_route="openrouter",
             env_key_name="OPENROUTER_API_KEY",
             **kwargs,
         )
 
 
-class OllamaProvider(LLMProvider):
+class _OllamaServedModel(ServedModel):
     def __init__(self, model_id: str = "gemma3:4b", **kwargs: Any) -> None:
         super().__init__(
             "ollama",
             model_id,
-            litellm_provider="ollama_chat",
+            litellm_route="ollama_chat",
             env_key_name=None,
             **kwargs,
         )
 
 
-class OpenAICompatibleProvider(LLMProvider):
+class _OpenAICompatibleServedModel(ServedModel):
     def __init__(
         self,
         model_id: str,
         *,
-        provider: str = "openai_compatible",
-        litellm_provider: str = "openai",
+        provider_id: str = "openai_compatible",
+        litellm_route: str = "openai",
         env_key_name: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            provider,
+            provider_id,
             model_id,
-            litellm_provider=litellm_provider,
+            litellm_route=litellm_route,
             env_key_name=env_key_name,
             **kwargs,
         )
 
 
-def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> OpenAIProvider:
-    return OpenAIProvider(model_id=model_id, **kwargs)
+def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> ServedModel:
+    return _OpenAIServedModel(model_id=model_id, **kwargs)
 
 
-def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> AnthropicProvider:
-    return AnthropicProvider(model_id=model_id, **kwargs)
+def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> ServedModel:
+    return _AnthropicServedModel(model_id=model_id, **kwargs)
 
 
-def gemini(model_id: str = "gemini-3.1-flash-lite", **kwargs: Any) -> GeminiProvider:
-    return GeminiProvider(model_id=model_id, **kwargs)
+def gemini(model_id: str = "gemini-3.1-flash-lite", **kwargs: Any) -> ServedModel:
+    return _GeminiServedModel(model_id=model_id, **kwargs)
 
 
-def mistral(model_id: str = "mistral-small-2603", **kwargs: Any) -> MistralProvider:
-    return MistralProvider(model_id=model_id, **kwargs)
+def mistral(model_id: str = "mistral-small-2603", **kwargs: Any) -> ServedModel:
+    return _MistralServedModel(model_id=model_id, **kwargs)
 
 
 def openrouter(
     model_id: str = "openai/gpt-5.4-mini",
     **kwargs: Any,
-) -> OpenRouterProvider:
-    return OpenRouterProvider(model_id=model_id, **kwargs)
+) -> ServedModel:
+    return _OpenRouterServedModel(model_id=model_id, **kwargs)
 
 
-def ollama(model_id: str = "gemma3:4b", **kwargs: Any) -> OllamaProvider:
-    return OllamaProvider(model_id=model_id, **kwargs)
+def ollama(model_id: str = "gemma3:4b", **kwargs: Any) -> ServedModel:
+    return _OllamaServedModel(model_id=model_id, **kwargs)
 
 
 def openai_compatible(
@@ -1102,11 +1102,11 @@ def openai_compatible(
     api_base_url: str | None = None,
     backend: str = "openai_compatible",
     **kwargs: Any,
-) -> OpenAICompatibleProvider:
-    provider = _normalize_openai_compatible_backend(backend)
-    return OpenAICompatibleProvider(
+) -> ServedModel:
+    provider_id = _normalize_openai_compatible_backend(backend)
+    return _OpenAICompatibleServedModel(
         model_id=model_id,
-        provider=provider,
+        provider_id=provider_id,
         api_base_url=api_base_url,
         **kwargs,
     )
@@ -1662,14 +1662,7 @@ def _is_unsupported_params_error(exc: Exception) -> bool:
 
 
 __all__ = [
-    "LLMProvider",
-    "OpenAIProvider",
-    "AnthropicProvider",
-    "GeminiProvider",
-    "MistralProvider",
-    "OpenRouterProvider",
-    "OllamaProvider",
-    "OpenAICompatibleProvider",
+    "ServedModel",
     "openai",
     "anthropic",
     "gemini",

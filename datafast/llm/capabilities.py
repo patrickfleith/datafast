@@ -1,4 +1,4 @@
-"""Capability resolution for Datafast LLM targets."""
+"""Capability resolution for Datafast served models."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datafast.llm.types import (
     EndpointMode,
     Modality,
     StructuredOutputMode,
-    TargetCapabilities,
+    ServedModelCapabilities,
 )
 
 
@@ -40,7 +40,7 @@ RESPONSES_PARAMS = frozenset({
 })
 
 
-HOSTED_CHAT = TargetCapabilities(
+HOSTED_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -51,7 +51,7 @@ HOSTED_CHAT = TargetCapabilities(
 )
 
 
-MISTRAL_REASONING_CHAT = TargetCapabilities(
+MISTRAL_REASONING_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=(
@@ -71,7 +71,7 @@ MISTRAL_REASONING_CHAT = TargetCapabilities(
 )
 
 
-GEMINI_CHAT = TargetCapabilities(
+GEMINI_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=(
@@ -95,7 +95,7 @@ GEMINI_CHAT = TargetCapabilities(
 )
 
 
-OPENAI_RESPONSES = TargetCapabilities(
+OPENAI_RESPONSES = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.RESPONSES,
     supported_params=RESPONSES_PARAMS,
@@ -107,7 +107,7 @@ OPENAI_RESPONSES = TargetCapabilities(
 )
 
 
-OPENAI_CHAT = TargetCapabilities(
+OPENAI_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -118,7 +118,7 @@ OPENAI_CHAT = TargetCapabilities(
 )
 
 
-ANTHROPIC_CHAT = TargetCapabilities(
+ANTHROPIC_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | REASONING_PARAMS,
@@ -131,7 +131,7 @@ ANTHROPIC_CHAT = TargetCapabilities(
 )
 
 
-OPENROUTER_CHAT = TargetCapabilities(
+OPENROUTER_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -147,7 +147,7 @@ OPENROUTER_CHAT = TargetCapabilities(
 )
 
 
-OLLAMA_CHAT = TargetCapabilities(
+OLLAMA_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -165,7 +165,7 @@ OLLAMA_CHAT = TargetCapabilities(
 )
 
 
-OLLAMA_REASONING_CHAT = TargetCapabilities(
+OLLAMA_REASONING_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=(
@@ -187,7 +187,7 @@ OLLAMA_REASONING_CHAT = TargetCapabilities(
 )
 
 
-VLLM_CHAT = TargetCapabilities(
+VLLM_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -207,7 +207,7 @@ VLLM_CHAT = TargetCapabilities(
 )
 
 
-LLAMACPP_CHAT = TargetCapabilities(
+LLAMACPP_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -232,7 +232,7 @@ LLAMACPP_CHAT = TargetCapabilities(
 )
 
 
-OPENAI_COMPATIBLE_CHAT = TargetCapabilities(
+OPENAI_COMPATIBLE_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=frozenset({"timeout"}),
@@ -245,7 +245,7 @@ OPENAI_COMPATIBLE_CHAT = TargetCapabilities(
 )
 
 
-_CATALOG: dict[tuple[str, str], TargetCapabilities] = {
+_SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("openai", "gpt-5.5"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-mini"): OPENAI_RESPONSES,
@@ -262,7 +262,7 @@ _CATALOG: dict[tuple[str, str], TargetCapabilities] = {
     ("mistral", "ministral-3b-2512"): OPENAI_COMPATIBLE_CHAT,
 }
 
-_PROVIDER_DEFAULTS: dict[str, TargetCapabilities] = {
+_PROVIDER_DEFAULTS: dict[str, ServedModelCapabilities] = {
     "anthropic": ANTHROPIC_CHAT,
     "gemini": GEMINI_CHAT,
     "llamacpp": LLAMACPP_CHAT,
@@ -276,20 +276,20 @@ _OPENAI_COMPATIBLE_PROVIDERS = frozenset({
 
 
 def resolve_capabilities(
-    provider: str,
+    provider_id: str,
     model_id: str,
     *,
     api_base_url: str | None = None,
-    explicit: TargetCapabilities | None = None,
-) -> TargetCapabilities:
-    """Resolve target capabilities with conservative defaults."""
+    explicit: ServedModelCapabilities | None = None,
+) -> ServedModelCapabilities:
+    """Resolve served-model capabilities with conservative defaults."""
     if explicit is not None:
         return explicit
 
-    normalized_provider = provider.lower()
+    normalized_provider = provider_id.lower()
     normalized_model = model_id.lower()
 
-    catalog_match = _CATALOG.get((normalized_provider, normalized_model))
+    catalog_match = _SERVED_MODEL_CATALOG.get((normalized_provider, normalized_model))
     if catalog_match is not None:
         return catalog_match
 
@@ -315,13 +315,13 @@ def resolve_capabilities(
     return _unknown_capabilities()
 
 
-def _resolve_openai_capabilities(model_id: str) -> TargetCapabilities:
+def _resolve_openai_capabilities(model_id: str) -> ServedModelCapabilities:
     if _looks_like_openai_reasoning_model(model_id):
         return OPENAI_RESPONSES
     return OPENAI_CHAT
 
 
-def _resolve_mistral_capabilities(model_id: str) -> TargetCapabilities:
+def _resolve_mistral_capabilities(model_id: str) -> ServedModelCapabilities:
     # Magistral is Mistral's reasoning family; LiteLLM enables reasoning_effort
     # for any model whose id contains "magistral". Everything else falls back to
     # the standard hosted-chat profile.
@@ -346,7 +346,7 @@ _OLLAMA_REASONING_MODELS = (
 )
 
 
-def _resolve_ollama_capabilities(model_id: str) -> TargetCapabilities:
+def _resolve_ollama_capabilities(model_id: str) -> ServedModelCapabilities:
     # Only thinking-capable families accept a reasoning control; every other
     # Ollama model keeps the plain chat profile.
     if any(family in model_id for family in _OLLAMA_REASONING_MODELS):
@@ -363,14 +363,16 @@ def _looks_like_openai_reasoning_model(model_id: str) -> bool:
     )
 
 
-def _unknown_capabilities() -> TargetCapabilities:
-    return TargetCapabilities(
+def _unknown_capabilities() -> ServedModelCapabilities:
+    return ServedModelCapabilities(
         endpoint_modes=frozenset({EndpointMode.CHAT}),
         default_endpoint_mode=EndpointMode.CHAT,
         supported_params=frozenset({"timeout"}),
         structured_output=StructuredOutputMode.PROMPTED_JSON,
         batch_mode=BatchMode.FALLBACK_CONCURRENCY,
-        notes=("Unknown target; optional Datafast parameters are omitted by default.",),
+        notes=(
+            "Unknown served model; optional Datafast parameters are omitted by default.",
+        ),
     )
 
 

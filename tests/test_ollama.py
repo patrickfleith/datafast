@@ -1,4 +1,4 @@
-from datafast.llms import OllamaProvider
+from datafast import ollama
 from dotenv import load_dotenv
 import pytest
 from tests.test_schemas import (
@@ -15,7 +15,7 @@ load_dotenv()
 @pytest.mark.integration
 def test_ollama_provider():
     """Test the Ollama provider with text response."""
-    provider = OllamaProvider(model_id="gemma3:4b")
+    provider = ollama(model_id="gemma3:4b")
     response = provider.generate(
         prompt="What is the capital of France? Answer in one word.")
     assert "Paris" in response
@@ -24,7 +24,7 @@ def test_ollama_provider():
 @pytest.mark.integration
 def test_ollama_structured_output():
     """Test the Ollama provider with structured output."""
-    provider = OllamaProvider(model_id="gemma3:4b")
+    provider = ollama(model_id="gemma3:4b")
     prompt = """What is the capital of France? 
     Provide a short answer and a brief explanation of why Paris is the capital.
     Format your response as JSON with 'answer' and 'reasoning' fields."""
@@ -42,7 +42,7 @@ def test_ollama_structured_output():
 @pytest.mark.integration
 def test_ollama_with_messages():
     """Test Ollama provider with messages input instead of prompt."""
-    provider = OllamaProvider()
+    provider = ollama()
     messages = [
         {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
         {"role": "user", "content": "What is the capital of France? Answer in one word."}
@@ -55,7 +55,7 @@ def test_ollama_with_messages():
 @pytest.mark.integration
 def test_ollama_messages_with_structured_output():
     """Test the Ollama provider with messages input and structured output."""
-    provider = OllamaProvider()
+    provider = ollama()
     messages = [
         {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
         {"role": "user", "content": """What is the capital of France? 
@@ -76,7 +76,7 @@ def test_ollama_messages_with_structured_output():
 @pytest.mark.integration
 def test_ollama_with_all_parameters():
     """Test Ollama provider with all optional parameters specified."""
-    provider = OllamaProvider(
+    provider = ollama(
         model_id="gemma3:4b",
         temperature=0.4,
         max_completion_tokens=150,
@@ -95,7 +95,7 @@ def test_ollama_with_all_parameters():
 def test_ollama_timeout():
     """Test that the timeout parameter works correctly with Ollama provider."""
     # Create provider with a very short timeout (1 second)
-    provider = OllamaProvider(
+    provider = ollama(
         model_id="gemma3:4b",
         temperature=0.7,
         max_completion_tokens=500,
@@ -124,7 +124,7 @@ def test_ollama_timeout():
 def test_ollama_with_reasonable_timeout():
     """Test that a reasonable timeout allows successful completion."""
     # Create provider with a reasonable timeout (30 seconds)
-    provider = OllamaProvider(
+    provider = ollama(
         model_id="gemma3:4b",
         temperature=0.7,
         max_completion_tokens=50,
@@ -142,7 +142,7 @@ def test_ollama_with_reasonable_timeout():
 @pytest.mark.integration
 def test_ollama_structured_landmark_info():
     """Test Ollama with a structured landmark info response."""
-    provider = OllamaProvider(temperature=0.1, max_completion_tokens=800)
+    provider = ollama(temperature=0.1, max_completion_tokens=800)
 
     prompt = """
     Provide detailed information about the Sydney Opera House.
@@ -184,7 +184,7 @@ def test_ollama_structured_landmark_info():
 @pytest.mark.integration
 def test_ollama_batch_prompts():
     """Test Ollama provider with batch prompts."""
-    provider = OllamaProvider(model_id="gemma3:4b")
+    provider = ollama(model_id="gemma3:4b")
     prompt = [
         "What is the capital of France? Answer in one word.",
         "What is the capital of Germany? Answer in one word."
@@ -202,7 +202,7 @@ def test_ollama_batch_prompts():
 @pytest.mark.integration
 def test_ollama_batch_messages():
     """Test Ollama provider with batch messages."""
-    provider = OllamaProvider()
+    provider = ollama()
     messages = [
         [
             {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
@@ -226,7 +226,7 @@ def test_ollama_batch_messages():
 @pytest.mark.integration
 def test_ollama_batch_structured_output():
     """Test Ollama provider with batch structured output."""
-    provider = OllamaProvider()
+    provider = ollama()
     prompt = [
         """What is the capital of Spain? 
         Provide a short answer and brief reasoning.
@@ -255,7 +255,7 @@ class TestOllama:
 
     def test_persona_content_generation(self):
         """Generate tweets and a bio for a persona using Ollama."""
-        provider = OllamaProvider(model_id="gemma3:4b", temperature=0.5, max_completion_tokens=2000)
+        provider = ollama(model_id="gemma3:4b", temperature=0.5, max_completion_tokens=2000)
         prompt = """
         Generate social media content for the following persona:
         
@@ -272,7 +272,7 @@ class TestOllama:
 
     def test_qa_generation(self):
         """Generate 5 Q&A pairs on machine learning topics using Ollama."""
-        provider = OllamaProvider(model_id="gemma3:4b", temperature=0.5, max_completion_tokens=1500)
+        provider = ollama(model_id="gemma3:4b", temperature=0.5, max_completion_tokens=1500)
         prompt = """
         Generate exactly 5 questions and their correct answers about machine learning topics.
         
@@ -290,7 +290,7 @@ class TestOllama:
 
     def test_mcq_generation(self):
         """Generate 3 MCQs on ML topics using Ollama."""
-        provider = OllamaProvider(model_id="gemma3:4b", temperature=0.5, max_completion_tokens=1500)
+        provider = ollama(model_id="gemma3:4b", temperature=0.5, max_completion_tokens=1500)
         prompt = """
         Generate exactly 3 multiple choice questions about machine learning.
         

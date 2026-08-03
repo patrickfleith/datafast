@@ -1,4 +1,4 @@
-"""Shared types for Datafast LLM provider targets."""
+"""Shared types for Datafast served models."""
 
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ class RetryPolicy:
 
 
 @dataclass(frozen=True)
-class TargetCapabilities:
+class ServedModelCapabilities:
     endpoint_modes: frozenset[EndpointMode]
     default_endpoint_mode: EndpointMode
     supported_params: frozenset[str] = frozenset()
@@ -85,10 +85,10 @@ class TargetCapabilities:
 
 
 @dataclass(frozen=True)
-class TargetConfig:
-    provider: str
+class ServedModelConfig:
+    provider_id: str
     model_id: str
-    litellm_provider: str
+    litellm_route: str
     env_key_name: str | None
     endpoint_mode: EndpointMode = EndpointMode.AUTO
     temperature: float | None = None
@@ -146,8 +146,8 @@ __all__ = [
     "NormalizedRequest",
     "NormalizedResponse",
     "RetryPolicy",
+    "ServedModelCapabilities",
+    "ServedModelConfig",
     "StructuredOutputMode",
-    "TargetCapabilities",
-    "TargetConfig",
     "UnsupportedParamsPolicy",
 ]

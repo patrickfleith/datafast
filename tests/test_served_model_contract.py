@@ -2,20 +2,19 @@ import pytest
 from litellm import exceptions as litellm_exceptions
 from pydantic import BaseModel
 
-import datafast.llm.provider as provider_module
+import datafast.llm.served_model as served_model_module
 from datafast import LLMStep, ListSink, Source
 from datafast.llm import (
     ContentPart,
     EndpointMode,
     Modality,
     RetryPolicy,
-    GeminiProvider,
-    MistralProvider,
-    OllamaProvider,
-    OpenAIProvider,
-    OpenRouterProvider,
+    gemini,
+    mistral,
+    ollama,
     openai,
     openai_compatible,
+    openrouter,
 )
 from datafast.llm.capabilities import resolve_capabilities
 
@@ -86,47 +85,47 @@ class _DummyResponsesResponse:
 
 
 @pytest.fixture(autouse=True)
-def _disable_provider_side_effects(monkeypatch):
-    monkeypatch.setattr(provider_module, "load_env_once", lambda: None)
+def _disable_served_model_side_effects(monkeypatch):
+    monkeypatch.setattr(served_model_module, "load_env_once", lambda: None)
     monkeypatch.setattr(
-        provider_module,
+        served_model_module,
         "maybe_configure_langfuse_tracing",
         lambda load_env=False: False,
     )
 
 
-def test_factories_resolve_expected_targets():
+def test_factories_resolve_expected_served_models():
     hosted = openai(api_key="test-key")
     local = openai_compatible(
         "ministral-8b-2512",
         api_base_url="http://localhost:8000/v1",
     )
 
-    assert hosted.provider_name == "openai"
+    assert hosted.provider_id == "openai"
     assert hosted.endpoint_mode == EndpointMode.RESPONSES
     assert hosted._get_model_string() == "openai/gpt-5.5"
 
-    assert local.provider_name == "openai_compatible"
+    assert local.provider_id == "openai_compatible"
     assert local.endpoint_mode == EndpointMode.CHAT
     assert local.api_base_url == "http://localhost:8000/v1"
 
 
-def test_provider_suppresses_litellm_debug_info_by_default(monkeypatch):
-    monkeypatch.delenv(provider_module.LITELLM_SUPPRESS_DEBUG_ENV, raising=False)
-    monkeypatch.setattr(provider_module.litellm, "suppress_debug_info", False)
+def test_served_model_suppresses_litellm_debug_info_by_default(monkeypatch):
+    monkeypatch.delenv(served_model_module.LITELLM_SUPPRESS_DEBUG_ENV, raising=False)
+    monkeypatch.setattr(served_model_module.litellm, "suppress_debug_info", False)
 
-    provider_module.OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    served_model_module.openrouter(model_id="demo-model", api_key="test-key")
 
-    assert provider_module.litellm.suppress_debug_info is True
+    assert served_model_module.litellm.suppress_debug_info is True
 
 
-def test_provider_allows_litellm_debug_opt_out(monkeypatch):
-    monkeypatch.setenv(provider_module.LITELLM_SUPPRESS_DEBUG_ENV, "0")
-    monkeypatch.setattr(provider_module.litellm, "suppress_debug_info", False)
+def test_served_model_allows_litellm_debug_opt_out(monkeypatch):
+    monkeypatch.setenv(served_model_module.LITELLM_SUPPRESS_DEBUG_ENV, "0")
+    monkeypatch.setattr(served_model_module.litellm, "suppress_debug_info", False)
 
-    provider_module.OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    served_model_module.openrouter(model_id="demo-model", api_key="test-key")
 
-    assert provider_module.litellm.suppress_debug_info is False
+    assert served_model_module.litellm.suppress_debug_info is False
 
 
 def test_openai_compatible_backend_profiles_are_distinct():
@@ -145,27 +144,27 @@ def test_openai_compatible_backend_profiles_are_distinct():
         backend="llamacpp",
     )
 
-    assert generic.provider_name == "openai_compatible"
+    assert generic.provider_id == "openai_compatible"
     assert generic.capabilities.modalities == frozenset({Modality.TEXT})
 
-    assert vllm.provider_name == "vllm"
+    assert vllm.provider_id == "vllm"
     assert vllm.capabilities.supports_endpoint(EndpointMode.RESPONSES)
     assert Modality.IMAGE in vllm.capabilities.modalities
     assert Modality.VIDEO in vllm.capabilities.modalities
 
-    assert llamacpp.provider_name == "llamacpp"
+    assert llamacpp.provider_id == "llamacpp"
     assert Modality.AUDIO in llamacpp.capabilities.modalities
     assert Modality.FILE in llamacpp.capabilities.modalities
 
 
 def test_input_validation_rejects_missing_or_ambiguous_inputs():
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
     with pytest.raises(ValueError, match="Either prompt or messages"):
-        provider.generate()
+        model.generate()
 
     with pytest.raises(ValueError, match="either prompt or messages"):
-        provider.generate(prompt="hello", messages=[{"role": "user", "content": "hi"}])
+        model.generate(prompt="hello", messages=[{"role": "user", "content": "hi"}])
 
 
 def test_unsupported_params_warn_and_omit(monkeypatch):
@@ -175,16 +174,16 @@ def test_unsupported_params_warn_and_omit(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = openai_compatible(
+    model = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8000/v1",
         temperature=0.7,
     )
 
     with pytest.warns(UserWarning, match="temperature"):
-        assert provider.generate(prompt="ping") == "ok"
+        assert model.generate(prompt="ping") == "ok"
 
     assert "temperature" not in captured
     assert captured["api_base"] == "http://localhost:8000/v1"
@@ -194,9 +193,9 @@ def test_unsupported_params_fail_before_dispatch(monkeypatch):
     def fake_completion(**kwargs):
         raise AssertionError("request should not be dispatched")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = openai_compatible(
+    model = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8000/v1",
         temperature=0.7,
@@ -204,7 +203,7 @@ def test_unsupported_params_fail_before_dispatch(monkeypatch):
     )
 
     with pytest.raises(ValueError, match="temperature"):
-        provider.generate(prompt="ping")
+        model.generate(prompt="ping")
 
 
 def test_chat_endpoint_warns_and_omits_previous_response_id(monkeypatch):
@@ -214,12 +213,12 @@ def test_chat_endpoint_warns_and_omits_previous_response_id(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
     with pytest.warns(UserWarning, match="previous_response_id"):
-        assert provider.generate(prompt="ping", previous_response_id="resp_old") == "ok"
+        assert model.generate(prompt="ping", previous_response_id="resp_old") == "ok"
 
     assert "previous_response_id" not in captured
 
@@ -231,23 +230,23 @@ def test_openrouter_thinking_warns_and_omits_reasoning_param(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OpenRouterProvider(
+    model = openrouter(
         model_id="nvidia/nemotron-3-super-120b-a12b:nitro",
         api_key="test-key",
         thinking=True,
     )
 
     with pytest.warns(UserWarning, match="reasoning_effort"):
-        assert provider.generate(prompt="ping") == "ok"
+        assert model.generate(prompt="ping") == "ok"
 
     assert "reasoning_effort" not in captured
     assert "reasoning" not in captured
 
 
 def test_mistral_reasoning_capability_resolution():
-    # Reasoning-capable Mistral targets: magistral family plus the documented
+    # Reasoning-capable Mistral served models: magistral family plus the documented
     # mistral-medium/small snapshots.
     for model_id in (
         "mistral-medium-3-5",
@@ -260,7 +259,7 @@ def test_mistral_reasoning_capability_resolution():
         assert "reasoning_effort" in caps.supported_params
         assert caps.reasoning_requires_allowlist is True
 
-    # Non-reasoning Mistral targets keep the plain hosted-chat profile.
+    # Non-reasoning Mistral served models keep the plain hosted-chat profile.
     for model_id in ("mistral-large-2512", "mistral-tiny"):
         caps = resolve_capabilities("mistral", model_id)
         assert caps.supports_reasoning is False
@@ -274,15 +273,15 @@ def test_mistral_reasoning_effort_is_forwarded_with_allowlist(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok", reasoning_content="chain of thought")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = MistralProvider(
+    model = mistral(
         model_id="mistral-medium-3-5",
         api_key="test-key",
         reasoning_effort="high",
     )
 
-    response = provider.generate_response(prompt="think it through")
+    response = model.generate_response(prompt="think it through")
 
     assert captured["reasoning_effort"] == "high"
     # LiteLLM only forwards reasoning_effort for a subset of Mistral models; the
@@ -298,11 +297,11 @@ def test_mistral_without_reasoning_effort_stays_plain(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = MistralProvider(model_id="mistral-medium-3-5", api_key="test-key")
+    model = mistral(model_id="mistral-medium-3-5", api_key="test-key")
 
-    assert provider.generate(prompt="ping") == "ok"
+    assert model.generate(prompt="ping") == "ok"
     assert "reasoning_effort" not in captured
     assert "allowed_openai_params" not in captured
 
@@ -314,16 +313,16 @@ def test_mistral_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatc
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = MistralProvider(
+    model = mistral(
         model_id="mistral-large-2512",
         api_key="test-key",
         reasoning_effort="high",
     )
 
     with pytest.warns(UserWarning, match="reasoning_effort"):
-        assert provider.generate(prompt="ping") == "ok"
+        assert model.generate(prompt="ping") == "ok"
 
     assert "reasoning_effort" not in captured
     assert "allowed_openai_params" not in captured
@@ -358,11 +357,11 @@ def test_ollama_reasoning_effort_is_forwarded(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok", reasoning_content="chain of thought")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OllamaProvider(model_id="deepseek-r1:8b", reasoning_effort="high")
+    model = ollama(model_id="deepseek-r1:8b", reasoning_effort="high")
 
-    response = provider.generate_response(prompt="think it through")
+    response = model.generate_response(prompt="think it through")
 
     assert captured["reasoning_effort"] == "high"
     # LiteLLM maps reasoning_effort onto Ollama's think param natively, so no
@@ -378,11 +377,11 @@ def test_ollama_thinking_true_defaults_to_low_effort(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OllamaProvider(model_id="qwen3:8b", thinking=True)
+    model = ollama(model_id="qwen3:8b", thinking=True)
 
-    assert provider.generate(prompt="ping") == "ok"
+    assert model.generate(prompt="ping") == "ok"
     assert captured["reasoning_effort"] == "low"
 
 
@@ -393,12 +392,12 @@ def test_ollama_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatch
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OllamaProvider(model_id="gemma3:4b", reasoning_effort="high")
+    model = ollama(model_id="gemma3:4b", reasoning_effort="high")
 
     with pytest.warns(UserWarning, match="reasoning_effort"):
-        assert provider.generate(prompt="ping") == "ok"
+        assert model.generate(prompt="ping") == "ok"
 
     assert "reasoning_effort" not in captured
 
@@ -418,13 +417,13 @@ def test_gemini_reasoning_effort_is_forwarded(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok", reasoning_content="chain of thought")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = GeminiProvider(
+    model = gemini(
         model_id="gemini-3.5-flash", api_key="test-key", reasoning_effort="high"
     )
 
-    response = provider.generate_response(prompt="think it through")
+    response = model.generate_response(prompt="think it through")
 
     assert captured["reasoning_effort"] == "high"
     # LiteLLM forwards reasoning_effort to gemini/* natively, so no allowlist.
@@ -439,13 +438,13 @@ def test_gemini_thinking_true_defaults_to_low_effort(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = GeminiProvider(
+    model = gemini(
         model_id="gemini-3.5-flash", api_key="test-key", thinking=True
     )
 
-    assert provider.generate(prompt="ping") == "ok"
+    assert model.generate(prompt="ping") == "ok"
     assert captured["reasoning_effort"] == "low"
 
 
@@ -456,15 +455,15 @@ def test_provider_params_escape_hatch_is_forwarded(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = openai_compatible(
+    model = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8000/v1",
         provider_params={"extra_body": {"backend_hint": "vllm"}},
     )
 
-    assert provider.generate(prompt="ping") == "ok"
+    assert model.generate(prompt="ping") == "ok"
     assert captured["extra_body"] == {"backend_hint": "vllm"}
 
 
@@ -549,19 +548,19 @@ def test_litellm_unsupported_params_can_retry_with_drop_params(monkeypatch):
             raise unsupported_error("bad param")
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
     with pytest.warns(UserWarning, match="drop_params=True"):
-        assert provider.generate(prompt="ping") == "ok"
+        assert model.generate(prompt="ping") == "ok"
 
     assert calls[0].get("drop_params") is None
     assert calls[1]["drop_params"] is True
 
 
 def _retryable(cls=litellm_exceptions.RateLimitError):
-    """A litellm exception the provider treats as retryable."""
+    """A litellm exception the model treats as retryable."""
     return cls(message="boom", llm_provider="openrouter", model="demo-model")
 
 
@@ -574,14 +573,14 @@ def test_retryable_error_is_retried_until_bounded_limit(monkeypatch):
             raise _retryable()
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OpenRouterProvider(
+    model = openrouter(
         model_id="demo-model", api_key="test-key", retry_limit=2
     )
-    provider._sleep = lambda delay: None
+    model._sleep = lambda delay: None
 
-    assert provider.generate(prompt="ping") == "ok"
+    assert model.generate(prompt="ping") == "ok"
     assert len(calls) == 3  # initial attempt + two bounded retries
 
 
@@ -592,13 +591,13 @@ def test_non_retryable_error_fails_without_retry(monkeypatch):
         calls.append(kwargs)
         raise _retryable(litellm_exceptions.AuthenticationError)
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
-    provider._sleep = lambda delay: None
+    model = openrouter(model_id="demo-model", api_key="test-key")
+    model._sleep = lambda delay: None
 
     with pytest.raises(RuntimeError):
-        provider.generate(prompt="ping")
+        model.generate(prompt="ping")
     assert len(calls) == 1
 
 
@@ -606,18 +605,18 @@ def test_backoff_grows_across_retries(monkeypatch):
     def fake_completion(**kwargs):
         raise _retryable()
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
     delays = []
-    provider = OpenRouterProvider(
+    model = openrouter(
         model_id="demo-model",
         api_key="test-key",
         retry_policy=RetryPolicy(max_retries=3, jitter=0.0),
     )
-    provider._sleep = delays.append
+    model._sleep = delays.append
 
     with pytest.raises(RuntimeError):
-        provider.generate(prompt="ping")
+        model.generate(prompt="ping")
     assert delays == [1.0, 2.0, 4.0]
 
 
@@ -625,18 +624,18 @@ def test_jitter_stays_within_expected_range(monkeypatch):
     def fake_completion(**kwargs):
         raise _retryable()
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
     delays = []
-    provider = OpenRouterProvider(
+    model = openrouter(
         model_id="demo-model",
         api_key="test-key",
         retry_policy=RetryPolicy(max_retries=3, jitter=0.25),
     )
-    provider._sleep = delays.append
+    model._sleep = delays.append
 
     with pytest.raises(RuntimeError):
-        provider.generate(prompt="ping")
+        model.generate(prompt="ping")
     for attempt, delay in enumerate(delays):
         base = 1.0 * (2 ** attempt)
         assert base <= delay <= base * 1.25
@@ -649,23 +648,23 @@ def test_timeout_is_forwarded_and_failure_surfaces(monkeypatch):
         captured.update(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = OpenRouterProvider(
+    model = openrouter(
         model_id="demo-model", api_key="test-key", timeout=30
     )
-    assert provider.generate(prompt="ping") == "ok"
+    assert model.generate(prompt="ping") == "ok"
     assert captured["timeout"] == 30
 
     def raise_timeout(**kwargs):
         raise _retryable(litellm_exceptions.Timeout)
 
-    monkeypatch.setattr(provider_module.litellm, "completion", raise_timeout)
-    provider = OpenRouterProvider(
+    monkeypatch.setattr(served_model_module.litellm, "completion", raise_timeout)
+    model = openrouter(
         model_id="demo-model", api_key="test-key", retry_limit=0
     )
     with pytest.raises(RuntimeError, match="openrouter"):
-        provider.generate(prompt="ping")
+        model.generate(prompt="ping")
 
 
 def test_rpm_limit_throttles_before_dispatch(monkeypatch):
@@ -675,13 +674,13 @@ def test_rpm_limit_throttles_before_dispatch(monkeypatch):
         calls.append(kwargs)
         return _DummyChatResponse("ok")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
     clock = [0.0]
     delays = []
-    monkeypatch.setattr(provider_module.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(served_model_module.time, "monotonic", lambda: clock[0])
 
-    provider = OpenRouterProvider(
+    model = openrouter(
         model_id="demo-model", api_key="test-key", rpm_limit=2
     )
 
@@ -689,10 +688,10 @@ def test_rpm_limit_throttles_before_dispatch(monkeypatch):
         delays.append(delay)
         clock[0] += delay
 
-    provider._sleep = fake_sleep
+    model._sleep = fake_sleep
 
     for _ in range(3):
-        provider.generate(prompt="ping")
+        model.generate(prompt="ping")
 
     assert len(calls) == 3
     assert delays == [61.0]  # third request waits for the window to clear
@@ -703,22 +702,22 @@ def test_batch_retry_preserves_output_order(monkeypatch):
         return [_DummyChatResponse("a"), _retryable(), _DummyChatResponse("c")]
 
     monkeypatch.setattr(
-        provider_module.litellm, "batch_completion", fake_batch_completion
+        served_model_module.litellm, "batch_completion", fake_batch_completion
     )
     monkeypatch.setattr(
-        provider_module.litellm,
+        served_model_module.litellm,
         "completion",
         lambda **kwargs: _DummyChatResponse("b"),
     )
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
-    assert provider.generate(prompt=["a", "b", "c"]) == ["a", "b", "c"]
+    assert model.generate(prompt=["a", "b", "c"]) == ["a", "b", "c"]
 
 
 def test_generate_response_preserves_litellm_reasoning_metadata(monkeypatch):
     monkeypatch.setattr(
-        provider_module.litellm,
+        served_model_module.litellm,
         "completion",
         lambda **kwargs: _DummyChatResponse(
             "final answer",
@@ -735,8 +734,8 @@ def test_generate_response_preserves_litellm_reasoning_metadata(monkeypatch):
         ),
     )
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
-    response = provider.generate_response(prompt="ping")
+    model = openrouter(model_id="demo-model", api_key="test-key")
+    response = model.generate_response(prompt="ping")
 
     assert response.text == "final answer"
     assert response.reasoning_content == "internal summary"
@@ -764,13 +763,13 @@ def test_responses_full_response_preserves_output_items_and_media(monkeypatch):
     ]
 
     monkeypatch.setattr(
-        provider_module.litellm,
+        served_model_module.litellm,
         "responses",
         lambda **kwargs: _DummyResponsesResponse(output=output),
     )
 
-    provider = OpenAIProvider(model_id="gpt-5.5", api_key="test-key")
-    response = provider.generate_response(prompt="make an image")
+    model = openai(model_id="gpt-5.5", api_key="test-key")
+    response = model.generate_response(prompt="make an image")
 
     assert response.text == "Here is the image."
     assert response.reasoning_content == "short rationale"
@@ -787,16 +786,16 @@ def test_responses_endpoint_maps_reasoning_state_and_structured_output(monkeypat
         captured.update(kwargs)
         return _DummyResponsesResponse('{"answer": "Paris"}')
 
-    monkeypatch.setattr(provider_module.litellm, "responses", fake_responses)
+    monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
 
-    provider = OpenAIProvider(
+    model = openai(
         model_id="gpt-5.5",
         api_key="test-key",
         thinking=True,
         max_completion_tokens=64,
     )
 
-    result = provider.generate(
+    result = model.generate(
         messages=[{"role": "user", "content": "capital?"}],
         response_format=SimpleSchema,
         previous_response_id="resp_previous",
@@ -823,16 +822,16 @@ def test_fallback_batching_preserves_order(monkeypatch):
         calls.append(kwargs["messages"][0]["content"])
         return _DummyChatResponse(f"reply:{kwargs['messages'][0]['content']}")
 
-    monkeypatch.setattr(provider_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    provider = openai_compatible(
+    model = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8000/v1",
         max_concurrent=1,
     )
 
     with pytest.warns(UserWarning, match="Falling back"):
-        result = provider.generate(prompt=["one", "two", "three"])
+        result = model.generate(prompt=["one", "two", "three"])
 
     assert result == ["reply:one", "reply:two", "reply:three"]
     assert calls == ["one", "two", "three"]
@@ -840,20 +839,20 @@ def test_fallback_batching_preserves_order(monkeypatch):
 
 def test_structured_output_validation_error_is_clear(monkeypatch):
     monkeypatch.setattr(
-        provider_module.litellm,
+        served_model_module.litellm,
         "completion",
         lambda **kwargs: _DummyChatResponse("not json"),
     )
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
     with pytest.raises(ValueError, match="Failed to parse JSON response"):
-        provider.generate(prompt="answer in json", response_format=SimpleSchema)
+        model.generate(prompt="answer in json", response_format=SimpleSchema)
 
 
 def test_runner_dispatches_same_model_batches_through_generate_batch():
     class FakeBatchModel:
-        provider_name = "fake"
+        provider_id = "fake"
         model_id = "fake-model"
 
         def __init__(self):

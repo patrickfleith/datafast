@@ -1,4 +1,4 @@
-from datafast.llms import OpenRouterProvider
+from datafast import openrouter
 from dotenv import load_dotenv
 import pytest
 from tests.test_schemas import (
@@ -13,18 +13,18 @@ load_dotenv()
 
 
 @pytest.mark.integration
-class TestOpenRouterProvider:
+class TestOpenRouterServedModel:
     """Test suite for OpenRouter provider with various input types and configurations."""
 
     def test_basic_text_response(self):
         """Test the OpenRouter provider with text response."""
-        provider = OpenRouterProvider()
+        provider = openrouter()
         response = provider.generate(prompt="What is the capital of France? Answer in one word.")
         assert "Paris" in response
 
     def test_structured_output(self):
         """Test the OpenRouter provider with structured output."""
-        provider = OpenRouterProvider()
+        provider = openrouter()
         prompt = """What is the capital of France? 
         Provide a short answer and a brief explanation of why Paris is the capital."""
         
@@ -39,7 +39,7 @@ class TestOpenRouterProvider:
 
     def test_with_messages(self):
         """Test OpenRouter provider with messages input instead of prompt."""
-        provider = OpenRouterProvider()
+        provider = openrouter()
         messages = [
             {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
             {"role": "user", "content": "What is the capital of France? Answer in one word."}
@@ -50,7 +50,7 @@ class TestOpenRouterProvider:
 
     def test_messages_with_structured_output(self):
         """Test OpenRouter provider with messages input and structured output."""
-        provider = OpenRouterProvider()
+        provider = openrouter()
         messages = [
             {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
             {"role": "user", "content": """What is the capital of France? 
@@ -68,7 +68,7 @@ class TestOpenRouterProvider:
 
     def test_with_all_parameters(self):
         """Test OpenRouter provider with all optional parameters specified."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="meta-llama/llama-3.3-70b-instruct",
             max_completion_tokens=300,
             top_p=0.85,
@@ -80,7 +80,7 @@ class TestOpenRouterProvider:
 
     def test_structured_landmark_info(self):
         """Test OpenRouter with a structured landmark info response."""
-        provider = OpenRouterProvider(temperature=0.6, max_completion_tokens=2000)
+        provider = openrouter(temperature=0.6, max_completion_tokens=2000)
         
         prompt = """
         Extract structured landmark details about the Great Wall of China from the passage below.
@@ -120,7 +120,7 @@ class TestOpenRouterGLM46:
 
     def test_persona_content_generation(self):
         """Test generating tweets and bio for a persona using GLM-4.6."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="z-ai/glm-4.6",
             temperature=0.5,
             max_completion_tokens=2000
@@ -144,7 +144,7 @@ class TestOpenRouterGLM46:
 
     def test_qa_generation(self):
         """Test generating Q&A pairs on machine learning using GLM-4.6."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="z-ai/glm-4.6",
             temperature=0.5,
             max_completion_tokens=1500
@@ -168,7 +168,7 @@ class TestOpenRouterGLM46:
 
     def test_mcq_generation(self):
         """Test generating multiple choice questions using GLM-4.6."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="z-ai/glm-4.6",
             temperature=0.5,
             max_completion_tokens=1500
@@ -202,7 +202,7 @@ class TestOpenRouterQwen3:
 
     def test_persona_content_generation(self):
         """Test generating tweets and bio for a persona using Qwen3."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="qwen/qwen3-next-80b-a3b-instruct",
             temperature=0.5,
             max_completion_tokens=2000
@@ -226,7 +226,7 @@ class TestOpenRouterQwen3:
 
     def test_qa_generation(self):
         """Test generating Q&A pairs on machine learning using Qwen3."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="qwen/qwen3-next-80b-a3b-instruct",
             temperature=0.5,
             max_completion_tokens=1500
@@ -251,7 +251,7 @@ class TestOpenRouterQwen3:
 
     def test_mcq_generation(self):
         """Test generating multiple choice questions using Qwen3."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="qwen/qwen3-next-80b-a3b-instruct",
             temperature=0.5,
             max_completion_tokens=1500
@@ -285,7 +285,7 @@ class TestOpenRouterLlama33:
 
     def test_persona_content_generation(self):
         """Test generating tweets and bio for a persona using Llama 3.3."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="meta-llama/llama-3.3-70b-instruct",
             temperature=0.7,
             max_completion_tokens=1000
@@ -309,7 +309,7 @@ class TestOpenRouterLlama33:
 
     def test_qa_generation(self):
         """Test generating Q&A pairs on machine learning using Llama 3.3."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="meta-llama/llama-3.3-70b-instruct",
             temperature=0.5,
             max_completion_tokens=1500
@@ -334,7 +334,7 @@ class TestOpenRouterLlama33:
 
     def test_mcq_generation(self):
         """Test generating multiple choice questions using Llama 3.3."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="meta-llama/llama-3.3-70b-instruct",
             temperature=0.5,
             max_completion_tokens=1500
@@ -368,7 +368,7 @@ class TestOpenRouterGemini25Flash:
 
     def test_persona_content_generation(self):
         """Test generating tweets and bio for a persona using Gemini 2.5 Flash."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="google/gemini-2.5-flash",
             temperature=0.7,
             max_completion_tokens=1000
@@ -392,7 +392,7 @@ class TestOpenRouterGemini25Flash:
 
     def test_qa_generation(self):
         """Test generating Q&A pairs on machine learning using Gemini 2.5 Flash."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="google/gemini-2.5-flash",
             temperature=0.5,
             max_completion_tokens=1500
@@ -417,7 +417,7 @@ class TestOpenRouterGemini25Flash:
 
     def test_mcq_generation(self):
         """Test generating multiple choice questions using Gemini 2.5 Flash."""
-        provider = OpenRouterProvider(
+        provider = openrouter(
             model_id="google/gemini-2.5-flash",
             temperature=0.5,
             max_completion_tokens=1500

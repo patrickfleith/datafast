@@ -6,7 +6,7 @@ from datafast.core.runner import Runner
 
 
 class CountingModel:
-    provider_name = "fake"
+    provider_id = "fake"
     model_id = "fake-model"
 
     def __init__(self) -> None:
@@ -177,7 +177,7 @@ class _Crash(BaseException):
 
 
 class CrashOnNthModel:
-    provider_name = "fake"
+    provider_id = "fake"
     model_id = "crash-model"
 
     def __init__(self, crash_on: int) -> None:

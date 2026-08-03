@@ -17,7 +17,7 @@ from datafast.core.validation import PipelineValidationError
 
 class _Model:
     model_id = "fake-model"
-    provider_name = "fake"
+    provider_id = "fake"
 
     def generate(self, **kwargs):
         return "ok"

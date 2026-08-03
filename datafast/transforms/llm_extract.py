@@ -9,7 +9,7 @@ from loguru import logger
 from datafast.core.config import LLMCall
 from datafast.core.step import Step
 from datafast.core.types import Record
-from datafast.llm.provider import LLMProvider
+from datafast.llm.served_model import ServedModel
 from datafast.tracing import build_trace_metadata
 from datafast.transforms.llm_eval import (
     _build_output_record,
@@ -167,7 +167,7 @@ class Extract(Step):
         fn: Callable[[Record], dict[str, Any]] | None = None,
         flatten: bool = False,
         output_column: str = "extracted",
-        llm: LLMProvider | list[LLMProvider] | Sample | None = None,
+        llm: ServedModel | list[ServedModel] | Sample | None = None,
         prompt: str | None = None,
         system_prompt: str | None = None,
         forward_columns: list[str] | None = None,
@@ -331,7 +331,7 @@ class Extract(Step):
         self,
         input_record: Record,
         extracted: dict[str, Any],
-        model: LLMProvider | None,
+        model: ServedModel | None,
     ) -> Record:
         """Build output record from extracted fields."""
         if self._flatten:
@@ -353,14 +353,14 @@ class Extract(Step):
         self,
         records: list[Record],
         skip_call_ids: set[str] | None = None,
-    ) -> tuple[list[LLMCall], dict[str, LLMProvider]]:
+    ) -> tuple[list[LLMCall], dict[str, ServedModel]]:
         """Collect LLM calls for batched execution by the Runner."""
         if self._llm is None:
             return [], {}
 
         skip_call_ids = skip_call_ids or set()
         calls: list[LLMCall] = []
-        models_map: dict[str, LLMProvider] = {}
+        models_map: dict[str, ServedModel] = {}
 
         models = _normalize_models(self._llm)
 
@@ -389,7 +389,7 @@ class Extract(Step):
         return calls, models_map
 
     def apply_result(
-        self, call: LLMCall, result: str, model: LLMProvider
+        self, call: LLMCall, result: str, model: ServedModel
     ) -> Record:
         """Convert an LLM result into an output record."""
         extracted = self._parse_llm_result(result)

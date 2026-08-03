@@ -5,7 +5,7 @@ from __future__ import annotations
 import litellm
 import pytest
 
-from datafast import LLMStep, ListSink, OllamaProvider, Source
+from datafast import LLMStep, ListSink, ollama, Source
 from datafast.tracing import configure_langfuse_tracing
 import datafast.tracing as tracing_module
 
@@ -75,7 +75,7 @@ def test_ollama_provider_auto_enables_langfuse_from_environment(monkeypatch):
         lambda name: object() if name == "langfuse" else None,
     )
 
-    provider = OllamaProvider(model_id="gemma3:4b")
+    provider = ollama(model_id="gemma3:4b")
 
     assert provider.model_id == "gemma3:4b"
     assert litellm.success_callback == ["langfuse"]
@@ -94,7 +94,7 @@ def test_explicit_disable_prevents_auto_reenable(monkeypatch):
     )
 
     configure_langfuse_tracing(enabled=False, load_env=False)
-    provider = OllamaProvider(model_id="gemma3:4b")
+    provider = ollama(model_id="gemma3:4b")
 
     assert provider.model_id == "gemma3:4b"
     assert litellm.success_callback == []
@@ -103,7 +103,7 @@ def test_explicit_disable_prevents_auto_reenable(monkeypatch):
 
 def test_runner_attaches_datafast_trace_metadata():
     class FakeModel:
-        provider_name = "fake"
+        provider_id = "fake"
         model_id = "fake-model"
 
         def __init__(self) -> None:
@@ -136,7 +136,7 @@ def test_runner_attaches_datafast_trace_metadata():
     assert metadata["trace_name"] == "datafast.generate_copy"
     assert metadata["datafast_step"] == "generate_copy"
     assert metadata["datafast_step_type"] == "LLMStep"
-    assert metadata["datafast_provider"] == "fake"
+    assert metadata["datafast_provider_id"] == "fake"
     assert metadata["datafast_model_id"] == "fake-model"
     assert metadata["datafast_record_index"] == 0
     assert metadata["datafast_prompt_index"] == 0

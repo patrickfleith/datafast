@@ -50,7 +50,7 @@ def test_add_uuid_supports_custom_column_name():
 def test_add_uuid_assigns_unique_ids_to_llm_num_outputs_pipeline():
     class FakeModel:
         model_id = "fake-model"
-        provider_name = "fake"
+        provider_id = "fake"
 
         def generate(self, messages, metadata=None):
             return '{"title": "Generated", "text": "Body"}'

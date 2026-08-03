@@ -10,7 +10,7 @@ from datafast.core.config import LLMCall
 from datafast.core.step import Step
 from datafast.core.types import Record
 from datafast.llm.parsing import get_parser, OutputParser
-from datafast.llm.provider import LLMProvider
+from datafast.llm.served_model import ServedModel
 from datafast.tracing import build_trace_metadata
 from datafast.transforms.sample import Sample
 
@@ -61,7 +61,7 @@ class LLMStep(Step):
         self,
         prompt: str | Path | list[str | Path] | Sample,
         input_columns: list[str],
-        model: LLMProvider | list[LLMProvider] | Sample,
+        model: ServedModel | list[ServedModel] | Sample,
         *,
         output_columns: list[str] | None = None,
         output_column: str = "generated",
@@ -160,7 +160,7 @@ class LLMStep(Step):
             return [self._load_prompt_if_file(item) for item in self._prompt]
         return [self._load_prompt_if_file(self._prompt)]
 
-    def _normalize_models(self, record: Record) -> list[LLMProvider]:
+    def _normalize_models(self, record: Record) -> list[ServedModel]:
         """Get list of models, resolving Sample if needed."""
         if isinstance(self._model, Sample):
             return list(self._model.pick())
@@ -238,7 +238,7 @@ class LLMStep(Step):
         self,
         input_record: Record,
         parsed_output: dict[str, str],
-        model: LLMProvider,
+        model: ServedModel,
         prompt_index: int,
         language_code: str,
     ) -> Record:
@@ -271,7 +271,7 @@ class LLMStep(Step):
         self,
         records: list[Record],
         skip_call_ids: set[str] | None = None,
-    ) -> tuple[list[LLMCall], dict[str, LLMProvider]]:
+    ) -> tuple[list[LLMCall], dict[str, ServedModel]]:
         """
         Collect all LLM calls without executing them.
 
@@ -286,7 +286,7 @@ class LLMStep(Step):
         """
         skip_call_ids = skip_call_ids or set()
         calls: list[LLMCall] = []
-        models_map: dict[str, LLMProvider] = {}
+        models_map: dict[str, ServedModel] = {}
 
         for record_idx, record in enumerate(records):
             if self._skip_if and self._skip_if(record):
@@ -327,7 +327,7 @@ class LLMStep(Step):
 
         return calls, models_map
 
-    def apply_result(self, call: LLMCall, result: str, model: LLMProvider) -> Record:
+    def apply_result(self, call: LLMCall, result: str, model: ServedModel) -> Record:
         """
         Convert an LLM result into an output record.
 

@@ -1,17 +1,16 @@
 import pytest
 
-import datafast.llm.provider as provider_module
-import datafast.llms as llms_module
-from datafast.llms import OpenRouterProvider
+import datafast.llm.served_model as served_model_module
+from datafast import openrouter
 
 
 @pytest.fixture(autouse=True)
-def _disable_provider_side_effects(monkeypatch):
-    # Patch the bindings LLMProvider.__init__ actually calls (imported into
-    # datafast.llm.provider); patching datafast.llms would be a no-op.
-    monkeypatch.setattr(provider_module, "load_env_once", lambda: None)
+def _disable_served_model_side_effects(monkeypatch):
+    # Patch the bindings ServedModel.__init__ actually calls, which are the ones
+    # imported into datafast.llm.served_model.
+    monkeypatch.setattr(served_model_module, "load_env_once", lambda: None)
     monkeypatch.setattr(
-        provider_module,
+        served_model_module,
         "maybe_configure_langfuse_tracing",
         lambda load_env=False: False,
     )
@@ -46,12 +45,12 @@ def test_openrouter_single_messages_use_completion(monkeypatch):
         calls["batch_completion"] += 1
         raise AssertionError("single-message requests should not use batch_completion")
 
-    monkeypatch.setattr(llms_module.litellm, "completion", fake_completion)
-    monkeypatch.setattr(llms_module.litellm, "batch_completion", fake_batch_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "batch_completion", fake_batch_completion)
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
-    response = provider.generate(messages=[{"role": "user", "content": "ping"}])
+    response = model.generate(messages=[{"role": "user", "content": "ping"}])
 
     assert response == "ok"
     assert calls == {"completion": 1, "batch_completion": 0}
@@ -69,12 +68,12 @@ def test_openrouter_batch_messages_use_batch_completion(monkeypatch):
         assert len(kwargs["messages"]) == 2
         return [_DummyResponse("first"), _DummyResponse("second")]
 
-    monkeypatch.setattr(llms_module.litellm, "completion", fake_completion)
-    monkeypatch.setattr(llms_module.litellm, "batch_completion", fake_batch_completion)
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+    monkeypatch.setattr(served_model_module.litellm, "batch_completion", fake_batch_completion)
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
-    response = provider.generate(messages=[
+    response = model.generate(messages=[
         [{"role": "user", "content": "one"}],
         [{"role": "user", "content": "two"}],
     ])
@@ -85,7 +84,7 @@ def test_openrouter_batch_messages_use_batch_completion(monkeypatch):
 
 def test_openrouter_generate_response_reads_reasoning_field(monkeypatch):
     monkeypatch.setattr(
-        llms_module.litellm,
+        served_model_module.litellm,
         "completion",
         lambda **kwargs: _DummyResponse(
             "final answer",
@@ -93,9 +92,9 @@ def test_openrouter_generate_response_reads_reasoning_field(monkeypatch):
         ),
     )
 
-    provider = OpenRouterProvider(model_id="demo-model", api_key="test-key")
+    model = openrouter(model_id="demo-model", api_key="test-key")
 
-    response = provider.generate_response(prompt="solve this")
+    response = model.generate_response(prompt="solve this")
 
     assert response.text == "final answer"
     assert response.reasoning_content == "hidden chain of thought summary"

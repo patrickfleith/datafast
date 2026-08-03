@@ -7,15 +7,8 @@ from datafast.core.config import RunConfig, LLMExecutionStrategy
 from datafast.core.runner import Runner, run_pipeline
 from datafast.core.step import Pipeline, Step
 from datafast.core.types import Record
-from datafast.llm.provider import (
-    LLMProvider,
-    OpenAIProvider,
-    AnthropicProvider,
-    GeminiProvider,
-    MistralProvider,
-    OpenRouterProvider,
-    OllamaProvider,
-    OpenAICompatibleProvider,
+from datafast.llm.served_model import (
+    ServedModel,
     openai,
     anthropic,
     gemini,
@@ -88,14 +81,7 @@ __all__ = [
     "ListSink",
     "ParquetSink",
     "HubSink",
-    "LLMProvider",
-    "OpenAIProvider",
-    "AnthropicProvider",
-    "GeminiProvider",
-    "MistralProvider",
-    "OpenRouterProvider",
-    "OllamaProvider",
-    "OpenAICompatibleProvider",
+    "ServedModel",
     "openai",
     "anthropic",
     "gemini",

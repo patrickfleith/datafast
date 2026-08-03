@@ -1,4 +1,4 @@
-from datafast.llms import OpenAIProvider
+from datafast import openai
 from dotenv import load_dotenv
 import pytest
 from tests.test_schemas import (
@@ -13,17 +13,17 @@ load_dotenv()
 
 
 @pytest.mark.integration
-class TestOpenAIProvider:
+class TestOpenAIServedModel:
     """OpenAI provider tests using the default model gpt-5-mini-2025-08-07."""
 
     def test_basic_text_response(self):
-        provider = OpenAIProvider()
+        provider = openai()
         response = provider.generate(
             prompt="What is the capital of France? Answer in one word.")
         assert "Paris" in response
 
     def test_structured_output(self):
-        provider = OpenAIProvider()
+        provider = openai()
         prompt = """What is the capital of France? 
         Provide a short answer and a brief explanation of why Paris is the capital.
         Format your response as JSON with 'answer' and 'reasoning' fields."""
@@ -38,7 +38,7 @@ class TestOpenAIProvider:
         assert len(response.reasoning) > 10
 
     def test_with_messages(self):
-        provider = OpenAIProvider()
+        provider = openai()
         messages = [
             {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
             {"role": "user", "content": "What is the capital of France? Answer in one word."}
@@ -48,7 +48,7 @@ class TestOpenAIProvider:
         assert "Paris" in response
 
     def test_messages_with_structured_output(self):
-        provider = OpenAIProvider()
+        provider = openai()
         messages = [
             {"role": "user", "content": """What is the capital of France? 
             Provide a short answer and a brief explanation of why Paris is the capital.
@@ -65,7 +65,7 @@ class TestOpenAIProvider:
         assert len(response.reasoning) > 10
 
     def test_with_all_parameters(self):
-        provider = OpenAIProvider(
+        provider = openai(
             model_id="gpt-5-mini-2025-08-07",
             max_completion_tokens=1000,
             reasoning_effort="low"
@@ -77,7 +77,7 @@ class TestOpenAIProvider:
         assert "Paris" in response
 
     def test_structured_landmark_info(self):
-        provider = OpenAIProvider(max_completion_tokens=1000)
+        provider = openai(max_completion_tokens=1000)
 
         prompt = """
         Provide detailed information about the Eiffel Tower in Paris.
@@ -113,7 +113,7 @@ class TestOpenAIProvider:
         assert 0 <= response.visitor_rating <= 5
 
     def test_batch_prompts(self):
-        provider = OpenAIProvider()
+        provider = openai()
         prompt = [
             "What is the capital of France? Answer in one word.",
             "What is the capital of Germany? Answer in one word.",
@@ -130,7 +130,7 @@ class TestOpenAIProvider:
         assert "Rome" in responses[2]
 
     def test_batch_messages(self):
-        provider = OpenAIProvider()
+        provider = openai()
         messages = [
             [
                 {"role": "system", "content": "You are a helpful assistant that provides brief, accurate answers."},
@@ -151,7 +151,7 @@ class TestOpenAIProvider:
         assert "Tokyo" in responses[1]
 
     def test_batch_structured_output(self):
-        provider = OpenAIProvider()
+        provider = openai()
         prompt = [
             """What is the capital of France? 
             Provide a short answer and brief reasoning.
@@ -174,7 +174,7 @@ class TestOpenAIProvider:
         assert len(responses[1].reasoning) > 5
 
     def test_batch_messages_with_structured_output(self):
-        provider = OpenAIProvider()
+        provider = openai()
         messages = [
             [
                 {"role": "system", "content": "You are a helpful assistant that provides answers in JSON format."},
@@ -203,7 +203,7 @@ class TestOpenAIProvider:
         assert len(responses[1].reasoning) > 5
 
     def test_batch_with_all_parameters(self):
-        provider = OpenAIProvider(
+        provider = openai(
             model_id="gpt-5-mini-2025-08-07",
             max_completion_tokens=1000,
             reasoning_effort="low"
@@ -221,7 +221,7 @@ class TestOpenAIProvider:
         assert "Oslo" in responses[1]
 
     def test_batch_landmark_info(self):
-        provider = OpenAIProvider(max_completion_tokens=1000)
+        provider = openai(max_completion_tokens=1000)
 
         prompt = [
             """
@@ -286,7 +286,7 @@ class TestOpenAIProvider:
             assert 0 <= response.visitor_rating <= 5
 
     def test_batch_validation_errors(self):
-        provider = OpenAIProvider()
+        provider = openai()
 
         with pytest.raises(ValueError, match="Either prompts or messages must be provided"):
             provider.generate()
@@ -299,7 +299,7 @@ class TestOpenAIProvider:
 
     def test_persona_content_generation(self):
         """Test generating tweets and bio for a persona using OpenAI."""
-        provider = OpenAIProvider(max_completion_tokens=1000)
+        provider = openai(max_completion_tokens=1000)
         
         prompt = """
         Generate social media content for the following persona:
@@ -319,7 +319,7 @@ class TestOpenAIProvider:
 
     def test_qa_generation(self):
         """Test generating Q&A pairs on machine learning using OpenAI."""
-        provider = OpenAIProvider(max_completion_tokens=1500)
+        provider = openai(max_completion_tokens=1500)
         
         prompt = """
         Generate exactly 5 questions and their correct answers about machine learning topics.
@@ -339,7 +339,7 @@ class TestOpenAIProvider:
 
     def test_mcq_generation(self):
         """Test generating multiple choice questions using OpenAI."""
-        provider = OpenAIProvider(max_completion_tokens=1500)
+        provider = openai(max_completion_tokens=1500)
         
         prompt = """
         Generate exactly 3 multiple choice questions about machine learning.
