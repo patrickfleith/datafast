@@ -15,6 +15,19 @@
 - Served-model vocabulary rename: `LLMProvider` → `ServedModel`, `TargetConfig` → `ServedModelConfig`, `TargetCapabilities` → `ServedModelCapabilities`, `_CATALOG` → `_SERVED_MODEL_CATALOG`; fields `provider` → `provider_id` and `litellm_provider` → `litellm_route`; the seven per-provider subclasses are private, leaving the lowercase factories as the only public entry points. `llm/provider.py` → `llm/served_model.py`, `datafast/llms.py` deleted, trace key → `datafast_provider_id`. Docs, README and the mocked suite (`tests/test_served_model_contract.py`, `tests/test_served_model_unit.py`) follow the settled `GLOSSARY.md` terms.
 - `compile()` sub-pipeline coverage: validation recurses into Branch paths (inherited input — no source, no sink, column refs checked against the branch's incoming schema) and into Concat sources / Join right sides (self-contained — must start with a source, no sink). Errors name the location (`inside Branch path 'chosen'`). Also validates Join's `on` against the left schema and rejects Branch-inside-Branch, which silently drops every record (`tests/test_pipeline_validation.py`).
 
+- Per-served-model reasoning controls: `thinking=True`/`False` now resolve to each
+  served model's own on/off values instead of a hardcoded `reasoning_effort="low"` and
+  a silent no-op. New `ServedModelCapabilities` fields `reasoning_effort_on`,
+  `reasoning_off_param` and `reasoning_efforts`. Mistral reasoning models use
+  `high`/`none` (the API rejects `low`/`medium` with a 400, now caught client-side with
+  an actionable error); Ollama sends `think=false` directly, since omitting it leaves
+  the model default (on for qwen3) and LiteLLM's `reasoning_effort` mapping would send
+  a literal `"none"` string that Ollama rejects for gpt-oss; Gemini sends
+  `reasoning_effort="none"`, as Gemini 3 models think by default and were billing
+  reasoning tokens on `thinking=False`. Anthropic and OpenAI already default to no
+  reasoning, so they are unchanged. Verified live on all three providers; regression
+  tests in `tests/test_served_model_contract.py`.
+
 ## In progress
 
 - Nothing in flight.
@@ -35,11 +48,6 @@ The served-model rename has landed (see Shipped); vocabulary is settled in
   `provider_id="vllm"` (or `llamacpp`) with the OpenAI-shaped wire format expressed
   purely as transport, which changes `openai_compatible()`'s signature. Left as-is by
   the rename; record via the `decide` skill.
-- **Fix the two reasoning bugs blocking live coverage.** `thinking=True` hardcodes
-  `reasoning_effort="low"`, which 400s on both Mistral reasoning served models; and
-  `thinking=False` is a no-op on Ollama, where omitting the parameter leaves the model
-  default — which is *on* for qwen3. Surfaced by probes from the now-deleted live test
-  plan; recorded here because they gate any live suite.
 - **Write a new provider test plan.** The old drafts (`llm_provider_test_plan.md`,
   `llm_provider_test_guide.md`, `llm_provider_requirements.md`, `llm_live_test_plan.md`)
   are deleted and not worth reviving — they predate the served-model vocabulary and the
@@ -50,7 +58,7 @@ The served-model rename has landed (see Shipped); vocabulary is settled in
 - **Capability-driven live test catalogue.** A curated served-model catalog plus one
   shared live suite parametrized over it, so adding a model is a single catalog entry.
   Replaces the ad-hoc per-provider `integration` tests and wires up the `live` marker.
-  Depends on the two bug fixes and the new test plan.
+  Depends on the new test plan (the two reasoning bugs are fixed — see Shipped).
 - **Migrate anthropic to `claude-sonnet-5`.** Check support for `claude-sonnet-5` and
   add it in place of `claude-sonnet-4-6` (`_SERVED_MODEL_CATALOG`, examples, defaults); confirm
   capability parity (reasoning / batching / structured output) before removing the
