@@ -290,6 +290,54 @@ def test_mistral_reasoning_effort_is_forwarded_with_allowlist(monkeypatch):
     assert response.reasoning_content == "chain of thought"
 
 
+def test_mistral_thinking_true_uses_high_effort(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = mistral(model_id="mistral-medium-3-5", api_key="test-key", thinking=True)
+
+    assert model.generate(prompt="ping") == "ok"
+    # The Mistral API accepts only 'high' and 'none'; a generic 'low' 400s.
+    assert captured["reasoning_effort"] == "high"
+
+
+def test_mistral_thinking_false_disables_reasoning(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = mistral(model_id="mistral-small-2603", api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == "none"
+
+
+def test_mistral_rejects_unsupported_reasoning_effort(monkeypatch):
+    monkeypatch.setattr(
+        served_model_module.litellm,
+        "completion",
+        lambda **kwargs: _DummyChatResponse("ok"),
+    )
+
+    model = mistral(
+        model_id="mistral-medium-3-5",
+        api_key="test-key",
+        reasoning_effort="low",
+    )
+
+    with pytest.raises(ValueError, match="high, none"):
+        model.generate(prompt="ping")
+
+
 def test_mistral_without_reasoning_effort_stays_plain(monkeypatch):
     captured = {}
 
@@ -385,6 +433,41 @@ def test_ollama_thinking_true_defaults_to_low_effort(monkeypatch):
     assert captured["reasoning_effort"] == "low"
 
 
+def test_ollama_thinking_false_sends_think_false(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = ollama(model_id="qwen3:8b", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    # Omitting the parameter would leave the model default, which is on for
+    # qwen3. think=false is passed directly: LiteLLM's reasoning_effort mapping
+    # sends the literal string for gpt-oss, which Ollama rejects.
+    assert captured["think"] is False
+    assert "reasoning_effort" not in captured
+
+
+def test_ollama_non_reasoning_model_thinking_false_stays_plain(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = ollama(model_id="gemma3:4b", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert "think" not in captured
+    assert "reasoning_effort" not in captured
+
+
 def test_ollama_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatch):
     captured = {}
 
@@ -446,6 +529,23 @@ def test_gemini_thinking_true_defaults_to_low_effort(monkeypatch):
 
     assert model.generate(prompt="ping") == "ok"
     assert captured["reasoning_effort"] == "low"
+
+
+def test_gemini_thinking_false_disables_reasoning(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = gemini(model_id="gemini-3.5-flash", api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    # Gemini 3 models think by default, so omitting the parameter would still
+    # bill reasoning tokens.
+    assert captured["reasoning_effort"] == "none"
 
 
 def test_provider_params_escape_hatch_is_forwarded(monkeypatch):
