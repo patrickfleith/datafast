@@ -2,16 +2,17 @@
 
 ## Shipped
 
-- Capability-aware LLM provider layer: per-target capability resolution (provider + endpoint + model), one common config surface, `unsupported_params` policy (`fail`/`warn`/`quiet`).
+- Capability-aware served-model layer: per-served-model capability resolution (provider + endpoint + model), one common config surface, `unsupported_params` policy (`fail`/`warn`/`quiet`).
 - Provider factories: `openai`, `anthropic`, `gemini`, `mistral`, `openrouter`, `ollama`, `openai_compatible`.
 - Chat and Responses endpoint modes, structured output (Pydantic), reasoning controls (`thinking` / `reasoning_effort`); first-class reasoning across anthropic, gemini, mistral, ollama.
 - Multimodal **input** normalization: text, image, video, file/document content parts.
 - Native batching with warned fallback concurrency; retries, backoff, jitter, timeout, client-side RPM throttling.
 - Example suites (11 scripts each) for openai, anthropic, gemini, mistral, ollama, openrouter.
-- Mocked contract/capability/adapter/reliability tests in `tests/test_llm_provider_contract.py` (reliability: bounded retries, backoff growth, jitter range, timeout forwarding, RPM throttling, batch-retry ordering).
+- Mocked contract/capability/adapter/reliability tests in `tests/test_served_model_contract.py` (reliability: bounded retries, backoff growth, jitter range, timeout forwarding, RPM throttling, batch-retry ordering).
 - Pipeline execution controls: `limit` and `resume_from` implemented; dead `rate_limits` / runner-level `max_concurrent` removed (throughput lives on the provider). Covered by `tests/test_runner_execution.py` (limit, resume_from, stop_after, llm_strategy ordering, full + mid-LLM-step checkpoint resume).
 - Pipeline pre-flight validation: `Pipeline.compile()` (`datafast/core/validation.py`) runs before execution and raises an actionable `PipelineValidationError` — source-first / sink-last, Branch↔JoinBranches pairing, and conservative column-reference checks (`tests/test_pipeline_validation.py`).
 - Branch runner integration: the runner recurses into `Branch` paths (and nested sub-pipelines), so LLM steps inside a path get batching, `llm_strategy` ordering and per-call checkpoint/resume. Nested steps share the parent manifest entry and own checkpoint files keyed by dotted path name; the pipeline hash now covers branch-path structure (`tests/test_runner_branch.py`).
+- Served-model vocabulary rename: `LLMProvider` → `ServedModel`, `TargetConfig` → `ServedModelConfig`, `TargetCapabilities` → `ServedModelCapabilities`, `_CATALOG` → `_SERVED_MODEL_CATALOG`; fields `provider` → `provider_id` and `litellm_provider` → `litellm_route`; the seven per-provider subclasses are private, leaving the lowercase factories as the only public entry points. `llm/provider.py` → `llm/served_model.py`, `datafast/llms.py` deleted, trace key → `datafast_provider_id`. Docs, README and the mocked suite (`tests/test_served_model_contract.py`, `tests/test_served_model_unit.py`) follow the settled `GLOSSARY.md` terms.
 - `compile()` sub-pipeline coverage: validation recurses into Branch paths (inherited input — no source, no sink, column refs checked against the branch's incoming schema) and into Concat sources / Join right sides (self-contained — must start with a source, no sink). Errors name the location (`inside Branch path 'chosen'`). Also validates Join's `on` against the left schema and rejects Branch-inside-Branch, which silently drops every record (`tests/test_pipeline_validation.py`).
 
 ## In progress
@@ -26,53 +27,14 @@ documentation.
 
 ### Provider hardening & tests
 
-The provider layer's vocabulary doesn't match what the code does. `LLMProvider` is
-the most-used public symbol, but an `LLMProvider` instance isn't a provider — it
-holds a provider *and* a model *and* its settings. Meanwhile `provider` as a field
-accepts non-provider values (`"openai_compatible"` is a wire format, not a server),
-`litellm_provider` is really a transport prefix, and `target` is already taken by the
-pipeline API (`target_audience`, `target_length`, "target column"). Settling this
-before the docs push matters: every page we're about to write inherits whichever
-words we pick, and with no users yet the rename is free.
+The served-model rename has landed (see Shipped); vocabulary is settled in
+`docs-agents/GLOSSARY.md`. What remains:
 
-Nomenclature: a **provider** is the server (cloud or local), a **model** is the LLM it
-serves, a **served model** is the two together plus its configuration, **capabilities**
-are what that served model can actually do, and **transport** is the wire protocol and
-route used to reach it.
-
-- **Rename the provider layer to the served-model vocabulary.** No aliases or
-  deprecation shims — there are no users.
-  - Types and classes: `TargetCapabilities` → `ServedModelCapabilities`,
-    `TargetConfig` → `ServedModelConfig`, `LLMProvider` → `ServedModel`. The eight
-    per-provider subclasses become private (`_OpenAIServedModel`, …) and drop out of
-    every `__all__`, leaving the lowercase factories (`openai`, `anthropic`, `gemini`,
-    `mistral`, `openrouter`, `ollama`, `openai_compatible`) as the only public entry
-    points. Capability profile constants (`OPENAI_RESPONSES`, `ANTHROPIC_CHAT`, …)
-    stay as they are; `_CATALOG` becomes `_SERVED_MODEL_CATALOG` to match the glossary.
-  - Filenames: `datafast/llm/provider.py` → `served_model.py` and
-    `tests/test_llm_provider_contract.py` → `test_served_model_contract.py`, since both
-    now hold served-model code. `examples/providers/` keeps its name — those suites
-    really are grouped by provider.
-  - Fields: `provider` → `provider_id` (consistent with `model_id`),
-    `litellm_provider` → `litellm_route`, `provider_name` → `provider_id`.
-  - Ripple: `resolve_capabilities()`, `_get_model_string()`, the four
-    `transforms/llm_*.py` consumers, exports in `datafast/__init__.py` and
-    `datafast/llm/__init__.py`, and `datafast/llms.py` — a compat shim for names with
-    no users, so decide whether to delete it. `provider_name` is duck-typed: it
-    reaches `tracing.py` (and the `datafast_provider` metadata key) plus 14 stub
-    definitions across 7 test files. Also sweep the "target" prose in docstrings and
-    comments. Two things that must *not* be swept: `LLMStep(model=...)` stays
-    (friendliest keyword, renaming buys nothing), and `_add_supported_param`'s
-    `target_name=` argument is a different "target" — the destination parameter name —
-    so a blind grep-and-replace will corrupt it; rename it to `param_name` or leave it.
-  - Docs: `docs/llms.md` and `docs/models.md` (mkdocs sources; `site/` is generated)
-    and a CHANGELOG entry. Vocabulary is already settled in `docs-agents/GLOSSARY.md`.
-    One stale mention in this file to fix on the way through: "per-target capability
-    resolution" under Shipped.
-  - Deferred, to record as a decision rather than fix here: `provider_id` should
-    probably never hold `"openai_compatible"` — that case wants
-    `provider_id="vllm"` (or `llamacpp`) with the OpenAI-shaped wire format expressed
-    purely as transport, which changes `openai_compatible()`'s signature.
+- **Decide what `provider_id` may hold.** It should probably never be
+  `"openai_compatible"` — that's a wire format, not a server. The case wants
+  `provider_id="vllm"` (or `llamacpp`) with the OpenAI-shaped wire format expressed
+  purely as transport, which changes `openai_compatible()`'s signature. Left as-is by
+  the rename; record via the `decide` skill.
 - **Fix the two reasoning bugs blocking live coverage.** `thinking=True` hardcodes
   `reasoning_effort="low"`, which 400s on both Mistral reasoning served models; and
   `thinking=False` is a no-op on Ollama, where omitting the parameter leaves the model
@@ -83,21 +45,21 @@ route used to reach it.
   are deleted and not worth reviving — they predate the served-model vocabulary and the
   current capability layer. The replacement should define the test layers and their
   markers (contract, capability, adapter, reliability, live), how to mock LiteLLM and
-  inject `_sleep`, and how to add a served model or a step. Write it after the rename so
-  it uses the settled terms; it becomes the source for the Contributing guide below.
+  inject `_sleep`, and how to add a served model or a step. Uses the settled
+  vocabulary; becomes the source for the Contributing guide below.
 - **Capability-driven live test catalogue.** A curated served-model catalog plus one
   shared live suite parametrized over it, so adding a model is a single catalog entry.
   Replaces the ad-hoc per-provider `integration` tests and wires up the `live` marker.
   Depends on the two bug fixes and the new test plan.
 - **Migrate anthropic to `claude-sonnet-5`.** Check support for `claude-sonnet-5` and
-  add it in place of `claude-sonnet-4-6` (`_CATALOG`, examples, defaults); confirm
+  add it in place of `claude-sonnet-4-6` (`_SERVED_MODEL_CATALOG`, examples, defaults); confirm
   capability parity (reasoning / batching / structured output) before removing the
   4.6 entry.
 
 ### Documentation (launch)
 
 Bring the published docs (mkdocs, `docs/`) to release quality. The site today covers
-Home, Concepts, a few Guides, three Cookbook recipes, Providers, Models, and API.
+Home, Concepts, a few Guides, three Cookbook recipes, Served models, Models, and API.
 Gaps to close, roughly in priority order:
 
 - **Step reference (largest gap).** One reference page per step family documenting
