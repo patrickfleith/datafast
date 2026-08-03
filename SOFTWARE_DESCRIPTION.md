@@ -24,7 +24,7 @@ Top-level exports include:
 - LLM transforms: `LLMStep`, `Classify`, `Score`, `Compare`, `Rewrite`, `Extract`
 - Branching: `Branch`, `JoinBranches`
 - Sinks: `Sink`, `JSONLSink`, `CSVSink`, `ListSink`, `ParquetSink`, `HubSink`
-- Providers: `OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`, `MistralProvider`, `OpenRouterProvider`, `OllamaProvider`
+- Served models: `ServedModel` via the provider factories `openai`, `anthropic`, `gemini`, `mistral`, `openrouter`, `ollama`, `openai_compatible`
 
 ## Execution Model
 

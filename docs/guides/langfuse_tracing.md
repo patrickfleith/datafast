@@ -6,9 +6,9 @@ This integration is designed to be low-friction:
 
 - install one optional extra
 - put your Langfuse keys in `.env`
-- create a provider as usual
+- create a served model as usual
 
-If the Langfuse environment variables are present, Datafast enables tracing automatically when a provider is initialized.
+If the Langfuse environment variables are present, Datafast enables tracing automatically when a served model is initialized.
 
 ## Install
 
@@ -85,7 +85,7 @@ That disables the LiteLLM Langfuse callback and prevents Datafast's auto-enable 
 
 Datafast attaches LiteLLM metadata so traces are easier to interpret in Langfuse. This includes:
 
-- provider and model id
+- provider id and model id (`datafast_provider_id`, `datafast_model_id`)
 - Datafast version
 - step name and step type
 - record index

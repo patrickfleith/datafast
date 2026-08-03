@@ -1,28 +1,44 @@
-# LLM Providers
+# Served Models
 
-Datafast keeps direct provider support while using the pipeline-first execution model.
+A **served model** is a provider and a model together, with its configuration — the
+object you construct and call. Datafast keeps direct provider support while using the
+pipeline-first execution model.
 
 ## Available Providers
 
-- `OpenAIProvider`
-- `AnthropicProvider`
-- `GeminiProvider`
-- `MistralProvider`
-- `OpenRouterProvider`
-- `OllamaProvider`
+Each provider has a factory that returns a `ServedModel`:
+
+- `openai`
+- `anthropic`
+- `gemini`
+- `mistral`
+- `openrouter`
+- `ollama`
+- `openai_compatible` — for self-hosted servers speaking the OpenAI wire format
 
 ## Recommended Import Style
 
-For pipelines, use top-level factories when convenient:
+The factories are the public entry points; import them from the top level:
 
 ```python
 from datafast import LLMStep, openrouter
 ```
 
-For explicit provider classes:
+Pass a model id, plus any configuration, to build a served model:
 
 ```python
-from datafast import OpenAIProvider, OllamaProvider
+from datafast import openai, ollama
+
+model = openai("gpt-5.4-mini", temperature=0.7)
+local = ollama("gemma3:4b")
+```
+
+`ServedModel` is exported for type annotations:
+
+```python
+from datafast import ServedModel
+
+def build_step(model: ServedModel): ...
 ```
 
 ## Example
@@ -55,7 +71,7 @@ pipeline = (
 Ollama typically does not require an API key and instead uses the local API base.
 
 `DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO` defaults to enabled. Datafast sets
-LiteLLM's `suppress_debug_info` flag when a provider is created so example runs do
+LiteLLM's `suppress_debug_info` flag when a served model is created so example runs do
 not print LiteLLM provider help text such as the OpenRouter provider list banner.
 Set `DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO=0` if you want LiteLLM's debug/help
 output back while troubleshooting.
@@ -76,7 +92,7 @@ LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-Datafast loads `.env` when a provider is created, and if the Langfuse keys are present it registers LiteLLM's native `langfuse` callback automatically.
+Datafast loads `.env` when a served model is created, and if the Langfuse keys are present it registers LiteLLM's native `langfuse` callback automatically.
 
 If you want an explicit startup hook instead of auto-detection:
 

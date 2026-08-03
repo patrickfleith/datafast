@@ -66,16 +66,11 @@ from datafast import Source, LLMStep, Sink, openrouter
 - `Sink.hub(...)`
 - `Sink.list()`
 
-## Providers
+## Served Models
 
-- `OpenAIProvider`
-- `AnthropicProvider`
-- `GeminiProvider`
-- `MistralProvider`
-- `OpenRouterProvider`
-- `OllamaProvider`
+- `ServedModel` — the provider-and-model pair you construct and call
 
-Factory helpers:
+Provider factories, the public way to build one:
 
 - `openai(...)`
 - `anthropic(...)`
@@ -83,3 +78,4 @@ Factory helpers:
 - `mistral(...)`
 - `openrouter(...)`
 - `ollama(...)`
+- `openai_compatible(...)`
