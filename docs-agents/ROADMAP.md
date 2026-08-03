@@ -26,7 +26,73 @@ documentation.
 
 ### Provider hardening & tests
 
-- **Capability-driven live test catalogue (L01–L10).** A curated model catalog + shared live suite parametrized over it, so adding a model is one catalog entry. Replaces ad-hoc per-provider `integration` tests; wire the `live` marker.
+The provider layer's vocabulary doesn't match what the code does. `LLMProvider` is
+the most-used public symbol, but an `LLMProvider` instance isn't a provider — it
+holds a provider *and* a model *and* its settings. Meanwhile `provider` as a field
+accepts non-provider values (`"openai_compatible"` is a wire format, not a server),
+`litellm_provider` is really a transport prefix, and `target` is already taken by the
+pipeline API (`target_audience`, `target_length`, "target column"). Settling this
+before the docs push matters: every page we're about to write inherits whichever
+words we pick, and with no users yet the rename is free.
+
+Nomenclature: a **provider** is the server (cloud or local), a **model** is the LLM it
+serves, a **served model** is the two together plus its configuration, **capabilities**
+are what that served model can actually do, and **transport** is the wire protocol and
+route used to reach it.
+
+- **Rename the provider layer to the served-model vocabulary.** No aliases or
+  deprecation shims — there are no users.
+  - Types and classes: `TargetCapabilities` → `ServedModelCapabilities`,
+    `TargetConfig` → `ServedModelConfig`, `LLMProvider` → `ServedModel`. The eight
+    per-provider subclasses become private (`_OpenAIServedModel`, …) and drop out of
+    every `__all__`, leaving the lowercase factories (`openai`, `anthropic`, `gemini`,
+    `mistral`, `openrouter`, `ollama`, `openai_compatible`) as the only public entry
+    points. Capability profile constants (`OPENAI_RESPONSES`, `ANTHROPIC_CHAT`, …)
+    stay as they are; `_CATALOG` becomes `_SERVED_MODEL_CATALOG` to match the glossary.
+  - Filenames: `datafast/llm/provider.py` → `served_model.py` and
+    `tests/test_llm_provider_contract.py` → `test_served_model_contract.py`, since both
+    now hold served-model code. `examples/providers/` keeps its name — those suites
+    really are grouped by provider.
+  - Fields: `provider` → `provider_id` (consistent with `model_id`),
+    `litellm_provider` → `litellm_route`, `provider_name` → `provider_id`.
+  - Ripple: `resolve_capabilities()`, `_get_model_string()`, the four
+    `transforms/llm_*.py` consumers, exports in `datafast/__init__.py` and
+    `datafast/llm/__init__.py`, and `datafast/llms.py` — a compat shim for names with
+    no users, so decide whether to delete it. `provider_name` is duck-typed: it
+    reaches `tracing.py` (and the `datafast_provider` metadata key) plus 14 stub
+    definitions across 7 test files. Also sweep the "target" prose in docstrings and
+    comments. Two things that must *not* be swept: `LLMStep(model=...)` stays
+    (friendliest keyword, renaming buys nothing), and `_add_supported_param`'s
+    `target_name=` argument is a different "target" — the destination parameter name —
+    so a blind grep-and-replace will corrupt it; rename it to `param_name` or leave it.
+  - Docs: `docs/llms.md` and `docs/models.md` (mkdocs sources; `site/` is generated)
+    and a CHANGELOG entry. Vocabulary is already settled in `docs-agents/GLOSSARY.md`.
+    One stale mention in this file to fix on the way through: "per-target capability
+    resolution" under Shipped.
+  - Deferred, to record as a decision rather than fix here: `provider_id` should
+    probably never hold `"openai_compatible"` — that case wants
+    `provider_id="vllm"` (or `llamacpp`) with the OpenAI-shaped wire format expressed
+    purely as transport, which changes `openai_compatible()`'s signature.
+- **Fix the two reasoning bugs blocking live coverage.** `thinking=True` hardcodes
+  `reasoning_effort="low"`, which 400s on both Mistral reasoning served models; and
+  `thinking=False` is a no-op on Ollama, where omitting the parameter leaves the model
+  default — which is *on* for qwen3. Surfaced by probes from the now-deleted live test
+  plan; recorded here because they gate any live suite.
+- **Write a new provider test plan.** The old drafts (`llm_provider_test_plan.md`,
+  `llm_provider_test_guide.md`, `llm_provider_requirements.md`, `llm_live_test_plan.md`)
+  are deleted and not worth reviving — they predate the served-model vocabulary and the
+  current capability layer. The replacement should define the test layers and their
+  markers (contract, capability, adapter, reliability, live), how to mock LiteLLM and
+  inject `_sleep`, and how to add a served model or a step. Write it after the rename so
+  it uses the settled terms; it becomes the source for the Contributing guide below.
+- **Capability-driven live test catalogue.** A curated served-model catalog plus one
+  shared live suite parametrized over it, so adding a model is a single catalog entry.
+  Replaces the ad-hoc per-provider `integration` tests and wires up the `live` marker.
+  Depends on the two bug fixes and the new test plan.
+- **Migrate anthropic to `claude-sonnet-5`.** Check support for `claude-sonnet-5` and
+  add it in place of `claude-sonnet-4-6` (`_CATALOG`, examples, defaults); confirm
+  capability parity (reasoning / batching / structured output) before removing the
+  4.6 entry.
 
 ### Documentation (launch)
 
@@ -57,14 +123,12 @@ Gaps to close, roughly in priority order:
   the Tier-1 cleanup, and exactly what each does: checkpoint_dir, resume, batch_size,
   llm_strategy, limit, stop_after, and where rate limiting actually lives (provider
   `rpm_limit` vs runner). Prevents a repeat of the dead-parameter confusion.
-- **Provider user guide.** User-facing counterpart to the internal provider-doc
-  consolidation: each factory (openai / anthropic / gemini / mistral / openrouter /
-  ollama / openai_compatible), required API-key env vars, endpoint modes
-  (chat / responses), the capability model and per-target resolution, the
-  `unsupported_params` policy (fail/warn/quiet), reliability knobs
+- **Provider and served-model guide.** Each factory (openai / anthropic / gemini /
+  mistral / openrouter / ollama / openai_compatible), required API-key env vars,
+  transports (chat / responses), the capability model and per-served-model resolution,
+  the `unsupported_params` policy (fail/warn/quiet), reliability knobs
   (retries/backoff/jitter/timeout/rpm_limit), native batching, structured output, and
-  reasoning controls. Absorbs `llm_provider_requirements.md`; remove it from the root
-  once merged.
+  reasoning controls. Written from the code, not from the deleted requirements draft.
 - **Structured output guide.** `parse_mode` (text/json/xml) at the step level vs
   Pydantic `response_format` at the provider level — when to use which. Resolves the
   design-doc-vs-code divergence.
@@ -72,7 +136,8 @@ Gaps to close, roughly in priority order:
   content parts, and capability gating per target. Grows with the modality features below.
 - **Migration guide (v1 → v2).** Map each removed dataset class (Classification, MCQ,
   preference, instruction) to its pipeline equivalent and call out the breaking removal
-  of the dataset-class API. Port design-doc Appendix C.
+  of the dataset-class API. Port Appendix C of the deleted
+  `datafast_new_design_document.md`, recoverable from git history.
 - **Environment & install reference.** All env vars (provider API keys, `HF_TOKEN`,
   `LANGFUSE_*`) and optional extras (datasets, pyarrow, huggingface_hub, langfuse),
   with a minimal end-to-end setup path.
@@ -86,11 +151,9 @@ Gaps to close, roughly in priority order:
 - **Changelog / release notes.** Populate `docs-agents/CHANGELOG.md` for the new
   version and write a public "what's new / breaking changes" page (dataset classes
   removed → pipelines).
-- **Contributing & development guide.** Test markers (integration / live / multimodal /
-  ollama / vllm / llamacpp) and layers (contract C*, capability K*, adapter A*,
-  reliability R*, live L*), how to add a provider or a step, and project layout.
-  Absorbs `llm_provider_test_plan.md` and `llm_provider_test_guide.md`; remove them
-  from the root once merged.
+- **Contributing & development guide.** Test markers and layers, how to add a served
+  model or a step, and project layout. Draws on the new provider test plan (see Provider
+  hardening & tests) rather than the deleted drafts.
 - **Retire `SOFTWARE_DESCRIPTION.md`.** Fold its content into the docs above and
   generate the user manual (`docs-agents/SUM.md`) with the `write-manual` skill; delete
   `SOFTWARE_DESCRIPTION.md` once superseded.
@@ -125,6 +188,5 @@ Gaps to close, roughly in priority order:
 
 Non-feature work: rework, refactor, performance, cleanup.
 
-- **Detailed LLMProvider test guide** — drafted at `llm_provider_test_guide.md` (how to mock LiteLLM, inject `_sleep`, cover each test layer, add reliability/multimodal tests, extend the model catalog); to be folded into the Contributing & development guide (see Documentation) and removed from the root.
-- Migrate existing per-provider `integration` tests onto the `live` marker and the shared catalogue once (L*) lands; retire duplicated ad-hoc coverage.
+- Migrate existing per-provider `integration` tests onto the `live` marker and the shared catalogue once it lands; retire duplicated ad-hoc coverage.
 - Unused markers (`multimodal`, `ollama`, `vllm`, `llamacpp`) are declared but not yet applied to tests.
