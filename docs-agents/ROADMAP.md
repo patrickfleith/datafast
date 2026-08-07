@@ -28,6 +28,13 @@
   reasoning, so they are unchanged. Verified live on all three providers; regression
   tests in `tests/test_served_model_contract.py`.
 
+- `provider_id` always names a server, never a wire format (DEC-003):
+  `openai_compatible()` takes a required `provider_id` keyword and rejects wire-format
+  values with an actionable error; the `backend` parameter is gone, matching the
+  glossary's "avoid: backend". Provider ids are normalized (`llama.cpp` → `llamacpp`)
+  and stay free-form, so any self-hosted server works — known ids get their profile,
+  unknown ones fall back to the conservative OpenAI-compatible one.
+
 ## In progress
 
 - Nothing in flight.
@@ -43,11 +50,6 @@ documentation.
 The served-model rename has landed (see Shipped); vocabulary is settled in
 `docs-agents/GLOSSARY.md`. What remains:
 
-- **Decide what `provider_id` may hold.** It should probably never be
-  `"openai_compatible"` — that's a wire format, not a server. The case wants
-  `provider_id="vllm"` (or `llamacpp`) with the OpenAI-shaped wire format expressed
-  purely as transport, which changes `openai_compatible()`'s signature. Left as-is by
-  the rename; record via the `decide` skill.
 - **Write a new provider test plan.** The old drafts (`llm_provider_test_plan.md`,
   `llm_provider_test_guide.md`, `llm_provider_requirements.md`, `llm_live_test_plan.md`)
   are deleted and not worth reviving — they predate the served-model vocabulary and the
