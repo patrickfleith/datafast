@@ -533,12 +533,17 @@ class ServedModel:
         *,
         endpoint: EndpointMode,
     ) -> None:
-        self._add_supported_param(
-            params,
-            "temperature",
-            self.config.temperature,
-            endpoint=endpoint,
-        )
+        if self._temperature_allowed():
+            self._add_supported_param(
+                params,
+                "temperature",
+                self.config.temperature,
+                endpoint=endpoint,
+            )
+        elif "temperature" in self._configured_common_params:
+            self._handle_unsupported_param(
+                "temperature", detail="while reasoning is enabled"
+            )
 
         token_param = (
             "max_output_tokens"
@@ -577,6 +582,14 @@ class ServedModel:
             effort,
             endpoint=endpoint,
         )
+
+    def _temperature_allowed(self) -> bool:
+        """False where the served model rejects a temperature with reasoning on."""
+        if not self.capabilities.reasoning_locks_temperature:
+            return True
+        if self.config.thinking is False:
+            return True
+        return self._resolve_reasoning_effort() is None
 
     def _resolve_reasoning_effort(self) -> str | None:
         """Resolve the reasoning_effort value to send, or None to omit it.
@@ -728,11 +741,11 @@ class ServedModel:
 
         params[param_name or source_name] = value
 
-    def _handle_unsupported_param(self, name: str) -> None:
-        message = (
-            f"Parameter '{name}' is not supported by resolved served model "
-            f"{self.provider_id}/{self.model_id} and will be omitted."
-        )
+    def _handle_unsupported_param(self, name: str, detail: str | None = None) -> None:
+        target = f"resolved served model {self.provider_id}/{self.model_id}"
+        if detail:
+            target = f"{target} {detail}"
+        message = f"Parameter '{name}' is not supported by {target} and will be omitted."
         if self.config.unsupported_params == UnsupportedParamsPolicy.FAIL:
             raise ValueError(message)
         if self.config.unsupported_params == UnsupportedParamsPolicy.WARN:
@@ -1078,7 +1091,7 @@ class _OpenAICompatibleServedModel(ServedModel):
         self,
         model_id: str,
         *,
-        provider_id: str = "openai_compatible",
+        provider_id: str,
         litellm_route: str = "openai",
         env_key_name: str | None = None,
         **kwargs: Any,
@@ -1122,36 +1135,48 @@ def ollama(model_id: str = "gemma3:4b", **kwargs: Any) -> ServedModel:
 def openai_compatible(
     model_id: str,
     *,
+    provider_id: str,
     api_base_url: str | None = None,
-    backend: str = "openai_compatible",
     **kwargs: Any,
 ) -> ServedModel:
-    provider_id = _normalize_openai_compatible_backend(backend)
+    """Build a served model reached over the OpenAI-compatible transport.
+
+    provider_id names the server doing the serving ('vllm', 'llamacpp', ...),
+    never the wire format. Servers without a capability profile of their own
+    still work; they resolve to the conservative OpenAI-compatible profile.
+    """
     return _OpenAICompatibleServedModel(
         model_id=model_id,
-        provider_id=provider_id,
+        provider_id=_normalize_provider_id(provider_id),
         api_base_url=api_base_url,
         **kwargs,
     )
 
 
-def _normalize_openai_compatible_backend(value: str) -> str:
+# An OpenAI-shaped wire format says nothing about which server is on the other
+# end, so these never identify a provider.
+_WIRE_FORMAT_IDS = frozenset({"openai_compatible", "openai_api", "oai_compatible"})
+
+_PROVIDER_ID_ALIASES = {
+    "llama_cpp": "llamacpp",
+    "llama.cpp": "llamacpp",
+}
+
+
+def _normalize_provider_id(value: str) -> str:
     normalized = value.strip().lower().replace("-", "_")
-    aliases = {
-        "openai-compatible": "openai_compatible",
-        "openai_compatible": "openai_compatible",
-        "llama.cpp": "llamacpp",
-        "llama_cpp": "llamacpp",
-        "llamacpp": "llamacpp",
-        "vllm": "vllm",
-    }
-    try:
-        return aliases[normalized]
-    except KeyError as exc:
-        valid = ", ".join(sorted(set(aliases.values())))
+    normalized = _PROVIDER_ID_ALIASES.get(normalized, normalized)
+    if not normalized:
         raise ValueError(
-            f"Unsupported OpenAI-compatible backend '{value}'. Choose: {valid}"
-        ) from exc
+            "provider_id must name the server that serves the model, e.g. 'vllm'."
+        )
+    if normalized in _WIRE_FORMAT_IDS:
+        raise ValueError(
+            f"provider_id '{value}' names a wire format, not a server. Pass the "
+            "server that serves the model, e.g. provider_id='vllm' or "
+            "provider_id='llamacpp'."
+        )
+    return normalized
 
 
 def _coerce_endpoint_mode(value: str | EndpointMode) -> EndpointMode:

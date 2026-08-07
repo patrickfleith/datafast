@@ -14,7 +14,9 @@ Each provider has a factory that returns a `ServedModel`:
 - `mistral`
 - `openrouter`
 - `ollama`
-- `openai_compatible` — for self-hosted servers speaking the OpenAI wire format
+- `openai_compatible` — for self-hosted servers speaking the OpenAI wire format.
+  Takes a required `provider_id` naming the server itself (`vllm`, `llamacpp`, …),
+  since the wire format says nothing about which server is on the other end.
 
 ## Recommended Import Style
 

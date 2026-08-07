@@ -83,6 +83,9 @@ class ServedModelCapabilities:
     reasoning_off_param: tuple[str, Any] | None = None
     # Accepted reasoning_effort values, or None to forward any value unchecked.
     reasoning_efforts: frozenset[str] | None = None
+    # True where the served model rejects a caller-chosen temperature once
+    # reasoning is on, so temperature is dropped for those requests.
+    reasoning_locks_temperature: bool = False
     supports_media_uuid: bool = False
     no_api_key: bool = False
     requires_chat_template: bool = False

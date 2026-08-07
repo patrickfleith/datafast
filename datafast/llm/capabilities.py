@@ -136,6 +136,12 @@ ANTHROPIC_CHAT = ServedModelCapabilities(
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
     supports_thinking=True,
+    reasoning_locks_temperature=True,
+    notes=(
+        "Anthropic accepts only temperature=1 while thinking is enabled, so "
+        "Datafast omits temperature on reasoning requests and lets the "
+        "provider default apply.",
+    ),
 )
 
 
@@ -283,10 +289,6 @@ _PROVIDER_DEFAULTS: dict[str, ServedModelCapabilities] = {
     "vllm": VLLM_CHAT,
 }
 
-_OPENAI_COMPATIBLE_PROVIDERS = frozenset({
-    "openai_compatible",
-})
-
 
 def resolve_capabilities(
     provider_id: str,
@@ -319,9 +321,8 @@ def resolve_capabilities(
     if provider_default is not None:
         return provider_default
 
-    if normalized_provider in _OPENAI_COMPATIBLE_PROVIDERS:
-        return OPENAI_COMPATIBLE_CHAT
-
+    # A self-hosted server we have no profile for: assume only what the
+    # OpenAI-compatible wire format itself guarantees.
     if api_base_url:
         return OPENAI_COMPATIBLE_CHAT
 

@@ -9,6 +9,7 @@ from datafast.llm import (
     EndpointMode,
     Modality,
     RetryPolicy,
+    anthropic,
     gemini,
     mistral,
     ollama,
@@ -98,6 +99,7 @@ def test_factories_resolve_expected_served_models():
     hosted = openai(api_key="test-key")
     local = openai_compatible(
         "ministral-8b-2512",
+        provider_id="tgi",
         api_base_url="http://localhost:8000/v1",
     )
 
@@ -105,7 +107,7 @@ def test_factories_resolve_expected_served_models():
     assert hosted.endpoint_mode == EndpointMode.RESPONSES
     assert hosted._get_model_string() == "openai/gpt-5.5"
 
-    assert local.provider_id == "openai_compatible"
+    assert local.provider_id == "tgi"
     assert local.endpoint_mode == EndpointMode.CHAT
     assert local.api_base_url == "http://localhost:8000/v1"
 
@@ -128,23 +130,24 @@ def test_served_model_allows_litellm_debug_opt_out(monkeypatch):
     assert served_model_module.litellm.suppress_debug_info is False
 
 
-def test_openai_compatible_backend_profiles_are_distinct():
+def test_openai_compatible_provider_profiles_are_distinct():
     generic = openai_compatible(
         "local-model",
+        provider_id="tgi",
         api_base_url="http://localhost:8000/v1",
     )
     vllm = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8000/v1",
-        backend="vllm",
+        provider_id="vllm",
     )
     llamacpp = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8080/v1",
-        backend="llamacpp",
+        provider_id="llamacpp",
     )
 
-    assert generic.provider_id == "openai_compatible"
+    assert generic.provider_id == "tgi"
     assert generic.capabilities.modalities == frozenset({Modality.TEXT})
 
     assert vllm.provider_id == "vllm"
@@ -155,6 +158,32 @@ def test_openai_compatible_backend_profiles_are_distinct():
     assert llamacpp.provider_id == "llamacpp"
     assert Modality.AUDIO in llamacpp.capabilities.modalities
     assert Modality.FILE in llamacpp.capabilities.modalities
+
+
+def test_openai_compatible_rejects_a_wire_format_as_provider_id():
+    # provider_id names the server, never the wire format used to reach it.
+    for value in ("openai_compatible", "openai-compatible", "OpenAI_Compatible"):
+        with pytest.raises(ValueError, match="names a wire format"):
+            openai_compatible(
+                "local-model",
+                provider_id=value,
+                api_base_url="http://localhost:8000/v1",
+            )
+
+
+def test_openai_compatible_requires_a_provider_id():
+    with pytest.raises(TypeError, match="provider_id"):
+        openai_compatible("local-model", api_base_url="http://localhost:8000/v1")
+
+
+def test_openai_compatible_normalizes_provider_id():
+    for value in ("llama.cpp", "LLAMA-CPP", " llamacpp "):
+        model = openai_compatible(
+            "local-model",
+            provider_id=value,
+            api_base_url="http://localhost:8080/v1",
+        )
+        assert model.provider_id == "llamacpp"
 
 
 def test_input_validation_rejects_missing_or_ambiguous_inputs():
@@ -178,6 +207,7 @@ def test_unsupported_params_warn_and_omit(monkeypatch):
 
     model = openai_compatible(
         "local-model",
+        provider_id="tgi",
         api_base_url="http://localhost:8000/v1",
         temperature=0.7,
     )
@@ -197,6 +227,7 @@ def test_unsupported_params_fail_before_dispatch(monkeypatch):
 
     model = openai_compatible(
         "local-model",
+        provider_id="tgi",
         api_base_url="http://localhost:8000/v1",
         temperature=0.7,
         unsupported_params="fail",
@@ -319,6 +350,49 @@ def test_mistral_thinking_false_disables_reasoning(monkeypatch):
 
     assert model.generate(prompt="ping") == "ok"
     assert captured["reasoning_effort"] == "none"
+
+
+def test_anthropic_thinking_warns_and_omits_temperature(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(
+        model_id="claude-haiku-4-5",
+        api_key="test-key",
+        thinking=True,
+        temperature=0.0,
+    )
+
+    # Anthropic 400s on any temperature but 1 once thinking is on.
+    with pytest.warns(UserWarning, match="temperature"):
+        assert model.generate(prompt="ping") == "ok"
+
+    assert "temperature" not in captured
+    assert captured["reasoning_effort"] == "low"
+
+
+def test_anthropic_without_thinking_keeps_temperature(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(
+        model_id="claude-haiku-4-5",
+        api_key="test-key",
+        temperature=0.0,
+    )
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["temperature"] == 0.0
 
 
 def test_mistral_rejects_unsupported_reasoning_effort(monkeypatch):
@@ -559,6 +633,7 @@ def test_provider_params_escape_hatch_is_forwarded(monkeypatch):
 
     model = openai_compatible(
         "local-model",
+        provider_id="tgi",
         api_base_url="http://localhost:8000/v1",
         provider_params={"extra_body": {"backend_hint": "vllm"}},
     )
@@ -571,7 +646,7 @@ def test_content_parts_normalize_multimodal_and_document_shapes():
     vllm = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8000/v1",
-        backend="vllm",
+        provider_id="vllm",
     )
     prepared = vllm._prepare_messages(
         [
@@ -612,7 +687,7 @@ def test_content_parts_normalize_multimodal_and_document_shapes():
     llamacpp = openai_compatible(
         "local-model",
         api_base_url="http://localhost:8080/v1",
-        backend="llamacpp",
+        provider_id="llamacpp",
     )
     prepared = llamacpp._prepare_messages(
         [
@@ -926,6 +1001,7 @@ def test_fallback_batching_preserves_order(monkeypatch):
 
     model = openai_compatible(
         "local-model",
+        provider_id="tgi",
         api_base_url="http://localhost:8000/v1",
         max_concurrent=1,
     )
