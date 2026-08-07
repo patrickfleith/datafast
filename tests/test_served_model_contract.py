@@ -696,8 +696,13 @@ def test_content_parts_normalize_multimodal_and_document_shapes():
                 "content": [
                     ContentPart(
                         type="document",
-                        data="data:application/pdf;base64,abc",
+                        data="abc",
                         media_type="application/pdf",
+                    ),
+                    ContentPart(
+                        type="file",
+                        data="data:application/pdf;base64,def",
+                        filename="report.pdf",
                     ),
                 ],
             }
@@ -705,11 +710,20 @@ def test_content_parts_normalize_multimodal_and_document_shapes():
         response_format=None,
     )
 
+    # Raw base64 gets wrapped into a data URI, just like image parts; an
+    # already-built URI passes through untouched.
     assert prepared[0]["content"] == [
         {
             "type": "file",
             "file": {"file_data": "data:application/pdf;base64,abc"},
-        }
+        },
+        {
+            "type": "file",
+            "file": {
+                "file_data": "data:application/pdf;base64,def",
+                "filename": "report.pdf",
+            },
+        },
     ]
 
 
@@ -954,6 +968,45 @@ def test_responses_full_response_preserves_output_items_and_media(monkeypatch):
     assert response.output_items == output
 
 
+def test_responses_endpoint_converts_file_parts_to_input_file(monkeypatch):
+    """The Responses API rejects chat `file` parts, so they become `input_file`:
+    inline data stays as `file_data`, an http(s) reference becomes `file_url`."""
+    captured = {}
+
+    def fake_responses(**kwargs):
+        captured.update(kwargs)
+        return _DummyResponsesResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
+
+    model = openai(model_id="gpt-5.5", api_key="test-key")
+    model.generate(
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    ContentPart(
+                        type="file",
+                        data="abc",
+                        media_type="application/pdf",
+                        filename="report.pdf",
+                    ),
+                    ContentPart(type="file", url="https://example.com/report.pdf"),
+                ],
+            }
+        ]
+    )
+
+    assert captured["input"][0]["content"] == [
+        {
+            "type": "input_file",
+            "file_data": "data:application/pdf;base64,abc",
+            "filename": "report.pdf",
+        },
+        {"type": "input_file", "file_url": "https://example.com/report.pdf"},
+    ]
+
+
 def test_responses_endpoint_maps_reasoning_state_and_structured_output(monkeypatch):
     captured = {}
 
@@ -988,6 +1041,37 @@ def test_responses_endpoint_maps_reasoning_state_and_structured_output(monkeypat
     assert "metadata" not in captured
     assert captured["litellm_metadata"]["purpose"] == "test"
     assert captured["input"] == [{"role": "user", "content": "capital?"}]
+
+
+def test_openai_model_id_picks_the_endpoint_and_temperature_support(monkeypatch):
+    """No openai catalog id maps to OPENAI_CHAT — a gpt-4-class id gets there through
+    the reasoning-model prefix fallback, and only there is temperature supported."""
+    captured = {}
+
+    def capture(**kwargs):
+        captured.update(kwargs)
+        return _DummyResponsesResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "responses", capture)
+    monkeypatch.setattr(
+        served_model_module.litellm,
+        "completion",
+        lambda **kwargs: captured.update(kwargs) or _DummyChatResponse("ok"),
+    )
+
+    reasoning_model = openai(
+        model_id="gpt-5.4-mini", api_key="test-key", temperature=0.0
+    )
+    assert reasoning_model.endpoint_mode == EndpointMode.RESPONSES
+    with pytest.warns(UserWarning, match="temperature"):
+        reasoning_model.generate(prompt="ping")
+    assert "temperature" not in captured
+
+    captured.clear()
+    chat_model = openai(model_id="gpt-4o-mini", api_key="test-key", temperature=0.0)
+    assert chat_model.endpoint_mode == EndpointMode.CHAT
+    chat_model.generate(prompt="ping")
+    assert captured["temperature"] == 0.0
 
 
 def test_fallback_batching_preserves_order(monkeypatch):

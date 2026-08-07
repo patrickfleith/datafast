@@ -1274,6 +1274,7 @@ def _content_part_to_dict(part: Any) -> dict[str, Any]:
             "data": part.data,
             "media_type": part.media_type,
             "media_id": part.media_id,
+            "filename": part.filename,
             **part.provider_options,
         }
 
@@ -1340,27 +1341,36 @@ def _media_url_from_part(part: dict[str, Any], *, kind: str) -> str:
     if url:
         return url
 
-    data = part.get("data")
-    if data:
-        if data.startswith("data:"):
-            return data
-        media_type = part.get("media_type") or part.get("format")
-        if not media_type:
-            raise ValueError(
-                f"{kind} content parts with raw base64 'data' need 'media_type' "
-                "(e.g. 'image/png') to build a data URI, or pass a full "
-                "'data:' URI directly"
-            )
-        return f"data:{media_type};base64,{data}"
+    if part.get("data"):
+        return _data_uri_from_part(part, kind=kind)
 
     raise ValueError(f"{kind} content parts require either 'url' or 'data'")
+
+
+def _data_uri_from_part(part: dict[str, Any], *, kind: str) -> str:
+    """Wrap raw base64 in a `data:` URI; pass an existing one through."""
+    data = part["data"]
+    if data.startswith("data:"):
+        return data
+    media_type = part.get("media_type") or part.get("format")
+    if not media_type:
+        raise ValueError(
+            f"{kind} content parts with raw base64 'data' need 'media_type' "
+            "(e.g. 'image/png', 'application/pdf') to build a data URI, or "
+            "pass a full 'data:' URI directly"
+        )
+    return f"data:{media_type};base64,{data}"
 
 
 def _normalize_file_part(part: dict[str, Any]) -> dict[str, Any]:
     if isinstance(part.get("file"), dict):
         file_payload = part["file"]
     elif part.get("data"):
-        file_payload = {"file_data": part.get("data")}
+        # OpenAI's Responses API rejects inline file data without a filename.
+        file_payload = {
+            "file_data": _data_uri_from_part(part, kind="file"),
+            "filename": part.get("filename"),
+        }
     else:
         file_payload = {"file_id": part.get("url")}
     return {"type": "file", "file": _without_none(file_payload)}
@@ -1430,10 +1440,10 @@ def _modality_for_part(part: dict[str, Any]) -> Modality:
         return Modality.AUDIO
     if part_type in {"video", "video_url"}:
         return Modality.VIDEO
-    if part_type == "file":
+    # 'document' parts normalize to 'file' before gating, and no served model
+    # declares Modality.DOCUMENT, so both gate as FILE.
+    if part_type in {"file", "document"}:
         return Modality.FILE
-    if part_type == "document":
-        return Modality.DOCUMENT
     return Modality.TEXT
 
 

@@ -142,6 +142,8 @@ class ContentPart:
     data: str | None = None
     media_type: str | None = None
     media_id: str | None = None
+    # Required by OpenAI's Responses API alongside inline file data.
+    filename: str | None = None
     provider_options: dict[str, Any] = field(default_factory=dict)
 
 
