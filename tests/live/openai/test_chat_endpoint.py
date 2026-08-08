@@ -24,6 +24,9 @@ def test_chat_profile_accepts_temperature_and_batches_natively(
     for expected, response in zip(("Paris", "Madrid"), responses):
         assert expected in response
 
+    # The inverse of the gpt-5.x tests: this profile supports both a temperature
+    # and native batching, so datafast must stay quiet. `recwarn` collects every
+    # warning raised during the test; neither phrase may appear in any of them.
     messages = [str(warning.message) for warning in recwarn]
-    assert not [m for m in messages if "temperature" in m]
-    assert not [m for m in messages if "native batching" in m]
+    assert not any("temperature" in message for message in messages)
+    assert not any("native batching" in message for message in messages)
