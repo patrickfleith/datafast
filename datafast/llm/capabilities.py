@@ -364,6 +364,13 @@ def _resolve_mistral_capabilities(model_id: str) -> ServedModelCapabilities:
 # reasoning_effort onto it). "-thinking" also matches models an author has
 # explicitly tagged as a thinking variant, e.g. lfm2.5-thinking. Models outside
 # this set reject reasoning.
+#
+# Entries name families that are wholly thinking-capable, never a family with a
+# mix: matching "nemotron" would catch nemotron-3-super, which does think, along
+# with nemotron-mini and the Nemotron-70B-Instruct models, which do not. A false
+# positive sends `think` to a model that rejects it, so the bar for adding a name
+# is the whole family, and single models that think without saying so in their id
+# are left to `probe_capabilities()`.
 _OLLAMA_REASONING_MODELS = (
     "deepseek-r1",
     "deepseek-v3.1",

@@ -1159,7 +1159,11 @@ class _OpenRouterServedModel(ServedModel):
 
 
 class _OllamaServedModel(ServedModel):
-    def __init__(self, model_id: str = "gemma3:4b", **kwargs: Any) -> None:
+    # LiteLLM has no Ollama introspection, so the probe below calls the daemon.
+    SHOW_PATH = "/api/show"
+    DEFAULT_API_BASE = "http://localhost:11434"
+
+    def __init__(self, model_id: str = "gemma4:12b", **kwargs: Any) -> None:
         super().__init__(
             "ollama",
             model_id,
@@ -1167,6 +1171,43 @@ class _OllamaServedModel(ServedModel):
             env_key_name=None,
             **kwargs,
         )
+
+    def probe_capabilities(self) -> frozenset[str]:
+        """Ask the Ollama daemon what this model can actually do.
+
+        Returns Ollama's own capability names — "completion", "vision", "audio",
+        "thinking", "tools", "embedding", "insert" — not Datafast's vocabulary.
+
+        Which model is pulled is a property of the machine, not of the id, so
+        Datafast resolves an Ollama model from name heuristics and can only be
+        approximately right: `OLLAMA_CHAT` declares `Modality.IMAGE` for every
+        model, and a reasoning model whose name carries no marker resolves to the
+        profile with reasoning switched off. The daemon knows the answer exactly
+        and answers for free, so it is worth asking before assuming:
+
+            if "vision" not in model.probe_capabilities():
+                ...  # don't bother attaching the image
+
+        Raises `httpx.HTTPStatusError` if the model is not pulled, and a connect
+        error if no daemon is listening.
+        """
+        response = httpx.post(
+            f"{self._resolved_api_base()}{self.SHOW_PATH}",
+            json={"model": self.model_id},
+            timeout=self.timeout or 60.0,
+        )
+        response.raise_for_status()
+        return frozenset(response.json().get("capabilities") or ())
+
+    def _resolved_api_base(self) -> str:
+        """The daemon the generate calls reach, resolved the way LiteLLM resolves it
+        (`llms/ollama/common_utils.py:76`) so the probe cannot end up on another host."""
+        base = (
+            self.api_base_url
+            or os.getenv("OLLAMA_API_BASE")
+            or self.DEFAULT_API_BASE
+        )
+        return base.rstrip("/")
 
 
 class _OpenAICompatibleServedModel(ServedModel):
@@ -1211,7 +1252,7 @@ def openrouter(
     return _OpenRouterServedModel(model_id=model_id, **kwargs)
 
 
-def ollama(model_id: str = "gemma3:4b", **kwargs: Any) -> ServedModel:
+def ollama(model_id: str = "gemma4:12b", **kwargs: Any) -> ServedModel:
     return _OllamaServedModel(model_id=model_id, **kwargs)
 
 
