@@ -16,6 +16,7 @@
 
 ## Done
 
+- [X] Make `Modality.FILE` state which carrier a served model accepts, and give Mistral a way to reach it <!-- `files_require_file_id` on the profile plus `upload_file`/`delete_file` on the Mistral served model (LiteLLM has no Files support for mistral). Upload stays explicit so one id serves a whole pipeline run and nothing is uploaded behind a generate() call; the caller owns the file's lifetime. Added MISTRAL_CHAT so non-reasoning mistral ids carry the same constraint -->
 - [X] Narrow the roadmap's "file / document input support" item to what is actually left <!-- Responses input_file shape now covered by a mocked test -->
 - [X] Make file content parts symmetric with image parts <!-- `_data_uri_from_part` now shared by media and file parts -->
 - [X] Make sure the roadmap clearly outlines the release of the new version of datafast

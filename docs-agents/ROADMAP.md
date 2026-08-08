@@ -38,11 +38,17 @@
 ## In progress
 
 - Live provider test suites (`tests/live/`), one directory per provider, gated behind
-  `--run-live` and self-skipping when the API key is absent. Anthropic and openai have
-  landed (generation, structured output, reasoning, multimodal, plus openai's Responses
-  transport, fallback-concurrency batching and `OPENAI_CHAT` profile); gemini, mistral,
+  `--run-live` and self-skipping when the API key is absent. Anthropic, openai and
+  mistral have landed (generation, structured output, reasoning, multimodal, plus
+  openai's Responses transport, fallback-concurrency batching and `OPENAI_CHAT`
+  profile, and mistral's reasoning allowlist and Files upload path); gemini,
   openrouter and the local backends remain. Shared image/PDF assets live in
   `tests/live/assets/`.
+  Running the live suites turned up two things worth carrying forward: a declared
+  modality can still be unreachable in practice (Mistral takes files only as an
+  uploaded id, now expressed as `files_require_file_id`), and provider docs are not
+  authoritative about model ids — the `/v1/models` endpoint is. That listing confirmed
+  every catalog id and caught `ministral-*` sitting on the self-hosted profile.
 
 ## Next up
 
