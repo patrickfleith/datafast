@@ -284,17 +284,105 @@ def test_mistral_reasoning_capability_resolution():
         "mistral-small-2603",
         "magistral-medium-2509",
         "magistral-small-latest",
+        # Reasoning is mainline now and marked in the id rather than by family.
+        "ministral-3-8b-reasoning-2512",
     ):
         caps = resolve_capabilities("mistral", model_id)
         assert caps.supports_reasoning is True
         assert "reasoning_effort" in caps.supported_params
         assert caps.reasoning_requires_allowlist is True
+        assert caps.files_require_file_id is True
 
-    # Non-reasoning Mistral served models keep the plain hosted-chat profile.
+    # Non-reasoning Mistral served models keep the plain hosted-chat profile, but
+    # the file carrier is a property of the API, so it applies to them too.
     for model_id in ("mistral-large-2512", "mistral-tiny"):
         caps = resolve_capabilities("mistral", model_id)
         assert caps.supports_reasoning is False
         assert "reasoning_effort" not in caps.supported_params
+        assert caps.files_require_file_id is True
+
+
+def test_mistral_rejects_inline_file_data(monkeypatch):
+    """Mistral's chat API takes a file only as an uploaded id, so inline data has to
+    fail here rather than as a 422 from the provider."""
+    monkeypatch.setattr(
+        served_model_module.litellm,
+        "completion",
+        lambda **kwargs: pytest.fail("no request should be sent"),
+    )
+
+    model = mistral(model_id="mistral-small-2603", api_key="test-key")
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                ContentPart(type="file", data="abc", media_type="application/pdf"),
+            ],
+        }
+    ]
+
+    with pytest.raises(ValueError, match="upload API"):
+        model.generate(messages=messages)
+
+
+def test_mistral_forwards_an_uploaded_file_id(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = mistral(model_id="mistral-small-2603", api_key="test-key")
+    messages = [
+        {
+            "role": "user",
+            "content": [ContentPart(type="file", url="file-abc123")],
+        }
+    ]
+
+    model.generate(messages=messages)
+
+    part = captured["messages"][0]["content"][0]
+    assert part == {"type": "file", "file": {"file_id": "file-abc123"}}
+
+
+def test_mistral_upload_file_returns_the_id(monkeypatch, tmp_path):
+    """LiteLLM has no Files support for Mistral, so upload_file posts to the API
+    itself; this pins the request it builds without sending one."""
+    captured = {}
+
+    class _DummyUploadResponse:
+        def json(self):
+            return {"id": "file-abc123", "purpose": "ocr"}
+
+        def raise_for_status(self):
+            return None
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return _DummyUploadResponse()
+
+    monkeypatch.setattr(served_model_module.httpx, "post", fake_post)
+
+    document = tmp_path / "report.pdf"
+    document.write_bytes(b"%PDF-1.4 ...")
+    model = mistral(model_id="mistral-small-2603", api_key="test-key")
+
+    file_id = model.upload_file(document)
+
+    assert file_id == "file-abc123"
+    assert captured["url"] == "https://api.mistral.ai/v1/files"
+    # No expiry unless asked for, so the account's own retention stays in force.
+    assert captured["data"] == {"purpose": "ocr"}
+    assert captured["headers"]["Authorization"] == "Bearer test-key"
+    assert captured["files"]["file"][0] == "report.pdf"
+
+    model.upload_file(document, expiry=1)
+
+    assert captured["data"] == {"purpose": "ocr", "expiry": 1}
 
 
 def test_mistral_reasoning_effort_is_forwarded_with_allowlist(monkeypatch):
