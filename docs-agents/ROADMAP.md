@@ -28,6 +28,19 @@
   reasoning, so they are unchanged. Verified live on all three providers; regression
   tests in `tests/test_served_model_contract.py`.
 
+- Ollama capability probe and default: `probe_capabilities()` on the ollama served model
+  asks the daemon's `/api/show` what the model can actually do, returning Ollama's own
+  names (`completion`, `vision`, `audio`, `thinking`, `tools`). Which model is pulled is
+  a property of the machine rather than of the id, so name heuristics can only be
+  approximately right — the probe is the way out where being wrong matters, and it
+  resolves the base URL exactly as LiteLLM does so it cannot reach a different daemon
+  than the generate calls. The profiles stay static and the probe stays opt-in. The
+  factory default moved from `gemma3:4b` to `gemma4:12b`, which also moves the default
+  from `OLLAMA_CHAT` to `OLLAMA_REASONING_CHAT`; `docs/models.md` now records that this
+  default is unlike the hosted ones and names lighter alternatives with their sizes.
+  `docs/llms.md` gained a "Provider-Specific Methods" section covering the probe and
+  Mistral's `upload_file`/`delete_file`, neither of which had been documented.
+
 - `provider_id` always names a server, never a wire format (DEC-003):
   `openai_compatible()` takes a required `provider_id` keyword and rejects wire-format
   values with an actionable error; the `backend` parameter is gone, matching the
@@ -38,17 +51,35 @@
 ## In progress
 
 - Live provider test suites (`tests/live/`), one directory per provider, gated behind
-  `--run-live` and self-skipping when the API key is absent. Anthropic, openai and
-  mistral have landed (generation, structured output, reasoning, multimodal, plus
+  `--run-live` and self-skipping when the API key is absent. Anthropic, openai, mistral
+  and ollama have landed (generation, structured output, reasoning, multimodal, plus
   openai's Responses transport, fallback-concurrency batching and `OPENAI_CHAT`
-  profile, and mistral's reasoning allowlist and Files upload path); gemini,
-  openrouter and the local backends remain. Shared image/PDF assets live in
-  `tests/live/assets/`.
-  Running the live suites turned up two things worth carrying forward: a declared
-  modality can still be unreachable in practice (Mistral takes files only as an
-  uploaded id, now expressed as `files_require_file_id`), and provider docs are not
-  authoritative about model ids — the `/v1/models` endpoint is. That listing confirmed
-  every catalog id and caught `ministral-*` sitting on the self-hosted profile.
+  profile, mistral's reasoning allowlist and Files upload path, and ollama's capability
+  probe, `top_p` pass-through, batched message lists and nested-schema constrained
+  decoding); gemini, openrouter and the remaining local backends (vllm, llamacpp)
+  remain. Shared image/PDF assets live in `tests/live/assets/`.
+  Ollama is the first local backend, and being local changes the setup rather than the
+  tests: there is no key to guard on, so `require_ollama` checks the daemon answers and
+  then that the model is pulled, and it resolves `OLLAMA_API_BASE` the way LiteLLM does
+  so the guard and the calls cannot disagree about the host. The suite runs on
+  `qwen3:0.6b` with `gemma4:12b` for vision only — small on purpose, because a small
+  model turns a mapping bug into a visible failure instead of absorbing it.
+  Four lessons worth carrying forward:
+  - A declared modality can still be unreachable in practice. Mistral takes files only
+    as an uploaded id (`files_require_file_id`); ollama declares `Modality.IMAGE` for
+    every model while only some can see, which is why `probe_capabilities()` exists.
+  - Provider docs are not authoritative about model ids — the listing endpoint is.
+    Mistral's `/v1/models` confirmed every catalog id and caught `ministral-*` sitting
+    on the self-hosted profile; ollama's `/api/show` reports per-model capabilities and
+    caught the profiles over-declaring vision.
+  - An ordering assertion must not depend on model knowledge. A wrong answer in the
+    right slot is indistinguishable from a right answer in the wrong slot, so both
+    concurrency tests now key on something the input dictates (an echoed token, or the
+    country named in the prompt) rather than on a capital city the model must recall.
+  - A schema constraint the test relies on belongs in the schema. The nested-schema test
+    asserted a non-empty list while the schema permitted an empty one, so it passed only
+    by the model's goodwill; `minItems: 2` makes the nested branch of the grammar
+    unavoidable, and Ollama does enforce it.
 
 ## Next up
 
@@ -190,5 +221,5 @@ Gaps to close, roughly in priority order:
 
 Non-feature work: rework, refactor, performance, cleanup.
 
-- Migrate existing per-provider `integration` tests onto the `live` marker and the shared catalogue once it lands; retire duplicated ad-hoc coverage.
-- Unused markers (`multimodal`, `ollama`, `vllm`, `llamacpp`) are declared but not yet applied to tests.
+- Migrate existing per-provider `integration` tests onto the `live` marker and the shared catalogue once it lands; retire duplicated ad-hoc coverage. Ollama is done — `tests/test_ollama.py` is deleted, its three genuinely uncovered cases (sampling params, batched message lists, nested schema) ported into `tests/live/ollama/`. Five files remain: openai, anthropic, gemini, mistral, openrouter.
+- Unused markers: `vllm` and `llamacpp` are declared but not yet applied to tests (`multimodal` and `ollama` are now in use).
