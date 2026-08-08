@@ -39,6 +39,13 @@ def image_asset():
 
 
 @pytest.fixture(scope="session")
+def document_path():
+    """The same PDF as `document_asset`, as a path — for served models whose file
+    input goes through an upload API rather than an inline data URI."""
+    return ASSETS / "passphrase.pdf"
+
+
+@pytest.fixture(scope="session")
 def document_asset():
     """A one-page PDF, as a base64 data URI. Its only text is the passphrase
     "ZEBRAFISH-42"."""
