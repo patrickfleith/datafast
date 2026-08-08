@@ -112,6 +112,17 @@ def test_factories_resolve_expected_served_models():
     assert local.api_base_url == "http://localhost:8000/v1"
 
 
+def test_ollama_default_model_is_the_multimodal_reasoning_one():
+    """The default is gemma4:12b, which resolves to OLLAMA_REASONING_CHAT — so
+    calling ollama() with no id gets reasoning and vision rather than the plain
+    profile gemma3 resolved to. It is also what the example scripts use."""
+    model = ollama()
+
+    assert model._get_model_string() == "ollama_chat/gemma4:12b"
+    assert model.capabilities.supports_reasoning is True
+    assert Modality.IMAGE in model.capabilities.modalities
+
+
 def test_served_model_suppresses_litellm_debug_info_by_default(monkeypatch):
     monkeypatch.delenv(served_model_module.LITELLM_SUPPRESS_DEBUG_ENV, raising=False)
     monkeypatch.setattr(served_model_module.litellm, "suppress_debug_info", False)
@@ -645,6 +656,64 @@ def test_ollama_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatch
         assert model.generate(prompt="ping") == "ok"
 
     assert "reasoning_effort" not in captured
+
+
+def test_ollama_probe_capabilities_reads_the_daemon(monkeypatch):
+    """Name heuristics cannot know which model is pulled, so the probe asks
+    /api/show. This pins the request without a daemon running."""
+    captured = {}
+
+    class _DummyShowResponse:
+        def json(self):
+            return {"capabilities": ["completion", "vision", "tools", "thinking"]}
+
+        def raise_for_status(self):
+            return None
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return _DummyShowResponse()
+
+    monkeypatch.delenv("OLLAMA_API_BASE", raising=False)
+    monkeypatch.setattr(served_model_module.httpx, "post", fake_post)
+
+    capabilities = ollama(model_id="gemma4:12b").probe_capabilities()
+
+    assert capabilities == frozenset({"completion", "vision", "tools", "thinking"})
+    assert captured["url"] == "http://localhost:11434/api/show"
+    assert captured["json"] == {"model": "gemma4:12b"}
+    # No auth: Ollama is keyless, which is what no_api_key on the profile records.
+    assert "headers" not in captured
+
+
+def test_ollama_probe_capabilities_follows_the_generate_daemon(monkeypatch):
+    """The probe must land on the same host the generate calls reach, so it resolves
+    the base URL the way LiteLLM does: explicit api_base_url, then OLLAMA_API_BASE."""
+    urls = []
+
+    class _DummyShowResponse:
+        def json(self):
+            return {}
+
+        def raise_for_status(self):
+            return None
+
+    def fake_post(url, **kwargs):
+        urls.append(url)
+        return _DummyShowResponse()
+
+    monkeypatch.setattr(served_model_module.httpx, "post", fake_post)
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://gpu-box:11434")
+
+    # A model with no capabilities key answers with an empty set rather than None.
+    assert ollama(model_id="qwen3:8b").probe_capabilities() == frozenset()
+    ollama(model_id="qwen3:8b", api_base_url="http://other-box:11434/").probe_capabilities()
+
+    assert urls == [
+        "http://gpu-box:11434/api/show",
+        "http://other-box:11434/api/show",
+    ]
 
 
 def test_gemini_reasoning_capability_resolution():
