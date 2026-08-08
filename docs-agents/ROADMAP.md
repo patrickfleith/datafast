@@ -77,6 +77,16 @@ Bring the published docs (mkdocs, `docs/`) to release quality. The site today co
 Home, Concepts, a few Guides, three Cookbook recipes, Served models, Models, and API.
 Gaps to close, roughly in priority order:
 
+- **Check migration to Zensical, and migrate if confirmed.** Material for MkDocs
+  reaches end of life on **November 5, 2026** — maintenance mode since Nov 2025, only
+  critical bug and security fixes until then, no new features. The successor is
+  Zensical, from the same maintainers, which reads `mkdocs.yml` natively. Our setup is
+  the easy case: plain `theme: material`, no Insiders features, no theme overrides, no
+  unusual plugins. Do a trial Zensical build against the current `mkdocs.yml`, confirm
+  the feature set survives (navigation tabs/sections, search highlight, admonitions,
+  pymdownx superfences/highlight/details, toc permalinks, mkdocstrings for the API
+  page), then switch `pyproject.toml`'s `docs` extra and the build. Ref:
+  https://github.com/squidfunk/mkdocs-material/issues/8523
 - **Step reference (largest gap).** One reference page per step family documenting
   every parameter and its non-obvious behavior:
   - Sources & Seed — list / file / huggingface; `Seed.values/expand/range/product/zip`.
