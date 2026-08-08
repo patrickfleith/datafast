@@ -9,9 +9,11 @@ import time
 import traceback
 import warnings
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from threading import Lock
 from typing import Any, TypeVar
 
+import httpx
 from loguru import logger
 from pydantic import BaseModel
 
@@ -845,6 +847,26 @@ class ServedModel:
                         f"Modality '{modality.value}' is not supported by "
                         f"{self.provider_id}/{self.model_id}"
                     )
+                if modality == Modality.FILE:
+                    self._validate_file_carrier(part)
+
+    def _validate_file_carrier(self, part: dict[str, Any]) -> None:
+        """Reject a file part the served model could not accept.
+
+        Declaring Modality.FILE says files work, not how they arrive. Where only an
+        uploaded id will do, inline data reaches the provider as a malformed part and
+        comes back as an opaque schema error, so it is worth catching here.
+        """
+        if not self.capabilities.files_require_file_id:
+            return
+        if part.get("file", {}).get("file_id"):
+            return
+        raise ValueError(
+            f"{self.provider_id}/{self.model_id} accepts a file only as an id from "
+            "its own upload API. Upload it with the served model's upload_file(), "
+            "then pass the returned id as the file part's 'url' — "
+            "ContentPart(type='file', url=<file_id>) — rather than inline 'data'."
+        )
 
     def _resolve_endpoint_mode(self, endpoint_mode: EndpointMode) -> EndpointMode:
         if endpoint_mode == EndpointMode.AUTO:
@@ -1054,6 +1076,9 @@ class _GeminiServedModel(ServedModel):
 
 
 class _MistralServedModel(ServedModel):
+    # LiteLLM has no Files support for Mistral, so these two call the API directly.
+    FILES_URL = "https://api.mistral.ai/v1/files"
+
     def __init__(self, model_id: str = "mistral-small-2603", **kwargs: Any) -> None:
         super().__init__(
             "mistral",
@@ -1062,6 +1087,64 @@ class _MistralServedModel(ServedModel):
             env_key_name="MISTRAL_API_KEY",
             **kwargs,
         )
+
+    def upload_file(
+        self,
+        path: str | Path,
+        *,
+        purpose: str = "ocr",
+        expiry: int | None = None,
+    ) -> str:
+        """Upload a document to Mistral's Files API and return its id.
+
+        Mistral's chat API accepts a document only as an id, so this is how one
+        reaches the model:
+
+            file_id = model.upload_file("report.pdf")
+            ContentPart(type="file", url=file_id)
+
+        Uploading is deliberately separate from generating: the id can be reused
+        across every request in a pipeline run, and the upload stays visible rather
+        than happening behind a `generate()` call. The file then remains in the
+        Mistral account until `delete_file` removes it — Datafast does not track it.
+
+        `expiry` asks Mistral to expire the file on its own, which is worth setting
+        for throwaway uploads that no later run needs. It is forwarded verbatim:
+        Mistral documents the field as an integer but not its unit, so the value
+        means whatever the API says it means. Omitted by default, leaving the
+        account's own retention in force.
+        """
+        path = Path(path)
+        payload: dict[str, Any] = {"purpose": purpose}
+        if expiry is not None:
+            payload["expiry"] = expiry
+        with path.open("rb") as handle:
+            response = httpx.post(
+                self.FILES_URL,
+                headers=self._files_headers(),
+                data=payload,
+                files={"file": (path.name, handle)},
+                timeout=self.timeout or 60.0,
+            )
+        response.raise_for_status()
+        return response.json()["id"]
+
+    def delete_file(self, file_id: str) -> None:
+        """Delete a file previously returned by `upload_file`."""
+        response = httpx.delete(
+            f"{self.FILES_URL}/{file_id}",
+            headers=self._files_headers(),
+            timeout=self.timeout or 60.0,
+        )
+        response.raise_for_status()
+
+    def _files_headers(self) -> dict[str, str]:
+        if not self.api_key:
+            raise ValueError(
+                "A Mistral API key is required to use the Files API. Set "
+                "MISTRAL_API_KEY or pass api_key=."
+            )
+        return {"Authorization": f"Bearer {self.api_key}"}
 
 
 class _OpenRouterServedModel(ServedModel):

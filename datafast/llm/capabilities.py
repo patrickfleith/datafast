@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from datafast.llm.types import (
     BatchMode,
     CacheMode,
@@ -61,6 +63,7 @@ MISTRAL_REASONING_CHAT = ServedModelCapabilities(
     structured_output=StructuredOutputMode.JSON_SCHEMA,
     batch_mode=BatchMode.LITELLM_BATCH,
     cache_mode=CacheMode.PROVIDER_PROMPT,
+    files_require_file_id=True,
     supports_reasoning=True,
     reasoning_requires_allowlist=True,
     reasoning_effort_on="high",
@@ -72,8 +75,16 @@ MISTRAL_REASONING_CHAT = ServedModelCapabilities(
         "forwards it through the allowed_openai_params escape hatch.",
         "The Mistral API accepts only 'high' and 'none'; 'low'/'medium' are "
         "rejected with a 400.",
+        "File input means an uploaded file_id only: upload_file() returns one, "
+        "and it goes in a file part's url. Mistral's chat API rejects inline "
+        "base64 file data with a 422, so Datafast refuses it client-side.",
     ),
 )
+
+
+# Mistral models with no reasoning control. Identical to HOSTED_CHAT except for the
+# file carrier, which is a property of the Mistral chat API rather than of the model.
+MISTRAL_CHAT = replace(HOSTED_CHAT, files_require_file_id=True)
 
 
 GEMINI_CHAT = ServedModelCapabilities(
@@ -274,11 +285,13 @@ _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("gemini", "gemini-3.5-flash"): GEMINI_CHAT,
     ("gemini", "gemini-3.1-flash-lite"): GEMINI_CHAT,
     ("mistral", "mistral-medium-3-5"): MISTRAL_REASONING_CHAT,
-    ("mistral", "mistral-large-2512"): HOSTED_CHAT,
+    ("mistral", "mistral-large-2512"): MISTRAL_CHAT,
     ("mistral", "mistral-small-2603"): MISTRAL_REASONING_CHAT,
-    ("mistral", "ministral-14b-2512"): OPENAI_COMPATIBLE_CHAT,
-    ("mistral", "ministral-8b-2512"): OPENAI_COMPATIBLE_CHAT,
-    ("mistral", "ministral-3b-2512"): OPENAI_COMPATIBLE_CHAT,
+    # Ministral 3 is served from Mistral's own API — hosted chat with vision and
+    # native schema support, not a self-hosted OpenAI-compatible endpoint.
+    ("mistral", "ministral-14b-2512"): MISTRAL_CHAT,
+    ("mistral", "ministral-8b-2512"): MISTRAL_CHAT,
+    ("mistral", "ministral-3b-2512"): MISTRAL_CHAT,
 }
 
 _PROVIDER_DEFAULTS: dict[str, ServedModelCapabilities] = {
@@ -336,12 +349,15 @@ def _resolve_openai_capabilities(model_id: str) -> ServedModelCapabilities:
 
 
 def _resolve_mistral_capabilities(model_id: str) -> ServedModelCapabilities:
-    # Magistral is Mistral's reasoning family; LiteLLM enables reasoning_effort
-    # for any model whose id contains "magistral". Everything else falls back to
-    # the standard hosted-chat profile.
-    if "magistral" in model_id:
+    # Magistral was Mistral's reasoning family, and LiteLLM still keys its
+    # reasoning_effort support off that name. Reasoning has since moved into the
+    # mainline models, which mark it in the id instead — Ministral 3 ships
+    # "-reasoning" post-trained variants beside the instruct ones. Matching both
+    # keeps an uncatalogued reasoning model from silently resolving to a profile
+    # with reasoning switched off.
+    if "magistral" in model_id or "-reasoning" in model_id:
         return MISTRAL_REASONING_CHAT
-    return HOSTED_CHAT
+    return MISTRAL_CHAT
 
 
 # Ollama model families that accept the `think` parameter (LiteLLM maps
@@ -395,6 +411,7 @@ __all__ = [
     "GEMINI_CHAT",
     "HOSTED_CHAT",
     "LLAMACPP_CHAT",
+    "MISTRAL_CHAT",
     "MISTRAL_REASONING_CHAT",
     "OLLAMA_CHAT",
     "OLLAMA_REASONING_CHAT",
