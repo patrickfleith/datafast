@@ -37,7 +37,12 @@
 
 ## In progress
 
-- Nothing in flight.
+- Live provider test suites (`tests/live/`), one directory per provider, gated behind
+  `--run-live` and self-skipping when the API key is absent. Anthropic and openai have
+  landed (generation, structured output, reasoning, multimodal, plus openai's Responses
+  transport, fallback-concurrency batching and `OPENAI_CHAT` profile); gemini, mistral,
+  openrouter and the local backends remain. Shared image/PDF assets live in
+  `tests/live/assets/`.
 
 ## Next up
 
@@ -139,10 +144,19 @@ Gaps to close, roughly in priority order:
   - Implement: enable audio content parts end-to-end for models/providers that declare `Modality.AUDIO` (already normalized to `input_audio`; verify per-target gating).
   - Test: mocked contract test (M03) + capability gating + one live test on an audio-capable model.
   - Example: `NN_audio_input.py` for at least one audio-capable provider.
-- **File / document input support.**
-  - Implement: enable file/document parts for models/providers that declare `Modality.FILE` / `Modality.DOCUMENT`, chat and Responses shapes.
-  - Test: mocked contract test (M05) + capability gating + one live test on a document-capable model.
+- **File / document input support.** Implemented and covered: chat (`file.file_data`)
+  and Responses (`input_file` with `file_data` / `file_url`) shapes, raw base64 wrapped
+  into a `data:` URI like image parts, gating against `Modality.FILE`, mocked contract
+  tests, and a live Anthropic test with a real PDF
+  (`tests/live/anthropic/test_multimodal.py`) and openai
+  (`tests/live/openai/test_multimodal.py`, which found that the Responses API rejects
+  inline file data without a `filename` — now a first-class `ContentPart` field).
+  What remains:
+  - `OPENROUTER_CHAT` and `OLLAMA_CHAT` don't declare `Modality.FILE`, so they only need
+    a mocked test that the gate rejects a file part.
   - Example: `NN_document_input.py` for at least one document-capable provider.
+  - `Modality.DOCUMENT` is declared by no served model and `document` parts normalize to
+    `file` before gating — decide whether to drop the enum member or give it real meaning.
 - **Image output support (image-generation models).**
   - Implement: request-side selection + response normalization for image-generation-capable chat/Responses targets (M09); expose generated images on `NormalizedResponse.images`.
   - Test: mocked contract test for image-output path + one live test.
