@@ -11,9 +11,10 @@ Requirements:
 
 Notes:
 
-- `gemma4:12b` is a capable multimodal reasoning model but is heavy for a small
-  machine. If it is too slow or too large, the same scripts work unchanged
-  against a lighter model such as `gemma3:4b` — just change `MODEL_ID`.
+- `gemma4:12b` is a capable multimodal reasoning model — and the factory default,
+  so `ollama()` with no id uses it — but it is heavy for a small machine. If it is
+  too slow or too large, the same scripts work unchanged against a lighter model
+  such as `gemma3:4b` — just change `MODEL_ID`.
 - Google's recommended sampling for Gemma is `temperature=1.0`, `top_p=0.95`,
   `top_k=64`. The examples use `temperature=0` for stable, repeatable output.
   `top_k` is not one of Datafast's mapped parameters, so pass it through the

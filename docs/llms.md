@@ -32,7 +32,7 @@ Pass a model id, plus any configuration, to build a served model:
 from datafast import openai, ollama
 
 model = openai("gpt-5.4-mini", temperature=0.7)
-local = ollama("gemma3:4b")
+local = ollama("gemma4:12b")
 ```
 
 `ServedModel` is exported for type annotations:
@@ -58,6 +58,48 @@ pipeline = (
     )
     >> Sink.list()
 )
+```
+
+## Provider-Specific Methods
+
+Two providers expose a method beyond the shared `ServedModel` interface, because
+the provider's API requires a step LiteLLM does not cover.
+
+**Mistral — file uploads.** Mistral's chat API accepts a document only as an
+uploaded file id; inline base64 is rejected. Upload it, pass the id as a file
+part's `url`, and delete it when you are done. The upload is explicit so one id
+can serve every request in a pipeline run, and the file stays in your account
+until you remove it.
+
+```python
+from datafast import mistral
+from datafast.llm import ContentPart
+
+model = mistral()
+file_id = model.upload_file("report.pdf")          # optional expiry=<int>
+try:
+    answer = model.generate(messages=[{"role": "user", "content": [
+        ContentPart(type="file", url=file_id),
+        ContentPart(type="text", text="Summarise this in one sentence."),
+    ]}])
+finally:
+    model.delete_file(file_id)
+```
+
+**Ollama — capability probe.** Which Ollama model is pulled is a property of the
+machine, not of the id, so Datafast resolves capabilities from name heuristics and
+can only be approximately right. `probe_capabilities()` asks the daemon instead,
+returning Ollama's own capability names — `completion`, `vision`, `audio`,
+`thinking`, `tools`. It reaches the same daemon your generate calls do
+(`api_base_url`, else `OLLAMA_API_BASE`, else `http://localhost:11434`), and
+raises if the model is not pulled.
+
+```python
+from datafast import ollama
+
+model = ollama("qwen3:0.6b")
+if "vision" in model.probe_capabilities():
+    ...  # only then is attaching an image worth doing
 ```
 
 ## Environment Variables
