@@ -2,13 +2,10 @@
 
 Ollama is served locally, so there is no API key to guard on — `no_api_key` on
 both profiles says as much. What can be missing instead is the daemon itself or
-the specific model, so `require_ollama` checks reachability and then that the
-model is pulled, skipping with a message that names whichever is absent.
+the specific model, which is what `require_ollama` checks; it lives in the
+parent conftest because the root-level pipeline test guards on it too.
 """
 
-import os
-
-import httpx
 import pytest
 
 from datafast import ollama
@@ -19,34 +16,6 @@ from datafast import ollama
 # every Ollama model, but only some can honour it.
 MODEL_ID = "qwen3:0.6b"
 VISION_MODEL_ID = "gemma4:12b"
-
-DEFAULT_API_BASE = "http://localhost:11434"
-
-
-def _api_base() -> str:
-    return (os.getenv("OLLAMA_API_BASE") or DEFAULT_API_BASE).rstrip("/")
-
-
-@pytest.fixture(scope="session")
-def require_ollama():
-    def _require(model_id: str | None = None) -> None:
-        """Skip unless the daemon answers and, when named, the model is pulled."""
-        base = _api_base()
-        try:
-            httpx.get(f"{base}/api/version", timeout=5.0).raise_for_status()
-        except httpx.HTTPError as error:
-            pytest.skip(f"no Ollama daemon at {base} ({error.__class__.__name__})")
-
-        if model_id is None:
-            return
-
-        response = httpx.post(
-            f"{base}/api/show", json={"model": model_id}, timeout=10.0
-        )
-        if response.is_error:
-            pytest.skip(f"Ollama model {model_id} is not pulled — `ollama pull {model_id}`")
-
-    return _require
 
 
 @pytest.fixture
