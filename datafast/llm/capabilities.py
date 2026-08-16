@@ -25,6 +25,14 @@ SAMPLING_CHAT_PARAMS = frozenset({
     "frequency_penalty",
 })
 
+# Ollama speaks its own API rather than the OpenAI wire format, and its
+# repetition control is repeat_penalty: a multiplier neutral at 1.0, where
+# values below 1.0 *reward* repetition. LiteLLM renames frequency_penalty onto
+# it without rescaling, so an OpenAI-style 0.15 arrives as strong repetition
+# encouragement. Datafast therefore does not offer frequency_penalty here;
+# repeat_penalty goes through provider_params, e.g. ollama(repeat_penalty=1.2).
+OLLAMA_SAMPLING_CHAT_PARAMS = frozenset({"top_p"})
+
 REASONING_PARAMS = frozenset({
     "thinking",
     "reasoning_effort",
@@ -175,7 +183,7 @@ OPENROUTER_CHAT = ServedModelCapabilities(
 OLLAMA_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
-    supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
+    supported_params=COMMON_CHAT_PARAMS | OLLAMA_SAMPLING_CHAT_PARAMS,
     modalities=frozenset({Modality.TEXT, Modality.IMAGE}),
     structured_output=StructuredOutputMode.JSON_SCHEMA,
     batch_mode=BatchMode.FALLBACK_CONCURRENCY,
@@ -186,6 +194,10 @@ OLLAMA_CHAT = ServedModelCapabilities(
         "LiteLLM's response_format translation, plus Datafast validation.",
         "Image input requires a vision-capable Ollama model (e.g. gemma3, "
         "gemma4, llama3.2-vision); text-only models will reject it server-side.",
+        "frequency_penalty is not supported: Ollama's repetition control is "
+        "repeat_penalty, a multiplier neutral at 1.0 where lower values reward "
+        "repetition, and LiteLLM renames frequency_penalty onto it without "
+        "rescaling. Pass repeat_penalty through provider_params instead.",
     ),
 )
 
@@ -194,7 +206,9 @@ OLLAMA_REASONING_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=(
-        COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS | frozenset({"reasoning_effort"})
+        COMMON_CHAT_PARAMS
+        | OLLAMA_SAMPLING_CHAT_PARAMS
+        | frozenset({"reasoning_effort"})
     ),
     modalities=frozenset({Modality.TEXT, Modality.IMAGE}),
     structured_output=StructuredOutputMode.JSON_SCHEMA,
@@ -213,6 +227,10 @@ OLLAMA_REASONING_CHAT = ServedModelCapabilities(
         "the model default, which is on for qwen3. think=false is passed "
         "directly because LiteLLM's reasoning_effort mapping sends the literal "
         "string for gpt-oss, which Ollama rejects.",
+        "frequency_penalty is not supported: Ollama's repetition control is "
+        "repeat_penalty, a multiplier neutral at 1.0 where lower values reward "
+        "repetition, and LiteLLM renames frequency_penalty onto it without "
+        "rescaling. Pass repeat_penalty through provider_params instead.",
     ),
 )
 
