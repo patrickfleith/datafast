@@ -1318,6 +1318,25 @@ def test_openai_model_id_picks_the_endpoint_and_temperature_support(monkeypatch)
     assert captured["temperature"] == 0.0
 
 
+def test_openai_thinking_false_sends_the_off_effort(monkeypatch):
+    """gpt-5.5 defaults to effort 'medium', so omitting the parameter would
+    reason despite thinking=False. The off value is an effort like any other
+    and must carry the Responses wrapper, not ride as a bare kwarg."""
+    captured = {}
+
+    def fake_responses(**kwargs):
+        captured.update(kwargs)
+        return _DummyResponsesResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
+
+    model = openai(model_id="gpt-5.5", api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning"] == {"effort": "none"}
+    assert "reasoning_effort" not in captured
+
+
 def test_fallback_batching_preserves_order(monkeypatch):
     calls = []
 
