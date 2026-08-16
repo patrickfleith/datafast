@@ -98,3 +98,23 @@ def test_openrouter_generate_response_reads_reasoning_field(monkeypatch):
 
     assert response.text == "final answer"
     assert response.reasoning_content == "hidden chain of thought summary"
+
+
+def test_generate_rejects_neither_prompt_nor_messages():
+    """Input validation happens before any transport call, so it needs no
+    monkeypatched litellm — and no provider of its own, since `_normalize_inputs`
+    is shared by every served model."""
+    model = openrouter(model_id="demo-model", api_key="test-key")
+
+    with pytest.raises(ValueError, match="Either prompt or messages must be provided"):
+        model.generate()
+
+
+def test_generate_rejects_both_prompt_and_messages():
+    model = openrouter(model_id="demo-model", api_key="test-key")
+
+    with pytest.raises(ValueError, match="Provide either prompt or messages, not both"):
+        model.generate(
+            prompt=["test"],
+            messages=[[{"role": "user", "content": "test"}]],
+        )
