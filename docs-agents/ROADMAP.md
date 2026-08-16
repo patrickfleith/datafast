@@ -61,8 +61,8 @@
   model id spans 19 endpoints that disagree about json_schema and image support);
   the remaining local backends (vllm, llamacpp)
   remain. Shared image/PDF assets live in `tests/live/assets/`. The legacy per-provider
-  `integration` suites are retired as each live suite lands — only
-  `tests/test_openrouter.py` is left, now unblocked. Coverage those suites
+  `integration` suites are gone — the last two files, `tests/test_openrouter.py` and the
+  shared `tests/test_schemas.py`, were deleted once openrouter's live suite landed. Coverage those suites
   held and the live ones lacked was ported: batched message lists and nested schemas
   per provider, and the input-validation cases into the mocked
   `tests/test_served_model_unit.py`, where they never needed a network call.
@@ -229,5 +229,5 @@ Gaps to close, roughly in priority order:
 
 Non-feature work: rework, refactor, performance, cleanup.
 
-- Migrate existing per-provider `integration` tests onto the `live` marker and the shared catalogue once it lands; retire duplicated ad-hoc coverage. Ollama is done — `tests/test_ollama.py` is deleted, its three genuinely uncovered cases (sampling params, batched message lists, nested schema) ported into `tests/live/ollama/`. Five files remain: openai, anthropic, gemini, mistral, openrouter.
-- Unused markers: `vllm` and `llamacpp` are declared but not yet applied to tests (`multimodal` and `ollama` are now in use).
+- ~~Migrate existing per-provider `integration` tests onto the `live` marker~~ — done. All six legacy files (`tests/test_{ollama,gemini,anthropic,openai,mistral,openrouter}.py`) are deleted, along with `tests/test_schemas.py`, their shared fixture module. Coverage the live suites lacked was ported first, per provider; the persona/QA/MCQ cases were dropped as model-quality tests, apart from one rewritten on gemini as a schema-constraint test.
+- ~~Unused markers~~ — done. `integration`, `slow`, `vllm` and `llamacpp` are no longer declared; `pytest.ini` now registers only markers that tests actually carry. The root conftest skips on `live` alone, and AGENTS.md's default test command is `-m "not live"`. A vllm or llamacpp live suite should re-add its marker when it lands.
