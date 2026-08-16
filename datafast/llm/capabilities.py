@@ -116,8 +116,36 @@ GEMINI_CHAT = ServedModelCapabilities(
     notes=(
         "Reasoning is forwarded natively via reasoning_effort (thinking=True "
         "maps to effort 'low'); LiteLLM handles gemini/* without an allowlist.",
-        "Reasoning must be turned off explicitly: Gemini 3 models think by "
+        "Reasoning must be requested off explicitly: Gemini 3 models think by "
         "default, so omitting the parameter still bills reasoning tokens.",
+        "thinking=False does not mean no reasoning. Gemini 3 has no off "
+        "switch — LiteLLM turns 'none' into the model's lowest thinking level "
+        "with the trace hidden, so those tokens are still billed.",
+        "temperature, top_p and top_k are deprecated for Gemini 3+ and slated "
+        "for removal, and any temperature below 1.0 is warned against. They "
+        "stay supported here because they still function and datafast never "
+        "sends one unless a caller asks; drop them once Google removes them.",
+    ),
+)
+
+
+# Gemini 3 models whose lowest thinking level is 'low' rather than 'minimal'.
+# They reject the value 'none' resolves to, so there is nothing thinking=False
+# could send: the only honest answer is to refuse it.
+GEMINI_NO_MINIMAL_CHAT = replace(
+    GEMINI_CHAT,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    reasoning_efforts=frozenset({"low", "medium", "high"}),
+    notes=GEMINI_CHAT.notes[:1]
+    + (
+        "'minimal' is rejected outright, which is what 'none' maps to, so "
+        "thinking=False raises rather than silently reasoning at the model's "
+        "own default ('medium' for gemini-3.7-flash).",
+        "At effort 'low' the reasoning is real but invisible: no "
+        "reasoning_content and no thinking_blocks come back, only an opaque "
+        "thought_signatures entry. Callers who need a readable trace should "
+        "ask for a higher effort.",
     ),
 )
 
@@ -300,7 +328,9 @@ _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("openai", "gpt-5.4-nano"): OPENAI_RESPONSES,
     ("anthropic", "claude-sonnet-4-6"): ANTHROPIC_CHAT,
     ("anthropic", "claude-haiku-4-5"): ANTHROPIC_CHAT,
+    ("gemini", "gemini-3.7-flash"): GEMINI_NO_MINIMAL_CHAT,
     ("gemini", "gemini-3.5-flash"): GEMINI_CHAT,
+    ("gemini", "gemini-3.5-flash-lite"): GEMINI_CHAT,
     ("gemini", "gemini-3.1-flash-lite"): GEMINI_CHAT,
     ("mistral", "mistral-medium-3-5"): MISTRAL_REASONING_CHAT,
     ("mistral", "mistral-large-2512"): MISTRAL_CHAT,
