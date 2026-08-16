@@ -51,6 +51,29 @@ def test_concurrent_prompts_keep_input_order(served_model):
         assert expected in response
 
 
+def test_concurrent_message_lists_keep_input_order(served_model):
+    """A batch of message lists is a different input shape from a batch of
+    prompts — each element is itself a list, so a flattening bug would only show
+    up here. It goes through the same fallback pool."""
+    messages = [
+        [
+            {"role": "system", "content": "You answer factual questions briefly."},
+            {"role": "user", "content": "What is the capital of France? One word."},
+        ],
+        [
+            {"role": "system", "content": "You answer factual questions briefly."},
+            {"role": "user", "content": "What is the capital of Japan? One word."},
+        ],
+    ]
+
+    with pytest.warns(UserWarning, match="does not expose native batching"):
+        responses = served_model(max_concurrent=2).generate(messages=messages)
+
+    assert len(responses) == 2
+    for expected, response in zip(("Paris", "Tokyo"), responses):
+        assert expected in response
+
+
 def test_temperature_is_dropped_for_responses(served_model):
     """OPENAI_RESPONSES omits temperature because the API rejects sampling
     controls. Dropping it client-side is what keeps this call from 400ing."""
