@@ -102,6 +102,34 @@ if "vision" in model.probe_capabilities():
     ...  # only then is attaching an image worth doing
 ```
 
+## Sampling Parameters
+
+`temperature`, `top_p` and `frequency_penalty` are config fields on every
+factory. Each is only sent to served models whose profile declares it; where the
+profile omits it the value is dropped under your `unsupported_params` policy
+(warn by default) rather than reaching the provider. OpenAI's reasoning models,
+for instance, reject sampling controls outright, so datafast never forwards one.
+
+```python
+model = openai("gpt-4o-mini", temperature=0.7, top_p=0.85, frequency_penalty=0.2)
+```
+
+**Ollama does not take `frequency_penalty`.** It speaks its own API, where the
+repetition control is `repeat_penalty` — a multiplier neutral at `1.0`, and
+values *below* 1.0 reward repetition. LiteLLM renames `frequency_penalty` onto it
+without rescaling, so an OpenAI-style `0.15` would arrive as strong repetition
+encouragement and degenerate the output. Datafast therefore drops
+`frequency_penalty` on Ollama and asks for `repeat_penalty` on its own scale,
+which passes through as a provider parameter:
+
+```python
+model = ollama("gemma4:12b", top_p=0.85, repeat_penalty=1.2)
+```
+
+This is specific to Ollama. Self-hosted vLLM and llama.cpp servers are reached
+over the OpenAI wire format through `openai_compatible`, where
+`frequency_penalty` keeps its usual meaning.
+
 ## Environment Variables
 
 - `OPENAI_API_KEY`
