@@ -5,8 +5,8 @@ The assertions differ from the Anthropic suite for two reasons:
 - On Responses the effort is sent as `reasoning={"effort": ...}` and the trace comes
   back as an `output` item, so `thinking_blocks` is always empty. `output_items` is
   the Responses-only field to assert on.
-- OpenAI only returns a reasoning *summary* when asked for one, and datafast does not
-  expose that knob, so `reasoning_content` stays empty under plain `thinking=True`.
+- OpenAI only returns a reasoning *summary* when asked for one, so `reasoning_content`
+  stays empty under plain `thinking=True` and needs `reasoning_summary`.
 
 Reasoning tokens count against `max_output_tokens`, so these tests raise the
 fixture's 300-token ceiling.
@@ -41,18 +41,16 @@ def test_thinking_true_emits_a_reasoning_item(served_model):
 
 
 def test_reasoning_summary_populates_reasoning_content(served_model):
-    """Proves `_extract_responses_reasoning` parses a real summary payload.
-
-    `summary: "auto"` has no datafast equivalent, and `provider_params` is merged
-    last — so this replaces the `reasoning` key that `thinking=True` would build.
-    It covers the response extractor, not datafast's reasoning control.
+    """Proves `reasoning_summary` reaches the provider and that the response
+    extractor parses the summary payload it comes back with.
 
     Effort must be 'high' here: OpenAI returns an empty summary for cheap reasoning,
     leaving only `encrypted_content`, and then there is genuinely nothing to extract.
     """
     response = served_model(
         max_completion_tokens=SUMMARY_TOKENS,
-        provider_params={"reasoning": {"effort": "high", "summary": "auto"}},
+        reasoning_effort="high",
+        reasoning_summary="auto",
     ).generate_response(prompt=HARD_PROMPT)
 
     assert "15:47" in response.text

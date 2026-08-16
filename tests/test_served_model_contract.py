@@ -1337,6 +1337,77 @@ def test_openai_thinking_false_sends_the_off_effort(monkeypatch):
     assert "reasoning_effort" not in captured
 
 
+def test_openai_reasoning_summary_rides_with_the_effort(monkeypatch):
+    """OpenAI returns a reasoning summary only when asked, and the ask shares the
+    `reasoning` object with the effort — so it must be merged into it rather than
+    replace it, which is all provider_params could ever do."""
+    captured = {}
+
+    def fake_responses(**kwargs):
+        captured.update(kwargs)
+        return _DummyResponsesResponse("ok", reasoning_content="because")
+
+    monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
+
+    model = openai(
+        model_id="gpt-5.5",
+        api_key="test-key",
+        thinking=True,
+        reasoning_summary="auto",
+    )
+
+    response = model.generate_response(prompt="ping")
+    assert captured["reasoning"] == {"effort": "low", "summary": "auto"}
+    assert response.reasoning_content == "because"
+
+
+def test_openai_reasoning_summary_alone_still_sends_the_reasoning_object(monkeypatch):
+    """A summary with no effort is a valid ask: it leaves the served model's own
+    default effort in force, so the reasoning object must still go out."""
+    captured = {}
+
+    def fake_responses(**kwargs):
+        captured.update(kwargs)
+        return _DummyResponsesResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
+
+    model = openai(model_id="gpt-5.5", api_key="test-key", reasoning_summary="detailed")
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning"] == {"summary": "detailed"}
+
+
+def test_reasoning_summary_warns_where_it_cannot_be_carried(monkeypatch):
+    """A summary rides inside the Responses `reasoning` object, so a chat endpoint
+    has nowhere to put it — and thinking=False leaves nothing to summarise."""
+    captured = {}
+
+    monkeypatch.setattr(
+        served_model_module.litellm,
+        "completion",
+        lambda **kwargs: captured.update(kwargs) or _DummyChatResponse("ok"),
+    )
+    monkeypatch.setattr(
+        served_model_module.litellm,
+        "responses",
+        lambda **kwargs: captured.update(kwargs) or _DummyResponsesResponse("ok"),
+    )
+
+    chat_model = anthropic(api_key="test-key", thinking=True, reasoning_summary="auto")
+    with pytest.warns(UserWarning, match="reasoning_summary"):
+        chat_model.generate(prompt="ping")
+    assert "reasoning" not in captured
+
+    captured.clear()
+    off_model = openai(
+        model_id="gpt-5.5", api_key="test-key", thinking=False, reasoning_summary="auto"
+    )
+    with pytest.warns(UserWarning, match="reasoning_summary"):
+        off_model.generate(prompt="ping")
+    assert captured["reasoning"] == {"effort": "none"}
+
+
 def test_fallback_batching_preserves_order(monkeypatch):
     calls = []
 
