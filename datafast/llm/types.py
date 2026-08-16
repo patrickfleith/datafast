@@ -111,6 +111,8 @@ class ServedModelConfig:
     env_key_name: str | None
     endpoint_mode: EndpointMode = EndpointMode.AUTO
     temperature: float | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
     max_completion_tokens: int | None = None
     thinking: bool | None = None
     reasoning_effort: str | None = None

@@ -72,6 +72,8 @@ class ServedModel:
         env_key_name: str | None,
         endpoint_mode: str | EndpointMode = EndpointMode.AUTO,
         temperature: float | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
         max_completion_tokens: int | None = None,
         max_tokens: int | None = None,
         thinking: bool | None = None,
@@ -111,6 +113,8 @@ class ServedModel:
             env_key_name=env_key_name,
             endpoint_mode=_coerce_endpoint_mode(endpoint_mode),
             temperature=temperature,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
             max_completion_tokens=max_completion_tokens,
             thinking=thinking,
             reasoning_effort=reasoning_effort,
@@ -139,6 +143,8 @@ class ServedModel:
         self.api_key = api_key or env_api_key or None
         self.api_base_url = api_base_url
         self.temperature = temperature
+        self.top_p = top_p
+        self.frequency_penalty = frequency_penalty
         self.max_completion_tokens = max_completion_tokens
         self.reasoning_effort = reasoning_effort
         self.rpm_limit = rpm_limit
@@ -152,6 +158,8 @@ class ServedModel:
             name
             for name, value in {
                 "temperature": temperature,
+                "top_p": top_p,
+                "frequency_penalty": frequency_penalty,
                 "max_completion_tokens": max_completion_tokens,
                 "thinking": thinking,
                 "reasoning_effort": reasoning_effort,
@@ -546,6 +554,19 @@ class ServedModel:
             self._handle_unsupported_param(
                 "temperature", detail="while reasoning is enabled"
             )
+
+        self._add_supported_param(
+            params,
+            "top_p",
+            self.config.top_p,
+            endpoint=endpoint,
+        )
+        self._add_supported_param(
+            params,
+            "frequency_penalty",
+            self.config.frequency_penalty,
+            endpoint=endpoint,
+        )
 
         token_param = (
             "max_output_tokens"
