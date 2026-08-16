@@ -658,6 +658,62 @@ def test_ollama_non_reasoning_model_warns_and_omits_reasoning_effort(monkeypatch
     assert "reasoning_effort" not in captured
 
 
+def test_sampling_params_are_gated_by_the_profile(monkeypatch):
+    """top_p and frequency_penalty are config fields, so a profile that omits them
+    drops the value rather than forwarding it. OPENAI_RESPONSES is the case that
+    matters: its reasoning models 400 on a sampling control."""
+    captured = {}
+
+    def capture(**kwargs):
+        captured.update(kwargs)
+        return _DummyResponsesResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "responses", capture)
+    monkeypatch.setattr(
+        served_model_module.litellm,
+        "completion",
+        lambda **kwargs: captured.update(kwargs) or _DummyChatResponse("ok"),
+    )
+
+    chat_model = openai(
+        model_id="gpt-4o-mini", api_key="test-key", top_p=0.85, frequency_penalty=0.2
+    )
+    chat_model.generate(prompt="ping")
+    assert captured["top_p"] == 0.85
+    assert captured["frequency_penalty"] == 0.2
+
+    captured.clear()
+    reasoning_model = openai(model_id="gpt-5.4-mini", api_key="test-key", top_p=0.85)
+    with pytest.warns(UserWarning, match="top_p"):
+        reasoning_model.generate(prompt="ping")
+    assert "top_p" not in captured
+
+
+def test_ollama_takes_repeat_penalty_and_refuses_frequency_penalty(monkeypatch):
+    """LiteLLM renames frequency_penalty onto Ollama's repeat_penalty without
+    rescaling, and their neutral points differ (0 vs 1.0), so datafast does not
+    offer it. repeat_penalty itself rides provider_params."""
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = ollama(model_id="gemma3:4b", top_p=0.85, frequency_penalty=0.15)
+
+    with pytest.warns(UserWarning, match="frequency_penalty"):
+        assert model.generate(prompt="ping") == "ok"
+
+    assert captured["top_p"] == 0.85
+    assert "frequency_penalty" not in captured
+
+    captured.clear()
+    ollama(model_id="gemma3:4b", repeat_penalty=1.2).generate(prompt="ping")
+    assert captured["repeat_penalty"] == 1.2
+
+
 def test_ollama_probe_capabilities_reads_the_daemon(monkeypatch):
     """Name heuristics cannot know which model is pulled, so the probe asks
     /api/show. This pins the request without a daemon running."""

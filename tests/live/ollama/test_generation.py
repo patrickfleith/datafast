@@ -43,13 +43,12 @@ def test_top_p_is_accepted(served_model):
     """`top_p` means the same thing to Ollama as to OpenAI and passes through
     unchanged, so a caller-set value must not disturb the answer.
 
-    `frequency_penalty` is deliberately not tested alongside it. LiteLLM maps it to
-    Ollama's `repeat_penalty` without rescaling (`transformation.py:171`), but their
-    neutral points differ: 0 is neutral for `frequency_penalty`, while
-    `repeat_penalty` is a multiplier where 1.0 is neutral and lower values *reward*
-    repetition. A mild OpenAI-style 0.15 therefore arrives as strong repetition
-    encouragement and degenerates the output. Asserting a good answer under it would
-    only encode the confusion.
+    `frequency_penalty` is not tested alongside it because Ollama's profile no
+    longer declares it: LiteLLM maps it to `repeat_penalty` without rescaling
+    (`transformation.py:171`) and their neutral points differ, so a mild
+    OpenAI-style 0.15 would arrive as strong repetition encouragement. The drop is
+    pinned by test_served_model_contract.py; `repeat_penalty` on its own scale goes
+    through provider_params.
     """
     response = served_model(top_p=0.85).generate(
         prompt="What is the capital of France? Answer in one word."
