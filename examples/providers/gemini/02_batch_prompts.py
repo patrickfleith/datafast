@@ -6,7 +6,7 @@ from datafast import gemini
 from datafast.llm_utils import format_generated_responses
 
 
-MODEL_ID = "gemini-3.1-flash-lite"
+MODEL_ID = "gemini-3.5-flash-lite"
 PROMPTS = [
     "Give a one-sentence definition of synthetic data.",
     "Give a one-sentence definition of retrieval-augmented generation.",

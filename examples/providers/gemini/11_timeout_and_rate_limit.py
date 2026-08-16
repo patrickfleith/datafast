@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from datafast import gemini
 
 
-MODEL_ID = "gemini-3.1-flash-lite"
+MODEL_ID = "gemini-3.5-flash-lite"
 TIMEOUT_SECONDS = 30
 RPM_LIMIT = 2
 PROMPTS = [

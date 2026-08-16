@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datafast import gemini
 
 
-MODEL_ID = "gemini-3.1-flash-lite"
+MODEL_ID = "gemini-3.5-flash-lite"
 PROMPT = "Return a JSON object describing Google Gemini in two short sentences."
 
 
