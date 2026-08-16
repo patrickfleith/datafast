@@ -561,6 +561,13 @@ class ServedModel:
         )
 
         if self.config.thinking is False:
+            if self.capabilities.reasoning_always_on:
+                raise ValueError(
+                    f"{self.provider_id}/{self.model_id} always reasons, so "
+                    "thinking=False cannot be honoured. Pass reasoning_effort "
+                    "with the lowest level it accepts instead"
+                    + self._supported_efforts_hint()
+                )
             off_param = self.capabilities.reasoning_off_param
             if off_param is not None:
                 params[off_param[0]] = off_param[1]
@@ -592,6 +599,13 @@ class ServedModel:
         if self.config.thinking is False:
             return True
         return self._resolve_reasoning_effort() is None
+
+    def _supported_efforts_hint(self) -> str:
+        """The accepted levels, for error messages, or '' where any is allowed."""
+        supported = self.capabilities.reasoning_efforts
+        if not supported:
+            return "."
+        return f": {', '.join(sorted(supported))}."
 
     def _resolve_reasoning_effort(self) -> str | None:
         """Resolve the reasoning_effort value to send, or None to omit it.
