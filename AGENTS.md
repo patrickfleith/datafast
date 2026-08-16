@@ -10,8 +10,8 @@ this is the whole mechanism, so keep it compact and current.
 - **What this is:** `datafast` — a pipeline-first Python library for synthetic data generation with LLMs, for developers and ML engineers building datasets.
 - Before acting, consult the relevant project doc below.
 - Keep changes minimal and in the style of the surrounding code.
-- **No live LLM calls unless asked:** never run code that hits a real provider API unless the user explicitly requests it. Default to `-m "not integration and not live"` and to examples/scripts that don't call out.
-- **Tests:** `pytest` is not on PATH — run via `.venv/bin/pytest`. Integration/live tests hit real providers; deselect with `-m "not integration and not live"`.
+- **No live LLM calls unless asked:** never run code that hits a real provider API unless the user explicitly requests it. Default to `-m "not live"` and to examples/scripts that don't call out.
+- **Tests:** `pytest` is not on PATH — run via `.venv/bin/pytest`. Tests under `tests/live/` hit real providers; they self-skip without `--run-live`, and deselect with `-m "not live"`.
 
 ## Project docs
 
