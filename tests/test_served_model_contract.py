@@ -774,10 +774,41 @@ def test_ollama_probe_capabilities_follows_the_generate_daemon(monkeypatch):
 
 def test_gemini_reasoning_capability_resolution():
     # All catalogued Gemini models support reasoning natively.
-    for model_id in ("gemini-3.5-flash", "gemini-3.1-flash-lite"):
+    for model_id in (
+        "gemini-3.7-flash",
+        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite",
+    ):
         caps = resolve_capabilities("gemini", model_id)
         assert caps.supports_reasoning is True
         assert "reasoning_effort" in caps.supported_params
+
+
+def test_gemini_flash_lite_can_request_reasoning_off():
+    """The lite line accepts 'minimal', which is what 'none' resolves to."""
+    caps = resolve_capabilities("gemini", "gemini-3.5-flash-lite")
+
+    assert caps.reasoning_always_on is False
+    assert caps.reasoning_off_param == ("reasoning_effort", "none")
+
+
+def test_gemini_flash_rejects_thinking_false():
+    """gemini-3.7-flash has no level below 'low', so thinking=False has nothing
+    to send. Refusing beats sending nothing and reasoning at 'medium'."""
+    model = gemini(model_id="gemini-3.7-flash", api_key="test-key", thinking=False)
+
+    with pytest.raises(ValueError, match="always reasons"):
+        model.generate(prompt="ping")
+
+
+def test_gemini_flash_rejects_an_effort_below_its_floor():
+    model = gemini(
+        model_id="gemini-3.7-flash", api_key="test-key", reasoning_effort="minimal"
+    )
+
+    with pytest.raises(ValueError, match="not supported"):
+        model.generate(prompt="ping")
 
 
 def test_gemini_reasoning_effort_is_forwarded(monkeypatch):
