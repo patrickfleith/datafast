@@ -81,6 +81,11 @@ class ServedModelCapabilities:
     # None omits it, which leaves the served model's own default in force —
     # correct only where that default is "no reasoning".
     reasoning_off_param: tuple[str, Any] | None = None
+    # True where the served model always reasons, so there is no off value to
+    # send and no "no reasoning" default to fall back on. Distinguishes those
+    # models from the ones where reasoning_off_param is None because omitting
+    # the parameter already means off.
+    reasoning_always_on: bool = False
     # Accepted reasoning_effort values, or None to forward any value unchecked.
     reasoning_efforts: frozenset[str] | None = None
     # True where the served model rejects a caller-chosen temperature once
