@@ -1106,7 +1106,7 @@ class _AnthropicServedModel(ServedModel):
 
 
 class _GeminiServedModel(ServedModel):
-    def __init__(self, model_id: str = "gemini-3.1-flash-lite", **kwargs: Any) -> None:
+    def __init__(self, model_id: str = "gemini-3.5-flash-lite", **kwargs: Any) -> None:
         super().__init__(
             "gemini",
             model_id,
@@ -1278,7 +1278,7 @@ def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> ServedModel:
     return _AnthropicServedModel(model_id=model_id, **kwargs)
 
 
-def gemini(model_id: str = "gemini-3.1-flash-lite", **kwargs: Any) -> ServedModel:
+def gemini(model_id: str = "gemini-3.5-flash-lite", **kwargs: Any) -> ServedModel:
     return _GeminiServedModel(model_id=model_id, **kwargs)
 
 
