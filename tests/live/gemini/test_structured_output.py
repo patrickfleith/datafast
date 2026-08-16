@@ -20,6 +20,17 @@ class Landmark(BaseModel):
     )
 
 
+class QuestionAnswer(BaseModel):
+    question: str = Field(description="The question")
+    answer: str = Field(description="A one-sentence answer")
+
+
+class QASet(BaseModel):
+    # An exact count, not a floor: min_length and max_length become minItems
+    # and maxItems, which Gemini enforces natively.
+    questions: list[QuestionAnswer] = Field(min_length=3, max_length=3)
+
+
 class CapitalFact(BaseModel):
     city: str = Field(description="The capital city")
     # Copied from the question rather than recalled, which is what lets the
@@ -53,6 +64,39 @@ def test_nested_schema_is_honoured(served_model):
     for attribute in response.attributes:
         assert isinstance(attribute, Attribute)
         assert attribute.name and attribute.value
+
+
+def test_structured_output_from_messages(served_model):
+    """The schema has to survive the messages path as well as the prompt one —
+    they build the request differently."""
+    messages = [
+        {"role": "system", "content": "You answer factual questions briefly."},
+        {"role": "user", "content": "What is the capital of France?"},
+    ]
+
+    response = served_model().generate(
+        messages=messages,
+        response_format=CapitalFact,
+    )
+
+    assert isinstance(response, CapitalFact)
+    assert "Paris" in response.city
+    assert "France" in response.country
+
+
+def test_exact_item_count_is_enforced(served_model):
+    """The prompt deliberately does not name a count, so passing means the
+    schema's minItems/maxItems reached the API — not that the model followed an
+    instruction."""
+    response = served_model(max_completion_tokens=800).generate(
+        prompt="Write questions and answers about the water cycle.",
+        response_format=QASet,
+    )
+
+    assert isinstance(response, QASet)
+    assert len(response.questions) == 3
+    for item in response.questions:
+        assert item.question and item.answer
 
 
 def test_concurrent_structured_output_keeps_input_order(served_model):
