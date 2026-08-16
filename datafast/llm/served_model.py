@@ -591,7 +591,13 @@ class ServedModel:
                 )
             off_param = self.capabilities.reasoning_off_param
             if off_param is not None:
-                params[off_param[0]] = off_param[1]
+                name, value = off_param
+                # The off value is an effort like any other, so it needs the
+                # same Responses-shaped wrapper the "on" path applies below.
+                if name == "reasoning_effort" and endpoint == EndpointMode.RESPONSES:
+                    params["reasoning"] = {"effort": value}
+                else:
+                    params[name] = value
             return
 
         effort = self._resolve_reasoning_effort()

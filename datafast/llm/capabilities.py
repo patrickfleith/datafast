@@ -159,6 +159,13 @@ OPENAI_RESPONSES = ServedModelCapabilities(
     batch_mode=BatchMode.FALLBACK_CONCURRENCY,
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
+    reasoning_off_param=("reasoning_effort", "none"),
+    notes=(
+        "Reasoning must be turned off explicitly rather than by omission: the "
+        "default effort is per-model — 'none' for gpt-5.4 and its mini/nano "
+        "variants, but 'medium' for gpt-5.5, which would otherwise reason "
+        "despite thinking=False. Every GPT-5.x model accepts 'none'.",
+    ),
 )
 
 
