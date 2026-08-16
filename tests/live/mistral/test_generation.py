@@ -42,3 +42,25 @@ def test_concurrent_prompts_keep_input_order(served_model):
     assert len(responses) == 4
     for expected, response in zip(("Paris", "Madrid", "Rome", "Tokyo"), responses):
         assert expected in response
+
+
+def test_concurrent_message_lists_keep_input_order(served_model):
+    """A batch of message lists is a different input shape from a batch of
+    prompts — each element is itself a list, so a flattening bug would only show
+    up here."""
+    messages = [
+        [
+            {"role": "system", "content": "You answer factual questions briefly."},
+            {"role": "user", "content": "What is the capital of Canada? One word."},
+        ],
+        [
+            {"role": "system", "content": "You answer factual questions briefly."},
+            {"role": "user", "content": "What is the capital of Australia? One word."},
+        ],
+    ]
+
+    responses = served_model(max_concurrent=2).generate(messages=messages)
+
+    assert len(responses) == 2
+    for expected, response in zip(("Ottawa", "Canberra"), responses):
+        assert expected in response
