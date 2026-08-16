@@ -116,6 +116,7 @@ class ServedModelConfig:
     max_completion_tokens: int | None = None
     thinking: bool | None = None
     reasoning_effort: str | None = None
+    reasoning_summary: str | None = None
     rpm_limit: int | None = None
     timeout: float | None = None
     api_key: str | None = None

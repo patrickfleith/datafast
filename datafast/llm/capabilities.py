@@ -46,6 +46,7 @@ RESPONSES_PARAMS = frozenset({
     "timeout",
     "thinking",
     "reasoning_effort",
+    "reasoning_summary",
     "previous_response_id",
 })
 
@@ -165,6 +166,10 @@ OPENAI_RESPONSES = ServedModelCapabilities(
         "default effort is per-model — 'none' for gpt-5.4 and its mini/nano "
         "variants, but 'medium' for gpt-5.5, which would otherwise reason "
         "despite thinking=False. Every GPT-5.x model accepts 'none'.",
+        "reasoning_content is a summary written after the fact, not the trace "
+        "itself, and it arrives only when reasoning_summary asks for one. "
+        "Cheap reasoning returns an empty summary, so a readable one needs "
+        "effort 'medium' or above and a prompt worth summarising.",
     ),
 )
 

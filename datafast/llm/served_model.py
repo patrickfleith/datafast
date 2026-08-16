@@ -78,6 +78,7 @@ class ServedModel:
         max_tokens: int | None = None,
         thinking: bool | None = None,
         reasoning_effort: str | None = None,
+        reasoning_summary: str | None = None,
         rpm_limit: int | None = None,
         timeout: float | None = None,
         api_key: str | None = None,
@@ -118,6 +119,7 @@ class ServedModel:
             max_completion_tokens=max_completion_tokens,
             thinking=thinking,
             reasoning_effort=reasoning_effort,
+            reasoning_summary=reasoning_summary,
             rpm_limit=rpm_limit,
             timeout=timeout,
             api_key=api_key,
@@ -147,6 +149,7 @@ class ServedModel:
         self.frequency_penalty = frequency_penalty
         self.max_completion_tokens = max_completion_tokens
         self.reasoning_effort = reasoning_effort
+        self.reasoning_summary = reasoning_summary
         self.rpm_limit = rpm_limit
         self.timeout = timeout
         self.unsupported_params = unsupported_policy.value
@@ -582,6 +585,10 @@ class ServedModel:
         )
 
         if self.config.thinking is False:
+            if self.config.reasoning_summary is not None:
+                self._handle_unsupported_param(
+                    "reasoning_summary", detail="while reasoning is disabled"
+                )
             if self.capabilities.reasoning_always_on:
                 raise ValueError(
                     f"{self.provider_id}/{self.model_id} always reasons, so "
@@ -601,12 +608,16 @@ class ServedModel:
             return
 
         effort = self._resolve_reasoning_effort()
+        summary = self._resolve_reasoning_summary(endpoint)
 
-        if endpoint == EndpointMode.RESPONSES and effort is not None:
+        if endpoint == EndpointMode.RESPONSES and (
+            effort is not None or summary is not None
+        ):
+            reasoning = {"effort": effort, "summary": summary}
             self._add_supported_param(
                 params,
                 "reasoning_effort",
-                {"effort": effort},
+                {k: v for k, v in reasoning.items() if v is not None},
                 endpoint=endpoint,
                 param_name="reasoning",
             )
@@ -633,6 +644,24 @@ class ServedModel:
         if not supported:
             return "."
         return f": {', '.join(sorted(supported))}."
+
+    def _resolve_reasoning_summary(self, endpoint: EndpointMode) -> str | None:
+        """Resolve the reasoning summary to ask for, or None to omit it.
+
+        A summary is a Responses-only concept: it rides inside the `reasoning`
+        object, which chat endpoints have no field for, whatever a profile
+        that serves both endpoints declares.
+        """
+        summary = self.config.reasoning_summary
+        if summary is None:
+            return None
+        if (
+            endpoint != EndpointMode.RESPONSES
+            or "reasoning_summary" not in self.capabilities.supported_params
+        ):
+            self._handle_unsupported_param("reasoning_summary")
+            return None
+        return summary
 
     def _resolve_reasoning_effort(self) -> str | None:
         """Resolve the reasoning_effort value to send, or None to omit it.
