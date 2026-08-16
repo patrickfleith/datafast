@@ -52,15 +52,17 @@
 
 - Live provider test suites (`tests/live/`), one directory per provider, gated behind
   `--run-live` and self-skipping when the API key is absent. Anthropic, openai, mistral,
-  ollama and gemini have landed (generation, structured output, reasoning, multimodal, plus
+  ollama, gemini and openrouter have landed (generation, structured output, reasoning, multimodal, plus
   openai's Responses transport, fallback-concurrency batching and `OPENAI_CHAT`
   profile, mistral's reasoning allowlist and Files upload path, gemini's per-model
   reasoning floor across two models and its exact-item-count schema, and ollama's capability
   probe, `top_p` pass-through, batched message lists and nested-schema constrained
-  decoding); openrouter and the remaining local backends (vllm, llamacpp)
+  decoding, openrouter's pinned-endpoint routing on `google/gemma-4-31b-it`, where one
+  model id spans 19 endpoints that disagree about json_schema and image support);
+  the remaining local backends (vllm, llamacpp)
   remain. Shared image/PDF assets live in `tests/live/assets/`. The legacy per-provider
   `integration` suites are retired as each live suite lands — only
-  `tests/test_openrouter.py` is left, waiting on openrouter's. Coverage those suites
+  `tests/test_openrouter.py` is left, now unblocked. Coverage those suites
   held and the live ones lacked was ported: batched message lists and nested schemas
   per provider, and the input-validation cases into the mocked
   `tests/test_served_model_unit.py`, where they never needed a network call.
