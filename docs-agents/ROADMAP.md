@@ -48,8 +48,6 @@
   and stay free-form, so any self-hosted server works — known ids get their profile,
   unknown ones fall back to the conservative OpenAI-compatible one.
 
-## In progress
-
 - Live provider test suites (`tests/live/`), one directory per provider, gated behind
   `--run-live` and self-skipping when the API key is absent. Anthropic, openai, mistral,
   ollama, gemini and openrouter have landed (generation, structured output, reasoning, multimodal, plus
@@ -58,9 +56,10 @@
   reasoning floor across two models and its exact-item-count schema, and ollama's capability
   probe, `top_p` pass-through, batched message lists and nested-schema constrained
   decoding, openrouter's pinned-endpoint routing on `google/gemma-4-31b-it`, where one
-  model id spans 19 endpoints that disagree about json_schema and image support);
-  the remaining local backends (vllm, llamacpp)
-  remain. Shared image/PDF assets live in `tests/live/assets/`. The legacy per-provider
+  model id spans 19 endpoints that disagree about json_schema and image support).
+  Every provider reachable without standing up a server is covered; vllm and llamacpp
+  are tracked under Later, since they need one.
+  Shared image/PDF assets live in `tests/live/assets/`. The legacy per-provider
   `integration` suites are gone — the last two files, `tests/test_openrouter.py` and the
   shared `tests/test_schemas.py`, were deleted once openrouter's live suite landed. Coverage those suites
   held and the live ones lacked was ported: batched message lists and nested schemas
@@ -89,6 +88,38 @@
     by the model's goodwill; `minItems: 2` makes the nested branch of the grammar
     unavoidable, and Ollama does enforce it.
 
+- `claude-sonnet-5` support via a second Anthropic profile, `ANTHROPIC_ADAPTIVE_CHAT`.
+  Adding the catalog key against `ANTHROPIC_CHAT` would have been wrong twice over, and
+  both failures were silent. Sonnet 5 reasons unless told not to, so
+  `reasoning_off_param=None` — which means "omitting the parameter already means off" —
+  would have left `thinking=False` billing reasoning tokens, the same bug already fixed
+  for gemini. And `reasoning_effort="none"` is not the fix: LiteLLM maps that value to
+  *dropping* the parameter, landing back on the model's own default, so the off switch
+  has to be Anthropic's native `thinking={"type": "disabled"}`. Measured rather than read
+  off the docs: on a hard prompt the bare request and the explicitly-adaptive one both
+  came back with a thinking block having spent the full 6000-token cap, while the
+  disabled one answered in 1414 tokens. The second break is `temperature`, which this
+  line rejects at any value but 1 whether or not reasoning is on, so it leaves
+  `supported_params` rather than staying merely locked-while-thinking as on haiku. The
+  accepted efforts are pinned to `low`/`medium`/`high`/`xhigh`/`max`: `none` would read
+  as off while leaving the default in force, and `minimal` is silently mapped to `low`.
+  Live coverage is `tests/live/anthropic/test_sonnet_5.py`, which needs both halves —
+  reasoning on *and* reasoning off — since either alone would pass on a model that never
+  reasons. Two facts came out of writing it. The trace is real but unreadable: thinking
+  blocks arrive with empty text and `reasoning_content` empty, because Anthropic omits
+  the written summary by default and datafast has no control to ask for one. And thinking
+  shares the answer's token budget and sometimes eats all of it, so the reasoning-on test
+  asserts the trace and not the answer — requiring both made it flaky at 10000 tokens.
+  Not a default change: the `anthropic()` factory and `docs/models.md` stay on
+  `claude-haiku-4-5`, and `claude-sonnet-4-6` keeps `ANTHROPIC_CHAT` and its entry.
+  The anthropic example scripts stay on sonnet 4.6 deliberately — `06` and `10` print
+  `reasoning_content`, which is 3162 characters there and empty on sonnet 5, so moving
+  them would have turned two working demos into blank output.
+
+## In progress
+
+Nothing in flight — the next item is picked from Next up.
+
 ## Next up
 
 Launch checklist, grouped by area. All pipeline-architecture items gating the
@@ -97,24 +128,8 @@ documentation.
 
 ### Provider hardening & tests
 
-The served-model rename has landed (see Shipped); vocabulary is settled in
-`docs-agents/GLOSSARY.md`. What remains:
-
-- **Write a new provider test plan.** The old drafts (`llm_provider_test_plan.md`,
-  `llm_provider_test_guide.md`, `llm_provider_requirements.md`, `llm_live_test_plan.md`)
-  are deleted and not worth reviving — they predate the served-model vocabulary and the
-  current capability layer. The replacement should define the test layers and their
-  markers (contract, capability, adapter, reliability, live), how to mock LiteLLM and
-  inject `_sleep`, and how to add a served model or a step. Uses the settled
-  vocabulary; becomes the source for the Contributing guide below.
-- **Capability-driven live test catalogue.** A curated served-model catalog plus one
-  shared live suite parametrized over it, so adding a model is a single catalog entry.
-  Replaces the ad-hoc per-provider `integration` tests and wires up the `live` marker.
-  Depends on the new test plan (the two reasoning bugs are fixed — see Shipped).
-- **Migrate anthropic to `claude-sonnet-5`.** Check support for `claude-sonnet-5` and
-  add it in place of `claude-sonnet-4-6` (`_SERVED_MODEL_CATALOG`, examples, defaults); confirm
-  capability parity (reasoning / batching / structured output) before removing the
-  4.6 entry.
+Nothing outstanding. The served-model rename and the `claude-sonnet-5` support both
+landed (see Shipped); vocabulary is settled in `docs-agents/GLOSSARY.md`.
 
 ### Documentation (launch)
 
@@ -184,8 +199,11 @@ Gaps to close, roughly in priority order:
   version and write a public "what's new / breaking changes" page (dataset classes
   removed → pipelines).
 - **Contributing & development guide.** Test markers and layers, how to add a served
-  model or a step, and project layout. Draws on the new provider test plan (see Provider
-  hardening & tests) rather than the deleted drafts.
+  model or a step, and project layout. Written from the suites as they stand — the test
+  layers are considered settled and get no separate plan document. Must document the
+  real commands:
+  `.venv/bin/pytest -m "not live"` for the default run, `--run-live` to opt in, and that
+  live tests self-skip when their key or daemon is absent.
 - **Retire `SOFTWARE_DESCRIPTION.md`.** Fold its content into the docs above and
   generate the user manual (`docs-agents/SUM.md`) with the `write-manual` skill; delete
   `SOFTWARE_DESCRIPTION.md` once superseded.
@@ -223,6 +241,22 @@ Gaps to close, roughly in priority order:
 - **vLLM support.** Delta live tests + example suite (needs a running server).
 - **llama.cpp support.** Delta live tests + example suite (needs a running server).
 - **openai-compatible generic backend.** Tests + example for the generic self-hosted path.
+  All three are the same shape of work, and the same blocker: each needs a server
+  running plus model ids that are local to whoever runs the suite, which is why they
+  sit here rather than in TASKS. When one does land, `tests/live/ollama/` is the
+  template — it is the only existing suite with no API key to guard on, so copy
+  `require_ollama` and change the health endpoint it probes. Note that vllm and
+  llamacpp are reached through `openai_compatible`, i.e. the OpenAI wire format, so
+  unlike ollama they need no route-specific parameter translation.
+- **Capability-driven live test catalogue.** A curated served-model catalog plus one
+  shared live suite parametrized over it, so adding a model is a single catalog entry.
+  Demoted from the launch checklist: the problem it was meant to solve — ad-hoc
+  per-provider `integration` tests — is gone, and the six per-provider live suites
+  replaced them instead. Weigh it against what the current shape buys, because each
+  suite states what is peculiar to its provider (gemini's per-model reasoning floor,
+  openrouter's endpoint pinning, ollama's capability probe) and a parametrized sweep
+  would flatten exactly that. `tests/live/test_pipeline.py` is the one place the
+  parametrized shape already earns its keep.
 - Video input live coverage; `previous_response_id` continuation live scenario (E07); full-catalog live sweep (E08).
 
 ## Improvements & tech debt
@@ -230,4 +264,11 @@ Gaps to close, roughly in priority order:
 Non-feature work: rework, refactor, performance, cleanup.
 
 - ~~Migrate existing per-provider `integration` tests onto the `live` marker~~ — done. All six legacy files (`tests/test_{ollama,gemini,anthropic,openai,mistral,openrouter}.py`) are deleted, along with `tests/test_schemas.py`, their shared fixture module. Coverage the live suites lacked was ported first, per provider; the persona/QA/MCQ cases were dropped as model-quality tests, apart from one rewritten on gemini as a schema-constraint test.
+- ~~Dead `supports_thinking` capability flag~~ — done. Declared on
+  `ServedModelCapabilities` and set by `ANTHROPIC_CHAT`, but never read: whether
+  `thinking=True` is accepted or refused is already decided by `supports_reasoning` plus
+  the profile's `supported_params`. It was born unused in the commit that created the
+  capability layer rather than left behind by a removed feature, and a flag that looks
+  load-bearing while doing nothing is a trap for the next person writing a profile —
+  the same reason `rate_limits` and runner-level `max_concurrent` went.
 - ~~Unused markers~~ — done. `integration`, `slow`, `vllm` and `llamacpp` are no longer declared; `pytest.ini` now registers only markers that tests actually carry. The root conftest skips on `live` alone, and AGENTS.md's default test command is `-m "not live"`. A vllm or llamacpp live suite should re-add its marker when it lands.
