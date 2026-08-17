@@ -203,6 +203,41 @@ ANTHROPIC_CHAT = ServedModelCapabilities(
 )
 
 
+# Claude Sonnet 5 and the models that follow it: thinking is adaptive rather
+# than off by default, and the sampling controls are gone. Both differences are
+# silent under ANTHROPIC_CHAT, which is why these models need their own profile
+# rather than the provider default.
+ANTHROPIC_ADAPTIVE_CHAT = replace(
+    ANTHROPIC_CHAT,
+    supported_params=ANTHROPIC_CHAT.supported_params - {"temperature"},
+    reasoning_off_param=("thinking", {"type": "disabled"}),
+    reasoning_efforts=frozenset({"low", "medium", "high", "xhigh", "max"}),
+    reasoning_locks_temperature=False,
+    notes=(
+        "Reasoning must be requested off explicitly: these models think by "
+        "default, so omitting the parameter still bills reasoning tokens.",
+        "The off switch is the native thinking block, not an effort. LiteLLM "
+        "maps reasoning_effort='none' to dropping the parameter, which lands "
+        "back on the model's own default, so thinking=False sends "
+        "thinking={'type': 'disabled'} instead.",
+        "'none' and 'minimal' are excluded from the accepted efforts: 'none' "
+        "would read as off while leaving the default in force, and 'minimal' "
+        "is silently mapped to 'low'.",
+        "temperature is rejected at any value but 1, whether or not reasoning "
+        "is on, so it is unsupported here rather than merely locked while "
+        "thinking. top_p never applied to Anthropic in Datafast.",
+        "The trace is real but unreadable: thinking_blocks come back with "
+        "empty text and reasoning_content is empty too, because Anthropic "
+        "omits the written summary by default and Datafast has no control to "
+        "ask for one.",
+        "Thinking is billed out of the same budget as the answer and can "
+        "consume all of it — a hard prompt capped at 10000 tokens sometimes "
+        "returns no answer at all — so raise max_completion_tokens when "
+        "reasoning is on.",
+    ),
+)
+
+
 OPENROUTER_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
@@ -337,6 +372,7 @@ _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("openai", "gpt-5.4"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-mini"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-nano"): OPENAI_RESPONSES,
+    ("anthropic", "claude-sonnet-5"): ANTHROPIC_ADAPTIVE_CHAT,
     ("anthropic", "claude-sonnet-4-6"): ANTHROPIC_CHAT,
     ("anthropic", "claude-haiku-4-5"): ANTHROPIC_CHAT,
     ("gemini", "gemini-3.7-flash"): GEMINI_NO_MINIMAL_CHAT,
@@ -473,6 +509,7 @@ def _unknown_capabilities() -> ServedModelCapabilities:
 
 
 __all__ = [
+    "ANTHROPIC_ADAPTIVE_CHAT",
     "ANTHROPIC_CHAT",
     "GEMINI_CHAT",
     "HOSTED_CHAT",

@@ -109,6 +109,9 @@ factory. Each is only sent to served models whose profile declares it; where the
 profile omits it the value is dropped under your `unsupported_params` policy
 (warn by default) rather than reaching the provider. OpenAI's reasoning models,
 for instance, reject sampling controls outright, so datafast never forwards one.
+`claude-sonnet-5` is the same: it accepts no temperature but its default,
+reasoning or not, so datafast drops a caller-set one. On `claude-haiku-4-5` the
+restriction applies only while thinking is on.
 
 ```python
 model = openai("gpt-4o-mini", temperature=0.7, top_p=0.85, frequency_penalty=0.2)
