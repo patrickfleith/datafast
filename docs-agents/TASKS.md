@@ -6,11 +6,11 @@
 
 - [ ] Fix `43_cookbook_persona_generation.py`: it chains two sinks (`Sink.jsonl >> Sink.hub`), which `compile()` rejects — decide whether to split into two runs or let a pipeline end in several sinks
 - [ ] Consider supporting nested `Branch` inside a branch path — needs a metadata stack; `compile()` rejects the shape today because the inner branch overwrites the outer `_branch_id`
-- [ ] Review the documentation and identify missing blocks before publishing the new version of datafast
 - [ ] <task> <!-- optional (context) -->
 
 ## Done
 
+- [X] Review the documentation and identify missing blocks before publishing the new version of datafast <!-- audit written up as ROADMAP "Documentation (v1 launch)". 13 published pages / ~1,220 lines against ~10,100 lines of code: the site names the steps and documents almost none of their parameters. Turned up six non-doc blockers that have to be settled before pages are written — dead `show_progress`/`log_level` RunConfig fields, six declared-but-unimported dependencies plus three lazily-imported undeclared ones, no mkdocstrings behind the "auto-generated" API page, README and SOFTWARE_DESCRIPTION.md pointing at a deleted design doc, 0.0.35/Alpha release metadata, and the two-sink cookbook script that `compile()` rejects -->
 - [X] Manually test all Gemini example scripts <!-- examples/providers/gemini -->
 - [X] Retire the unused pytest markers <!-- dropped `integration` (the layer it marked is deleted), `slow` (its one user was gemini's 60-second RPM test), and `vllm`/`llamacpp`, which were declared for suites that do not exist yet — re-add each with the suite that needs it. tests/conftest.py now skips on `live` alone and AGENTS.md's default command is -m "not live". `live`, `multimodal` and the per-provider markers all stay: every one is carried by real tests -->
 - [X] Retire the last legacy `integration` suite <!-- tests/test_openrouter.py and tests/test_schemas.py deleted; the legacy layer is gone. Nothing needed porting — tests/live/openrouter/ already covered every case in it (basic text, structured output, messages, messages+structured, top_p, nested landmark schema) except the persona/QA/MCQ trio repeated across four model ids, which measures model quality rather than datafast. test_schemas.py went with it as its last importer, and the `integration` marker it carried became dead — retired in the follow-up above -->
