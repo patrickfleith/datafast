@@ -1,4 +1,4 @@
-"""Shared types for Datafast LLM provider targets."""
+"""Shared types for Datafast served models."""
 
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ class RetryPolicy:
 
 
 @dataclass(frozen=True)
-class TargetCapabilities:
+class ServedModelCapabilities:
     endpoint_modes: frozenset[EndpointMode]
     default_endpoint_mode: EndpointMode
     supported_params: frozenset[str] = frozenset()
@@ -73,8 +73,26 @@ class TargetCapabilities:
     batch_mode: BatchMode = BatchMode.FALLBACK_CONCURRENCY
     cache_mode: CacheMode = CacheMode.NONE
     supports_reasoning: bool = False
-    supports_thinking: bool = False
     reasoning_requires_allowlist: bool = False
+    # reasoning_effort value that thinking=True maps to.
+    reasoning_effort_on: str = "low"
+    # (name, value) request param that turns reasoning off for thinking=False.
+    # None omits it, which leaves the served model's own default in force —
+    # correct only where that default is "no reasoning".
+    reasoning_off_param: tuple[str, Any] | None = None
+    # True where the served model always reasons, so there is no off value to
+    # send and no "no reasoning" default to fall back on. Distinguishes those
+    # models from the ones where reasoning_off_param is None because omitting
+    # the parameter already means off.
+    reasoning_always_on: bool = False
+    # Accepted reasoning_effort values, or None to forward any value unchecked.
+    reasoning_efforts: frozenset[str] | None = None
+    # True where the served model rejects a caller-chosen temperature once
+    # reasoning is on, so temperature is dropped for those requests.
+    reasoning_locks_temperature: bool = False
+    # True where a file part must carry an id from the served model's own upload
+    # API, so inline bytes or a plain URL cannot satisfy Modality.FILE.
+    files_require_file_id: bool = False
     supports_media_uuid: bool = False
     no_api_key: bool = False
     requires_chat_template: bool = False
@@ -85,16 +103,19 @@ class TargetCapabilities:
 
 
 @dataclass(frozen=True)
-class TargetConfig:
-    provider: str
+class ServedModelConfig:
+    provider_id: str
     model_id: str
-    litellm_provider: str
+    litellm_route: str
     env_key_name: str | None
     endpoint_mode: EndpointMode = EndpointMode.AUTO
     temperature: float | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
     max_completion_tokens: int | None = None
     thinking: bool | None = None
     reasoning_effort: str | None = None
+    reasoning_summary: str | None = None
     rpm_limit: int | None = None
     timeout: float | None = None
     api_key: str | None = None
@@ -131,6 +152,8 @@ class ContentPart:
     data: str | None = None
     media_type: str | None = None
     media_id: str | None = None
+    # Required by OpenAI's Responses API alongside inline file data.
+    filename: str | None = None
     provider_options: dict[str, Any] = field(default_factory=dict)
 
 
@@ -146,8 +169,8 @@ __all__ = [
     "NormalizedRequest",
     "NormalizedResponse",
     "RetryPolicy",
+    "ServedModelCapabilities",
+    "ServedModelConfig",
     "StructuredOutputMode",
-    "TargetCapabilities",
-    "TargetConfig",
     "UnsupportedParamsPolicy",
 ]

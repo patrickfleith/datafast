@@ -9,9 +9,11 @@ import time
 import traceback
 import warnings
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from threading import Lock
 from typing import Any, TypeVar
 
+import httpx
 from loguru import logger
 from pydantic import BaseModel
 
@@ -30,8 +32,8 @@ from datafast.llm.types import (
     NormalizedResponse,
     RetryPolicy,
     StructuredOutputMode,
-    TargetCapabilities,
-    TargetConfig,
+    ServedModelCapabilities,
+    ServedModelConfig,
     UnsupportedParamsPolicy,
 )
 from datafast.tracing import (
@@ -58,22 +60,25 @@ def _configure_litellm_debug_output() -> None:
     litellm.suppress_debug_info = True
 
 
-class LLMProvider:
-    """One Datafast provider target resolved to LiteLLM request adapters."""
+class ServedModel:
+    """One provider-and-model pair resolved to LiteLLM request adapters."""
 
     def __init__(
         self,
-        provider: str,
+        provider_id: str,
         model_id: str,
         *,
-        litellm_provider: str,
+        litellm_route: str,
         env_key_name: str | None,
         endpoint_mode: str | EndpointMode = EndpointMode.AUTO,
         temperature: float | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
         max_completion_tokens: int | None = None,
         max_tokens: int | None = None,
         thinking: bool | None = None,
         reasoning_effort: str | None = None,
+        reasoning_summary: str | None = None,
         rpm_limit: int | None = None,
         timeout: float | None = None,
         api_key: str | None = None,
@@ -84,7 +89,7 @@ class LLMProvider:
         unsupported_params: str | UnsupportedParamsPolicy = UnsupportedParamsPolicy.WARN,
         provider_params: dict[str, Any] | None = None,
         max_concurrent: int = 4,
-        capabilities: TargetCapabilities | None = None,
+        capabilities: ServedModelCapabilities | None = None,
         **extra_provider_params: Any,
     ) -> None:
         if max_completion_tokens is None and max_tokens is not None:
@@ -102,16 +107,19 @@ class LLMProvider:
 
         unsupported_policy = _coerce_unsupported_policy(unsupported_params)
 
-        self.config = TargetConfig(
-            provider=provider,
+        self.config = ServedModelConfig(
+            provider_id=provider_id,
             model_id=model_id,
-            litellm_provider=litellm_provider,
+            litellm_route=litellm_route,
             env_key_name=env_key_name,
             endpoint_mode=_coerce_endpoint_mode(endpoint_mode),
             temperature=temperature,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
             max_completion_tokens=max_completion_tokens,
             thinking=thinking,
             reasoning_effort=reasoning_effort,
+            reasoning_summary=reasoning_summary,
             rpm_limit=rpm_limit,
             timeout=timeout,
             api_key=api_key,
@@ -122,14 +130,14 @@ class LLMProvider:
             max_concurrent=max_concurrent,
         )
         self.capabilities = resolve_capabilities(
-            provider,
+            provider_id,
             model_id,
             api_base_url=api_base_url,
             explicit=capabilities,
         )
         self.endpoint_mode = self._resolve_endpoint_mode(self.config.endpoint_mode)
 
-        self.provider_name = provider
+        self.provider_id = provider_id
         self.model_id = model_id
         self.env_key_name = env_key_name
         env_api_key = os.getenv(env_key_name) if env_key_name else None
@@ -137,8 +145,11 @@ class LLMProvider:
         self.api_key = api_key or env_api_key or None
         self.api_base_url = api_base_url
         self.temperature = temperature
+        self.top_p = top_p
+        self.frequency_penalty = frequency_penalty
         self.max_completion_tokens = max_completion_tokens
         self.reasoning_effort = reasoning_effort
+        self.reasoning_summary = reasoning_summary
         self.rpm_limit = rpm_limit
         self.timeout = timeout
         self.unsupported_params = unsupported_policy.value
@@ -150,6 +161,8 @@ class LLMProvider:
             name
             for name, value in {
                 "temperature": temperature,
+                "top_p": top_p,
+                "frequency_penalty": frequency_penalty,
                 "max_completion_tokens": max_completion_tokens,
                 "thinking": thinking,
                 "reasoning_effort": reasoning_effort,
@@ -163,7 +176,7 @@ class LLMProvider:
         maybe_configure_langfuse_tracing(load_env=False)
         logger.info(
             "Initialized {} | Model: {} | Endpoint: {}",
-            self.provider_name,
+            self.provider_id,
             self.model_id,
             self.endpoint_mode.value,
         )
@@ -311,12 +324,12 @@ class LLMProvider:
             error_trace = traceback.format_exc()
             logger.error(
                 "Generation failed | Provider: {} | Model: {} | Error: {}",
-                self.provider_name,
+                self.provider_id,
                 self.model_id,
                 exc,
             )
             raise RuntimeError(
-                f"Error generating response with {self.provider_name}:\n{error_trace}"
+                f"Error generating response with {self.provider_id}:\n{error_trace}"
             ) from exc
 
     def _generate_normalized_responses(
@@ -342,8 +355,8 @@ class LLMProvider:
 
         warnings.warn(
             (
-                f"{self.provider_name}/{self.model_id} does not expose native "
-                "same-target batching for this endpoint. Falling back to bounded "
+                f"{self.provider_id}/{self.model_id} does not expose native "
+                "batching for this endpoint. Falling back to bounded "
                 "parallel single requests."
             ),
             UserWarning,
@@ -492,7 +505,7 @@ class LLMProvider:
         }
         if request.previous_response_id is not None:
             # previous_response_id is a Responses-API concept; chat completions
-            # endpoints reject it regardless of what the target supports.
+            # endpoints reject it regardless of what the served model supports.
             self._handle_unsupported_param("previous_response_id")
         self._add_transport_params(params, endpoint=EndpointMode.CHAT)
         self._add_common_generation_params(params, endpoint=EndpointMode.CHAT)
@@ -533,10 +546,28 @@ class LLMProvider:
         *,
         endpoint: EndpointMode,
     ) -> None:
+        if self._temperature_allowed():
+            self._add_supported_param(
+                params,
+                "temperature",
+                self.config.temperature,
+                endpoint=endpoint,
+            )
+        elif "temperature" in self._configured_common_params:
+            self._handle_unsupported_param(
+                "temperature", detail="while reasoning is enabled"
+            )
+
         self._add_supported_param(
             params,
-            "temperature",
-            self.config.temperature,
+            "top_p",
+            self.config.top_p,
+            endpoint=endpoint,
+        )
+        self._add_supported_param(
+            params,
+            "frequency_penalty",
+            self.config.frequency_penalty,
             endpoint=endpoint,
         )
 
@@ -550,23 +581,45 @@ class LLMProvider:
             "max_completion_tokens",
             self.config.max_completion_tokens,
             endpoint=endpoint,
-            target_name=token_param,
+            param_name=token_param,
         )
 
         if self.config.thinking is False:
+            if self.config.reasoning_summary is not None:
+                self._handle_unsupported_param(
+                    "reasoning_summary", detail="while reasoning is disabled"
+                )
+            if self.capabilities.reasoning_always_on:
+                raise ValueError(
+                    f"{self.provider_id}/{self.model_id} always reasons, so "
+                    "thinking=False cannot be honoured. Pass reasoning_effort "
+                    "with the lowest level it accepts instead"
+                    + self._supported_efforts_hint()
+                )
+            off_param = self.capabilities.reasoning_off_param
+            if off_param is not None:
+                name, value = off_param
+                # The off value is an effort like any other, so it needs the
+                # same Responses-shaped wrapper the "on" path applies below.
+                if name == "reasoning_effort" and endpoint == EndpointMode.RESPONSES:
+                    params["reasoning"] = {"effort": value}
+                else:
+                    params[name] = value
             return
 
-        effort = self.config.reasoning_effort
-        if effort is None and self.config.thinking is True:
-            effort = "low"
+        effort = self._resolve_reasoning_effort()
+        summary = self._resolve_reasoning_summary(endpoint)
 
-        if endpoint == EndpointMode.RESPONSES and effort is not None:
+        if endpoint == EndpointMode.RESPONSES and (
+            effort is not None or summary is not None
+        ):
+            reasoning = {"effort": effort, "summary": summary}
             self._add_supported_param(
                 params,
                 "reasoning_effort",
-                {"effort": effort},
+                {k: v for k, v in reasoning.items() if v is not None},
                 endpoint=endpoint,
-                target_name="reasoning",
+                param_name="reasoning",
             )
             return
 
@@ -577,10 +630,65 @@ class LLMProvider:
             endpoint=endpoint,
         )
 
+    def _temperature_allowed(self) -> bool:
+        """False where the served model rejects a temperature with reasoning on."""
+        if not self.capabilities.reasoning_locks_temperature:
+            return True
+        if self.config.thinking is False:
+            return True
+        return self._resolve_reasoning_effort() is None
+
+    def _supported_efforts_hint(self) -> str:
+        """The accepted levels, for error messages, or '' where any is allowed."""
+        supported = self.capabilities.reasoning_efforts
+        if not supported:
+            return "."
+        return f": {', '.join(sorted(supported))}."
+
+    def _resolve_reasoning_summary(self, endpoint: EndpointMode) -> str | None:
+        """Resolve the reasoning summary to ask for, or None to omit it.
+
+        A summary is a Responses-only concept: it rides inside the `reasoning`
+        object, which chat endpoints have no field for, whatever a profile
+        that serves both endpoints declares.
+        """
+        summary = self.config.reasoning_summary
+        if summary is None:
+            return None
+        if (
+            endpoint != EndpointMode.RESPONSES
+            or "reasoning_summary" not in self.capabilities.supported_params
+        ):
+            self._handle_unsupported_param("reasoning_summary")
+            return None
+        return summary
+
+    def _resolve_reasoning_effort(self) -> str | None:
+        """Resolve the reasoning_effort value to send, or None to omit it.
+
+        thinking=True means the served model's own "on" level rather than a
+        fixed one: Mistral's reasoning models accept only 'high' and 'none' and
+        reject 'low' with a 400.
+        """
+        effort = self.config.reasoning_effort
+        if effort is None:
+            if self.config.thinking is not True:
+                return None
+            effort = self.capabilities.reasoning_effort_on
+
+        supported = self.capabilities.reasoning_efforts
+        if supported is not None and effort not in supported:
+            raise ValueError(
+                f"reasoning_effort '{effort}' is not supported by "
+                f"{self.provider_id}/{self.model_id}. Supported values: "
+                f"{', '.join(sorted(supported))}."
+            )
+        return effort
+
     def _apply_reasoning_allowlist(self, params: dict[str, Any]) -> None:
         """Force reasoning_effort past LiteLLM's per-model param filter.
 
-        Some targets (e.g. Mistral's mistral-medium/small) accept reasoning_effort
+        Some served models (e.g. Mistral's mistral-medium/small) accept reasoning_effort
         server-side, but the installed LiteLLM only recognises it for a subset of
         models and would otherwise drop it. allowed_openai_params tells LiteLLM to
         forward the parameter anyway.
@@ -610,7 +718,7 @@ class LLMProvider:
         elif mode == StructuredOutputMode.PROMPTED_JSON:
             warnings.warn(
                 (
-                    f"{self.provider_name}/{self.model_id} has no declared native "
+                    f"{self.provider_id}/{self.model_id} has no declared native "
                     "schema support. Using prompted JSON plus Pydantic validation."
                 ),
                 UserWarning,
@@ -618,7 +726,7 @@ class LLMProvider:
             )
         else:
             raise ValueError(
-                f"{self.provider_name}/{self.model_id} does not support structured output"
+                f"{self.provider_id}/{self.model_id} does not support structured output"
             )
 
     def _add_responses_structured_output(
@@ -631,7 +739,7 @@ class LLMProvider:
 
         if self.capabilities.structured_output != StructuredOutputMode.JSON_SCHEMA:
             raise ValueError(
-                f"{self.provider_name}/{self.model_id} does not support native "
+                f"{self.provider_id}/{self.model_id} does not support native "
                 "Responses structured output"
             )
         params["text_format"] = response_format
@@ -651,7 +759,7 @@ class LLMProvider:
             )
         if self.api_base_url is not None:
             params["api_base"] = self.api_base_url
-        # no_api_key only waives auth for self-hosted targets (custom base
+        # no_api_key only waives auth for self-hosted served models (custom base
         # URL); hosted endpoints still require a key even if the resolved
         # capability profile is a keyless local one.
         api_key_optional = self.capabilities.no_api_key and (
@@ -666,7 +774,7 @@ class LLMProvider:
             else:
                 raise ValueError(
                     f"{self.env_key_name} environment variable not set. "
-                    "Set it or provide api_key when initializing the provider."
+                    "Set it or provide api_key when initializing the served model."
                 )
 
     def _add_supported_param(
@@ -676,7 +784,7 @@ class LLMProvider:
         value: Any,
         *,
         endpoint: EndpointMode,
-        target_name: str | None = None,
+        param_name: str | None = None,
     ) -> None:
         if value is None:
             return
@@ -703,13 +811,13 @@ class LLMProvider:
             self._handle_unsupported_param(source_name)
             return
 
-        params[target_name or source_name] = value
+        params[param_name or source_name] = value
 
-    def _handle_unsupported_param(self, name: str) -> None:
-        message = (
-            f"Parameter '{name}' is not supported by resolved target "
-            f"{self.provider_name}/{self.model_id} and will be omitted."
-        )
+    def _handle_unsupported_param(self, name: str, detail: str | None = None) -> None:
+        target = f"resolved served model {self.provider_id}/{self.model_id}"
+        if detail:
+            target = f"{target} {detail}"
+        message = f"Parameter '{name}' is not supported by {target} and will be omitted."
         if self.config.unsupported_params == UnsupportedParamsPolicy.FAIL:
             raise ValueError(message)
         if self.config.unsupported_params == UnsupportedParamsPolicy.WARN:
@@ -807,15 +915,35 @@ class LLMProvider:
                 if modality not in supported:
                     raise ValueError(
                         f"Modality '{modality.value}' is not supported by "
-                        f"{self.provider_name}/{self.model_id}"
+                        f"{self.provider_id}/{self.model_id}"
                     )
+                if modality == Modality.FILE:
+                    self._validate_file_carrier(part)
+
+    def _validate_file_carrier(self, part: dict[str, Any]) -> None:
+        """Reject a file part the served model could not accept.
+
+        Declaring Modality.FILE says files work, not how they arrive. Where only an
+        uploaded id will do, inline data reaches the provider as a malformed part and
+        comes back as an opaque schema error, so it is worth catching here.
+        """
+        if not self.capabilities.files_require_file_id:
+            return
+        if part.get("file", {}).get("file_id"):
+            return
+        raise ValueError(
+            f"{self.provider_id}/{self.model_id} accepts a file only as an id from "
+            "its own upload API. Upload it with the served model's upload_file(), "
+            "then pass the returned id as the file part's 'url' — "
+            "ContentPart(type='file', url=<file_id>) — rather than inline 'data'."
+        )
 
     def _resolve_endpoint_mode(self, endpoint_mode: EndpointMode) -> EndpointMode:
         if endpoint_mode == EndpointMode.AUTO:
             return self.capabilities.default_endpoint_mode
         if not self.capabilities.supports_endpoint(endpoint_mode):
             raise ValueError(
-                f"{self.provider_name}/{self.model_id} does not support "
+                f"{self.provider_id}/{self.model_id} does not support "
                 f"endpoint_mode='{endpoint_mode.value}'"
             )
         return endpoint_mode
@@ -879,7 +1007,7 @@ class LLMProvider:
                 logger.warning(
                     "Retryable LLM error | Provider: {} | Model: {} | "
                     "Attempt: {}/{} | Waiting: {:.2f}s | Error: {}",
-                    self.provider_name,
+                    self.provider_id,
                     self.model_id,
                     attempt + 1,
                     attempts,
@@ -921,7 +1049,7 @@ class LLMProvider:
                 logger.warning(
                     "Rate limit reached | Provider: {} | Model: {} | "
                     "Waiting {:.2f}s",
-                    self.provider_name,
+                    self.provider_id,
                     self.model_id,
                     sleep_time,
                 )
@@ -959,13 +1087,13 @@ class LLMProvider:
     ) -> dict[str, Any]:
         return build_trace_metadata(
             model=self,
-            component="provider.generate",
-            trace_name=f"datafast.{self.provider_name}",
+            component="served_model.generate",
+            trace_name=f"datafast.{self.provider_id}",
             metadata=metadata,
         )
 
     def _get_model_string(self) -> str:
-        prefix = f"{self.config.litellm_provider}/"
+        prefix = f"{self.config.litellm_route}/"
         if self.model_id.startswith(prefix):
             return self.model_id
         return f"{prefix}{self.model_id}"
@@ -984,151 +1112,265 @@ class LLMProvider:
         return content.strip()
 
 
-class OpenAIProvider(LLMProvider):
+class _OpenAIServedModel(ServedModel):
     def __init__(self, model_id: str = "gpt-5.5", **kwargs: Any) -> None:
         super().__init__(
             "openai",
             model_id,
-            litellm_provider="openai",
+            litellm_route="openai",
             env_key_name="OPENAI_API_KEY",
             **kwargs,
         )
 
 
-class AnthropicProvider(LLMProvider):
+class _AnthropicServedModel(ServedModel):
     def __init__(self, model_id: str = "claude-haiku-4-5", **kwargs: Any) -> None:
         super().__init__(
             "anthropic",
             model_id,
-            litellm_provider="anthropic",
+            litellm_route="anthropic",
             env_key_name="ANTHROPIC_API_KEY",
             **kwargs,
         )
 
 
-class GeminiProvider(LLMProvider):
-    def __init__(self, model_id: str = "gemini-3.1-flash-lite", **kwargs: Any) -> None:
+class _GeminiServedModel(ServedModel):
+    def __init__(self, model_id: str = "gemini-3.5-flash-lite", **kwargs: Any) -> None:
         super().__init__(
             "gemini",
             model_id,
-            litellm_provider="gemini",
+            litellm_route="gemini",
             env_key_name="GEMINI_API_KEY",
             **kwargs,
         )
 
 
-class MistralProvider(LLMProvider):
+class _MistralServedModel(ServedModel):
+    # LiteLLM has no Files support for Mistral, so these two call the API directly.
+    FILES_URL = "https://api.mistral.ai/v1/files"
+
     def __init__(self, model_id: str = "mistral-small-2603", **kwargs: Any) -> None:
         super().__init__(
             "mistral",
             model_id,
-            litellm_provider="mistral",
+            litellm_route="mistral",
             env_key_name="MISTRAL_API_KEY",
             **kwargs,
         )
 
+    def upload_file(
+        self,
+        path: str | Path,
+        *,
+        purpose: str = "ocr",
+        expiry: int | None = None,
+    ) -> str:
+        """Upload a document to Mistral's Files API and return its id.
 
-class OpenRouterProvider(LLMProvider):
+        Mistral's chat API accepts a document only as an id, so this is how one
+        reaches the model:
+
+            file_id = model.upload_file("report.pdf")
+            ContentPart(type="file", url=file_id)
+
+        Uploading is deliberately separate from generating: the id can be reused
+        across every request in a pipeline run, and the upload stays visible rather
+        than happening behind a `generate()` call. The file then remains in the
+        Mistral account until `delete_file` removes it — Datafast does not track it.
+
+        `expiry` asks Mistral to expire the file on its own, which is worth setting
+        for throwaway uploads that no later run needs. It is forwarded verbatim:
+        Mistral documents the field as an integer but not its unit, so the value
+        means whatever the API says it means. Omitted by default, leaving the
+        account's own retention in force.
+        """
+        path = Path(path)
+        payload: dict[str, Any] = {"purpose": purpose}
+        if expiry is not None:
+            payload["expiry"] = expiry
+        with path.open("rb") as handle:
+            response = httpx.post(
+                self.FILES_URL,
+                headers=self._files_headers(),
+                data=payload,
+                files={"file": (path.name, handle)},
+                timeout=self.timeout or 60.0,
+            )
+        response.raise_for_status()
+        return response.json()["id"]
+
+    def delete_file(self, file_id: str) -> None:
+        """Delete a file previously returned by `upload_file`."""
+        response = httpx.delete(
+            f"{self.FILES_URL}/{file_id}",
+            headers=self._files_headers(),
+            timeout=self.timeout or 60.0,
+        )
+        response.raise_for_status()
+
+    def _files_headers(self) -> dict[str, str]:
+        if not self.api_key:
+            raise ValueError(
+                "A Mistral API key is required to use the Files API. Set "
+                "MISTRAL_API_KEY or pass api_key=."
+            )
+        return {"Authorization": f"Bearer {self.api_key}"}
+
+
+class _OpenRouterServedModel(ServedModel):
     def __init__(self, model_id: str = "openai/gpt-5.4-mini", **kwargs: Any) -> None:
         super().__init__(
             "openrouter",
             model_id,
-            litellm_provider="openrouter",
+            litellm_route="openrouter",
             env_key_name="OPENROUTER_API_KEY",
             **kwargs,
         )
 
 
-class OllamaProvider(LLMProvider):
-    def __init__(self, model_id: str = "gemma3:4b", **kwargs: Any) -> None:
+class _OllamaServedModel(ServedModel):
+    # LiteLLM has no Ollama introspection, so the probe below calls the daemon.
+    SHOW_PATH = "/api/show"
+    DEFAULT_API_BASE = "http://localhost:11434"
+
+    def __init__(self, model_id: str = "gemma4:12b", **kwargs: Any) -> None:
         super().__init__(
             "ollama",
             model_id,
-            litellm_provider="ollama_chat",
+            litellm_route="ollama_chat",
             env_key_name=None,
             **kwargs,
         )
 
+    def probe_capabilities(self) -> frozenset[str]:
+        """Ask the Ollama daemon what this model can actually do.
 
-class OpenAICompatibleProvider(LLMProvider):
+        Returns Ollama's own capability names — "completion", "vision", "audio",
+        "thinking", "tools", "embedding", "insert" — not Datafast's vocabulary.
+
+        Which model is pulled is a property of the machine, not of the id, so
+        Datafast resolves an Ollama model from name heuristics and can only be
+        approximately right: `OLLAMA_CHAT` declares `Modality.IMAGE` for every
+        model, and a reasoning model whose name carries no marker resolves to the
+        profile with reasoning switched off. The daemon knows the answer exactly
+        and answers for free, so it is worth asking before assuming:
+
+            if "vision" not in model.probe_capabilities():
+                ...  # don't bother attaching the image
+
+        Raises `httpx.HTTPStatusError` if the model is not pulled, and a connect
+        error if no daemon is listening.
+        """
+        response = httpx.post(
+            f"{self._resolved_api_base()}{self.SHOW_PATH}",
+            json={"model": self.model_id},
+            timeout=self.timeout or 60.0,
+        )
+        response.raise_for_status()
+        return frozenset(response.json().get("capabilities") or ())
+
+    def _resolved_api_base(self) -> str:
+        """The daemon the generate calls reach, resolved the way LiteLLM resolves it
+        (`llms/ollama/common_utils.py:76`) so the probe cannot end up on another host."""
+        base = (
+            self.api_base_url
+            or os.getenv("OLLAMA_API_BASE")
+            or self.DEFAULT_API_BASE
+        )
+        return base.rstrip("/")
+
+
+class _OpenAICompatibleServedModel(ServedModel):
     def __init__(
         self,
         model_id: str,
         *,
-        provider: str = "openai_compatible",
-        litellm_provider: str = "openai",
+        provider_id: str,
+        litellm_route: str = "openai",
         env_key_name: str | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
-            provider,
+            provider_id,
             model_id,
-            litellm_provider=litellm_provider,
+            litellm_route=litellm_route,
             env_key_name=env_key_name,
             **kwargs,
         )
 
 
-def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> OpenAIProvider:
-    return OpenAIProvider(model_id=model_id, **kwargs)
+def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> ServedModel:
+    return _OpenAIServedModel(model_id=model_id, **kwargs)
 
 
-def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> AnthropicProvider:
-    return AnthropicProvider(model_id=model_id, **kwargs)
+def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> ServedModel:
+    return _AnthropicServedModel(model_id=model_id, **kwargs)
 
 
-def gemini(model_id: str = "gemini-3.1-flash-lite", **kwargs: Any) -> GeminiProvider:
-    return GeminiProvider(model_id=model_id, **kwargs)
+def gemini(model_id: str = "gemini-3.5-flash-lite", **kwargs: Any) -> ServedModel:
+    return _GeminiServedModel(model_id=model_id, **kwargs)
 
 
-def mistral(model_id: str = "mistral-small-2603", **kwargs: Any) -> MistralProvider:
-    return MistralProvider(model_id=model_id, **kwargs)
+def mistral(model_id: str = "mistral-small-2603", **kwargs: Any) -> ServedModel:
+    return _MistralServedModel(model_id=model_id, **kwargs)
 
 
 def openrouter(
     model_id: str = "openai/gpt-5.4-mini",
     **kwargs: Any,
-) -> OpenRouterProvider:
-    return OpenRouterProvider(model_id=model_id, **kwargs)
+) -> ServedModel:
+    return _OpenRouterServedModel(model_id=model_id, **kwargs)
 
 
-def ollama(model_id: str = "gemma3:4b", **kwargs: Any) -> OllamaProvider:
-    return OllamaProvider(model_id=model_id, **kwargs)
+def ollama(model_id: str = "gemma4:12b", **kwargs: Any) -> ServedModel:
+    return _OllamaServedModel(model_id=model_id, **kwargs)
 
 
 def openai_compatible(
     model_id: str,
     *,
+    provider_id: str,
     api_base_url: str | None = None,
-    backend: str = "openai_compatible",
     **kwargs: Any,
-) -> OpenAICompatibleProvider:
-    provider = _normalize_openai_compatible_backend(backend)
-    return OpenAICompatibleProvider(
+) -> ServedModel:
+    """Build a served model reached over the OpenAI-compatible transport.
+
+    provider_id names the server doing the serving ('vllm', 'llamacpp', ...),
+    never the wire format. Servers without a capability profile of their own
+    still work; they resolve to the conservative OpenAI-compatible profile.
+    """
+    return _OpenAICompatibleServedModel(
         model_id=model_id,
-        provider=provider,
+        provider_id=_normalize_provider_id(provider_id),
         api_base_url=api_base_url,
         **kwargs,
     )
 
 
-def _normalize_openai_compatible_backend(value: str) -> str:
+# An OpenAI-shaped wire format says nothing about which server is on the other
+# end, so these never identify a provider.
+_WIRE_FORMAT_IDS = frozenset({"openai_compatible", "openai_api", "oai_compatible"})
+
+_PROVIDER_ID_ALIASES = {
+    "llama_cpp": "llamacpp",
+    "llama.cpp": "llamacpp",
+}
+
+
+def _normalize_provider_id(value: str) -> str:
     normalized = value.strip().lower().replace("-", "_")
-    aliases = {
-        "openai-compatible": "openai_compatible",
-        "openai_compatible": "openai_compatible",
-        "llama.cpp": "llamacpp",
-        "llama_cpp": "llamacpp",
-        "llamacpp": "llamacpp",
-        "vllm": "vllm",
-    }
-    try:
-        return aliases[normalized]
-    except KeyError as exc:
-        valid = ", ".join(sorted(set(aliases.values())))
+    normalized = _PROVIDER_ID_ALIASES.get(normalized, normalized)
+    if not normalized:
         raise ValueError(
-            f"Unsupported OpenAI-compatible backend '{value}'. Choose: {valid}"
-        ) from exc
+            "provider_id must name the server that serves the model, e.g. 'vllm'."
+        )
+    if normalized in _WIRE_FORMAT_IDS:
+        raise ValueError(
+            f"provider_id '{value}' names a wire format, not a server. Pass the "
+            "server that serves the model, e.g. provider_id='vllm' or "
+            "provider_id='llamacpp'."
+        )
+    return normalized
 
 
 def _coerce_endpoint_mode(value: str | EndpointMode) -> EndpointMode:
@@ -1226,6 +1468,7 @@ def _content_part_to_dict(part: Any) -> dict[str, Any]:
             "data": part.data,
             "media_type": part.media_type,
             "media_id": part.media_id,
+            "filename": part.filename,
             **part.provider_options,
         }
 
@@ -1292,27 +1535,36 @@ def _media_url_from_part(part: dict[str, Any], *, kind: str) -> str:
     if url:
         return url
 
-    data = part.get("data")
-    if data:
-        if data.startswith("data:"):
-            return data
-        media_type = part.get("media_type") or part.get("format")
-        if not media_type:
-            raise ValueError(
-                f"{kind} content parts with raw base64 'data' need 'media_type' "
-                "(e.g. 'image/png') to build a data URI, or pass a full "
-                "'data:' URI directly"
-            )
-        return f"data:{media_type};base64,{data}"
+    if part.get("data"):
+        return _data_uri_from_part(part, kind=kind)
 
     raise ValueError(f"{kind} content parts require either 'url' or 'data'")
+
+
+def _data_uri_from_part(part: dict[str, Any], *, kind: str) -> str:
+    """Wrap raw base64 in a `data:` URI; pass an existing one through."""
+    data = part["data"]
+    if data.startswith("data:"):
+        return data
+    media_type = part.get("media_type") or part.get("format")
+    if not media_type:
+        raise ValueError(
+            f"{kind} content parts with raw base64 'data' need 'media_type' "
+            "(e.g. 'image/png', 'application/pdf') to build a data URI, or "
+            "pass a full 'data:' URI directly"
+        )
+    return f"data:{media_type};base64,{data}"
 
 
 def _normalize_file_part(part: dict[str, Any]) -> dict[str, Any]:
     if isinstance(part.get("file"), dict):
         file_payload = part["file"]
     elif part.get("data"):
-        file_payload = {"file_data": part.get("data")}
+        # OpenAI's Responses API rejects inline file data without a filename.
+        file_payload = {
+            "file_data": _data_uri_from_part(part, kind="file"),
+            "filename": part.get("filename"),
+        }
     else:
         file_payload = {"file_id": part.get("url")}
     return {"type": "file", "file": _without_none(file_payload)}
@@ -1382,10 +1634,10 @@ def _modality_for_part(part: dict[str, Any]) -> Modality:
         return Modality.AUDIO
     if part_type in {"video", "video_url"}:
         return Modality.VIDEO
-    if part_type == "file":
+    # 'document' parts normalize to 'file' before gating, and no served model
+    # declares Modality.DOCUMENT, so both gate as FILE.
+    if part_type in {"file", "document"}:
         return Modality.FILE
-    if part_type == "document":
-        return Modality.DOCUMENT
     return Modality.TEXT
 
 
@@ -1662,14 +1914,7 @@ def _is_unsupported_params_error(exc: Exception) -> bool:
 
 
 __all__ = [
-    "LLMProvider",
-    "OpenAIProvider",
-    "AnthropicProvider",
-    "GeminiProvider",
-    "MistralProvider",
-    "OpenRouterProvider",
-    "OllamaProvider",
-    "OpenAICompatibleProvider",
+    "ServedModel",
     "openai",
     "anthropic",
     "gemini",

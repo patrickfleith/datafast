@@ -8,7 +8,7 @@ from loguru import logger
 from datafast.core.config import LLMCall
 from datafast.core.step import Step
 from datafast.core.types import Record
-from datafast.llm.provider import LLMProvider
+from datafast.llm.served_model import ServedModel
 from datafast.tracing import build_trace_metadata
 from datafast.transforms.llm_eval import (
     _build_output_record,
@@ -106,7 +106,7 @@ class Rewrite(Step):
     def __init__(
         self,
         input_column: str,
-        llm: LLMProvider | list[LLMProvider] | Sample,
+        llm: ServedModel | list[ServedModel] | Sample,
         *,
         output_column: str | None = None,
         mode: str = "paraphrase",
@@ -235,11 +235,11 @@ class Rewrite(Step):
         self,
         records: list[Record],
         skip_call_ids: set[str] | None = None,
-    ) -> tuple[list[LLMCall], dict[str, LLMProvider]]:
+    ) -> tuple[list[LLMCall], dict[str, ServedModel]]:
         """Collect LLM calls for batched execution by the Runner."""
         skip_call_ids = skip_call_ids or set()
         calls: list[LLMCall] = []
-        models_map: dict[str, LLMProvider] = {}
+        models_map: dict[str, ServedModel] = {}
 
         models = _normalize_models(self._llm)
 
@@ -269,7 +269,7 @@ class Rewrite(Step):
         return calls, models_map
 
     def apply_result(
-        self, call: LLMCall, result: str, model: LLMProvider
+        self, call: LLMCall, result: str, model: ServedModel
     ) -> Record:
         """Convert an LLM result into an output record."""
         fields: dict[str, Any] = {self._output_column: result.strip()}

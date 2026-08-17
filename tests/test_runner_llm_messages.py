@@ -3,7 +3,7 @@ from datafast import LLMStep, ListSink, Source
 
 def test_runner_passes_llm_messages_by_keyword():
     class FakeModel:
-        provider_name = "fake"
+        provider_id = "fake"
         model_id = "fake-model"
 
         def __init__(self) -> None:

@@ -129,7 +129,7 @@ def build_trace_metadata(
     base: dict[str, Any] = {
         "datafast_component": component,
         "datafast_version": _DATAFAST_VERSION,
-        "datafast_provider": _get_model_attr(model, "provider_name"),
+        "datafast_provider_id": _get_model_attr(model, "provider_id"),
         "datafast_model_id": _get_model_attr(model, "model_id"),
     }
 

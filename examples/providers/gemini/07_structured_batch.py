@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datafast import gemini
 
 
-MODEL_ID = "gemini-3.1-flash-lite"
+MODEL_ID = "gemini-3.5-flash-lite"
 PROMPTS = [
     "Return JSON for Python with fields language, category, and one_sentence_use_case.",
     "Return JSON for Rust with fields language, category, and one_sentence_use_case.",

@@ -1,29 +1,36 @@
 # Model Defaults
 
-These are the current default model IDs encoded in the package providers.
+These are the current default model IDs each provider factory uses when you
+don't pass one.
 
 ## OpenAI
 
-- `gpt-5-mini-2025-08-07`
+- `gpt-5.5`
 
 ## Anthropic
 
-- `claude-haiku-4-5-20251001`
+- `claude-haiku-4-5`
 
 ## Gemini
 
-- `gemini-2.0-flash`
+- `gemini-3.5-flash-lite`
 
 ## Mistral
 
-- `mistral-small-latest`
+- `mistral-small-2603`
 
 ## OpenRouter
 
-- `openai/gpt-5-mini`
+- `openai/gpt-5.4-mini`
 
 ## Ollama
 
-- `gemma3:4b`
+- `gemma4:12b`
 
-You can override any of these by passing `model_id=...` when constructing the provider or using a factory helper.
+Unlike the hosted providers, this default is only a default: it is whatever you
+have pulled that counts. `gemma4:12b` is a ~7.6 GB multimodal reasoning model,
+which is what the Ollama examples use; on a smaller machine pass a lighter id such
+as `gemma3:4b` (~3.3 GB, no reasoning) or `qwen3:0.6b` (~0.5 GB, reasoning).
+
+Override any of these by passing a model id to the factory, positionally or as
+`model_id=...`.

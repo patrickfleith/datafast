@@ -60,18 +60,20 @@ pipeline.run(batch_size=4)
 - `Sink`: write JSONL, CSV, Parquet, Hub datasets, or collect records in memory
 - `Runner` and `RunConfig`: execution, batching, checkpoints, resume
 
-## Providers
+## Served Models
 
-The package keeps direct provider coverage for:
+A **served model** is a provider and a model together, with its configuration — the
+object you construct and pass to a step. Build one with a provider factory:
 
-- `OpenAIProvider`
-- `AnthropicProvider`
-- `GeminiProvider`
-- `MistralProvider`
-- `OpenRouterProvider`
-- `OllamaProvider`
+`openai`, `anthropic`, `gemini`, `mistral`, `openrouter`, `ollama`, `openai_compatible`
 
-Top-level factory helpers are also available: `openai`, `anthropic`, `gemini`, `mistral`, `openrouter`, `ollama`.
+```python
+from datafast import openai
+
+model = openai("gpt-5.4-mini", temperature=0.7)
+```
+
+The factories are the public entry points; `ServedModel` is exported for annotations.
 
 ## Optional Langfuse Tracing
 
@@ -85,7 +87,7 @@ LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-Once those values are present, tracing is enabled automatically when you create a provider.
+Once those values are present, tracing is enabled automatically when you create a served model.
 
 ```python
 from datafast import LLMStep, Seed, openrouter

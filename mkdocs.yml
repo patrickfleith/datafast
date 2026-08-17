@@ -48,7 +48,7 @@ nav:
       - Text Classification: cookbook/text_classification.md
       - Persona Generation: cookbook/persona_generation.md
       - Space Engineering Text Generation: cookbook/space_text_generation.md
-  - Providers: llms.md
+  - Served models: llms.md
   - Models: models.md
   - API: api.md
 

@@ -220,11 +220,10 @@ class CheckpointManager:
         manifest.current_step = step_index + 1
         self.save_manifest(manifest)
 
-        progress_path = self._progress_file_path(
-            step_index, manifest.steps[step_index].name
-        )
-        if progress_path.exists():
-            progress_path.unlink()
+        # Glob rather than name the file: a Branch step also owns one progress
+        # file per nested LLM step (step_NNN_Branch.<path>....progress.json).
+        for path in self.checkpoint_dir.glob(f"step_{step_index:03d}_*.progress.json"):
+            path.unlink(missing_ok=True)
 
     def mark_step_in_progress(self, manifest: Manifest, step_index: int) -> None:
         """Mark a step as in-progress."""
@@ -253,8 +252,10 @@ class CheckpointManager:
                 step.status = "pending"
                 step.records_in = None
                 step.records_out = None
-                self._step_file_path(step.index, step.name).unlink(missing_ok=True)
-                self._progress_file_path(step.index, step.name).unlink(missing_ok=True)
+                # Glob rather than name the files: a Branch step also owns
+                # per-path files (step_NNN_Branch.<path>....jsonl).
+                for path in self.checkpoint_dir.glob(f"step_{step.index:03d}_*"):
+                    path.unlink(missing_ok=True)
 
         manifest.current_step = index
         self.save_manifest(manifest)

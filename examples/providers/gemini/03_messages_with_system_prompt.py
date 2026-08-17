@@ -6,7 +6,7 @@ from datafast import gemini
 from datafast.llm_utils import format_generated_responses
 
 
-MODEL_ID = "gemini-3.1-flash-lite"
+MODEL_ID = "gemini-3.5-flash-lite"
 MESSAGES = [
     {
         "role": "system",

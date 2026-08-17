@@ -28,6 +28,14 @@ class Branch(Step):
     records that a downstream :class:`JoinBranches` step can merge back
     together.
 
+    When run through :meth:`Pipeline.run`, the runner drives the paths
+    itself rather than calling :meth:`process`, so LLM steps nested in a
+    path get the same batching, execution strategy and per-call
+    checkpointing as top-level ones — a crash mid-branch only re-runs the
+    calls that had not completed.  Non-LLM steps inside a path are not
+    checkpointed individually and re-run on resume, so they should be
+    deterministic (seed any ``Sample`` used inside a path).
+
     Every output record carries three metadata fields consumed by
     ``JoinBranches``:
 
@@ -85,6 +93,37 @@ class Branch(Step):
         """Return the ordered list of branch path names."""
         return list(self._paths.keys())
 
+    @property
+    def paths(self) -> dict[str, Step]:
+        """Return the ordered mapping of path name to step."""
+        return self._paths
+
+    def tag_inputs(self, records: list[Record]) -> list[Record]:
+        """Tag input records in place with their ID and original column names."""
+        for idx, record in enumerate(records):
+            record[_BRANCH_ID] = idx
+            record[_BRANCH_INPUT_KEYS] = [
+                k for k in record.keys()
+                if k not in _BRANCH_META_KEYS
+            ]
+        return records
+
+    def tag_output(self, record: Record, branch_name: str) -> Record:
+        """Tag one path output record with its branch name, in place."""
+        record[_BRANCH_NAME] = branch_name
+
+        # Ensure metadata survives even if the path step rebuilt the
+        # record from scratch.
+        if _BRANCH_ID not in record:
+            logger.warning(
+                f"Branch path '{branch_name}' dropped _branch_id; "
+                f"record will be skipped by JoinBranches"
+            )
+        if _BRANCH_INPUT_KEYS not in record:
+            record[_BRANCH_INPUT_KEYS] = []
+
+        return record
+
     def process(self, records: Iterable[Record]) -> Iterable[Record]:
         """
         Run each named path on the input records sequentially.
@@ -100,13 +139,7 @@ class Branch(Step):
             logger.info("Branch: no input records")
             return
 
-        # Tag every input record with an ID and its original column names.
-        for idx, record in enumerate(all_records):
-            record[_BRANCH_ID] = idx
-            record[_BRANCH_INPUT_KEYS] = [
-                k for k in record.keys()
-                if k not in _BRANCH_META_KEYS
-            ]
+        self.tag_inputs(all_records)
 
         total_yielded = 0
 
@@ -116,22 +149,9 @@ class Branch(Step):
 
             count = 0
             for output_record in step.process(iter(branch_input)):
-                output_record[_BRANCH_NAME] = branch_name
-
-                # Ensure metadata survives even if the path step
-                # rebuilt the record from scratch.
-                if _BRANCH_ID not in output_record:
-                    logger.warning(
-                        f"Branch path '{branch_name}' dropped "
-                        f"_branch_id; record will be skipped by "
-                        f"JoinBranches"
-                    )
-                if _BRANCH_INPUT_KEYS not in output_record:
-                    output_record[_BRANCH_INPUT_KEYS] = []
-
                 count += 1
                 total_yielded += 1
-                yield output_record
+                yield self.tag_output(output_record, branch_name)
 
             logger.debug(
                 f"Branch path '{branch_name}': produced {count} records"

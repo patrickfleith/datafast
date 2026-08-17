@@ -1,5 +1,6 @@
 """Pipeline execution engine with checkpointing and LLM batching."""
 
+import copy
 import time
 import uuid
 from collections import defaultdict
@@ -17,10 +18,26 @@ from datafast.core.checkpoint import (
 from datafast.core.config import LLMCall, LLMStepProgress, RunConfig
 from datafast.core.types import Record
 from datafast.tracing import build_trace_metadata
+from datafast.transforms.branch import Branch
 
 if TYPE_CHECKING:
     from datafast.core.step import Pipeline, Step
     from datafast.transforms.llm_step import LLMStep
+
+
+def _step_signature(step: "Step") -> str:
+    """Structural fingerprint of a step, recursing into Branch paths and
+    sub-pipelines so a change inside a branch invalidates the checkpoint."""
+    from datafast.core.step import Pipeline
+
+    if isinstance(step, Branch):
+        paths = ",".join(
+            f"{name}={_step_signature(path)}" for name, path in step.paths.items()
+        )
+        return f"Branch({paths})"
+    if isinstance(step, Pipeline):
+        return "[" + ">".join(_step_signature(s) for s in step.steps) + "]"
+    return step.__class__.__name__
 
 
 def chunked(iterable: list, size: int):
@@ -71,7 +88,7 @@ class Runner:
         """
         steps = self.pipeline.steps
         step_names = [s.name for s in steps]
-        step_types = [s.__class__.__name__ for s in steps]
+        step_types = [_step_signature(s) for s in steps]
 
         records: list[Record] = []
         start_step = 0
@@ -117,6 +134,10 @@ class Runner:
 
             step_name = step.name
             records_in = len(records)
+            # A step re-entered mid-flight may hold nested progress to resume.
+            resuming = bool(
+                manifest and i == start_step and manifest.steps[i].status == "in_progress"
+            )
 
             if manifest and self._checkpoint_mgr:
                 self._checkpoint_mgr.mark_step_in_progress(manifest, i)
@@ -134,6 +155,10 @@ class Runner:
                     llm_progress if i == start_step else None,
                 )
                 llm_progress = None
+            elif isinstance(step, Branch):
+                records = self._execute_branch(
+                    step, records, i, step_name, manifest, resuming
+                )
             else:
                 records = list(step.process(iter(records)))
 
@@ -202,6 +227,103 @@ class Runner:
         if hasattr(step, "uses_llm"):
             return step.uses_llm
         return True
+
+    def _execute_branch(
+        self,
+        step: Branch,
+        records: list[Record],
+        step_index: int,
+        step_name: str,
+        manifest: Manifest | None,
+        resuming: bool,
+    ) -> list[Record]:
+        """Execute a Branch by running each path through the runner.
+
+        Unlike ``Branch.process``, nested LLM steps go through the runner's
+        batching, execution strategy and per-call checkpointing, so a crash
+        mid-branch does not re-run calls that already completed.
+        """
+        if not records:
+            logger.info("Branch: no input records")
+            return []
+
+        tagged = step.tag_inputs(list(records))
+        output: list[Record] = []
+
+        for path_name, path_step in step.paths.items():
+            # Deep-copy so each path works on independent data.
+            path_input = copy.deepcopy(tagged)
+            path_records = self._execute_nested(
+                path_step,
+                path_input,
+                step_index,
+                f"{step_name}.{path_name}",
+                manifest,
+                resuming,
+            )
+            for record in path_records:
+                output.append(step.tag_output(record, path_name))
+            logger.debug(f"Branch path '{path_name}': produced {len(path_records)} records")
+
+        logger.info(
+            f"Branch: {len(tagged)} input records × {len(step.paths)} paths "
+            f"→ {len(output)} tagged records"
+        )
+        return output
+
+    def _execute_nested(
+        self,
+        step: "Step",
+        records: list[Record],
+        step_index: int,
+        step_name: str,
+        manifest: Manifest | None,
+        resuming: bool,
+    ) -> list[Record]:
+        """Execute a step nested inside a Branch path.
+
+        Recurses into sub-pipelines so that any LLM step reached gets the same
+        treatment as a top-level one. Nested steps share the parent's manifest
+        entry but own their checkpoint files, keyed by the dotted path name.
+
+        (A nested Branch is dispatched correctly here, but ``compile()``
+        rejects that shape — the inner branch overwrites the outer branch
+        metadata.)
+        """
+        from datafast.core.step import Pipeline
+
+        if isinstance(step, Pipeline):
+            current = records
+            for i, child in enumerate(step.steps):
+                current = self._execute_nested(
+                    child,
+                    current,
+                    step_index,
+                    f"{step_name}.{i}_{child.name}",
+                    manifest,
+                    resuming,
+                )
+            return current
+
+        if isinstance(step, Branch):
+            return self._execute_branch(
+                step, records, step_index, step_name, manifest, resuming
+            )
+
+        if not self._is_llm_step(step):
+            return list(step.process(iter(records)))
+
+        resume_progress = None
+        if resuming and self._checkpoint_mgr:
+            resume_progress, _ = self._checkpoint_mgr.load_llm_progress(
+                step_index, step_name
+            )
+
+        # The progress file is deliberately left in place until the parent step
+        # completes, so a crash in a later path does not re-run this one.
+        return self._execute_llm_step(
+            step, records, step_index, step_name, manifest, resume_progress
+        )
 
     def _execute_llm_step(
         self,
@@ -286,6 +408,14 @@ class Runner:
                     step_index, step_name, progress, output_records
                 )
                 completed_since_checkpoint = 0
+
+        # Final flush: without it a step that finishes between two periodic
+        # checkpoints leaves a stale progress file, and a nested step would
+        # be re-run in full on resume.
+        if self._checkpoint_mgr and manifest:
+            self._checkpoint_mgr.save_llm_progress(
+                step_index, step_name, progress, output_records
+            )
 
         logger.info(
             f"LLMStep complete: {len(output_records)} outputs, {errors} errors"

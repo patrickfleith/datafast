@@ -4,14 +4,24 @@ Checks are conservative: column references are only flagged when the schema is
 statically known. Steps that reshape records opaquely (Map/FlatMap/Group/Pair/
 Join/Concat and the LLM-eval steps) reset the tracked schema to "unknown" so a
 later reference is never wrongly reported as missing.
+
+Validation recurses into sub-pipelines, which come in two flavours:
+
+* **inherited** — a ``Branch`` path, fed by the records flowing into the branch.
+  It may not contain a source (that would discard the branch input) and its
+  column references are checked against the incoming schema.
+* **sourced** — a ``Concat`` source or a ``Join`` right side, executed with empty
+  input. It must start with a source of its own.
+
+Neither flavour may contain a sink.
 """
 
-from datafast.core.step import Step
+from datafast.core.step import Pipeline, Step
 from datafast.sinks.sink import CSVSink, HubSink, JSONLSink, ListSink, ParquetSink
 from datafast.sources.seed import SeedSource
 from datafast.sources.source import FileSource, HuggingFaceSource, ListSource
 from datafast.transforms.branch import Branch, JoinBranches
-from datafast.transforms.data_ops import AddUUID, Concat, Filter, Group, Pair
+from datafast.transforms.data_ops import AddUUID, Concat, Filter, Group, Join, Pair
 from datafast.transforms.llm_step import LLMStep
 from datafast.transforms.sample import Sample
 
@@ -29,67 +39,178 @@ _PRODUCERS = (SeedSource, ListSource, FileSource, HuggingFaceSource, Concat)
 def validate_pipeline(steps: list[Step]) -> None:
     """Validate a pipeline's steps, raising PipelineValidationError on the first
     problem found."""
+    _validate_sequence(
+        steps,
+        known=None,
+        context="",
+        needs_source=True,
+        allow_sink=True,
+    )
+
+
+def _validate_sequence(
+    steps: list[Step],
+    *,
+    known: set[str] | None,
+    context: str,
+    needs_source: bool,
+    allow_sink: bool,
+) -> None:
+    """Validate one linear sequence of steps and everything nested inside it.
+
+    Args:
+        steps: The steps to validate.
+        known: Columns available on entry, or None if not statically knowable.
+            Ignored when *needs_source* is set (the source defines the schema).
+        context: Human-readable location, empty for the top-level pipeline.
+        needs_source: Whether the sequence must begin with a source.
+        allow_sink: Whether a sink may appear as the last step.
+    """
     if not steps:
-        raise PipelineValidationError("Pipeline is empty.")
-    _check_structure(steps)
-    _check_branches(steps)
-    _check_columns(steps)
+        raise PipelineValidationError(f"{context or 'Pipeline'} is empty.")
+
+    _check_structure(steps, context, needs_source, allow_sink)
+    _check_branches(steps, context)
+
+    start = 0
+    if needs_source:
+        # The source defines the schema and reads no upstream columns, but it
+        # may still own sub-pipelines (Concat).
+        known = _initial_columns(steps[0])
+        _validate_children(steps[0], known, context)
+        start = 1
+
+    for step in steps[start:]:
+        if known is not None:
+            missing = [col for col in _required_columns(step) if col not in known]
+            if missing:
+                raise PipelineValidationError(
+                    f"Step '{step.name}'{_inside(context)} references column(s) "
+                    f"{missing} that are not available. "
+                    f"Available columns: {sorted(known)}."
+                )
+        _validate_children(step, known, context)
+        known = _next_columns(step, known)
 
 
-def _check_structure(steps: list[Step]) -> None:
+def _inside(context: str) -> str:
+    """Render a context suffix for error messages ('' at the top level)."""
+    return f" inside {context}" if context else ""
+
+
+def _nested(context: str, child: str) -> str:
+    """Compose a child context under *context*."""
+    return f"{context} → {child}" if context else child
+
+
+def _as_steps(step: Step) -> list[Step]:
+    """View a step or pipeline as a flat list of steps."""
+    return list(step.steps) if isinstance(step, Pipeline) else [step]
+
+
+def _check_structure(
+    steps: list[Step], context: str, needs_source: bool, allow_sink: bool
+) -> None:
     first = steps[0]
-    if not isinstance(first, _PRODUCERS):
+    if needs_source and not isinstance(first, _PRODUCERS):
         raise PipelineValidationError(
-            f"Pipeline must start with a source; step 0 is "
+            f"{context or 'Pipeline'} must start with a source; step 0 is "
             f"'{first.name}' ({type(first).__name__})."
         )
 
     last_index = len(steps) - 1
     for i, step in enumerate(steps):
-        if i > 0 and isinstance(step, _PRODUCERS):
+        if isinstance(step, _PRODUCERS) and (i > 0 or not needs_source):
             raise PipelineValidationError(
-                f"Source '{step.name}' at position {i} discards upstream records; "
-                f"a source may only be the first step."
+                f"Source '{step.name}' at position {i}{_inside(context)} discards "
+                f"upstream records; "
+                + (
+                    "a source may only be the first step."
+                    if needs_source
+                    else f"{context} receives records from upstream."
+                )
             )
-        if isinstance(step, _SINKS) and i != last_index:
-            raise PipelineValidationError(
-                f"Sink '{step.name}' at position {i} must be the last step."
-            )
+        if isinstance(step, _SINKS):
+            if not allow_sink:
+                raise PipelineValidationError(
+                    f"Sink '{step.name}' at position {i} is not allowed"
+                    f"{_inside(context)}."
+                )
+            if i != last_index:
+                raise PipelineValidationError(
+                    f"Sink '{step.name}' at position {i}{_inside(context)} must be "
+                    f"the last step."
+                )
 
 
-def _check_branches(steps: list[Step]) -> None:
+def _check_branches(steps: list[Step], context: str) -> None:
     open_at: int | None = None
     for i, step in enumerate(steps):
         if isinstance(step, Branch):
             if open_at is not None:
                 raise PipelineValidationError(
-                    f"Branch at position {i} opens before the Branch at position "
-                    f"{open_at} is closed by a JoinBranches."
+                    f"Branch at position {i}{_inside(context)} opens before the "
+                    f"Branch at position {open_at} is closed by a JoinBranches."
                 )
             open_at = i
         elif isinstance(step, JoinBranches):
             if open_at is None:
                 raise PipelineValidationError(
-                    f"JoinBranches at position {i} has no matching Branch."
+                    f"JoinBranches at position {i}{_inside(context)} has no "
+                    f"matching Branch."
                 )
             open_at = None
     if open_at is not None:
         raise PipelineValidationError(
-            f"Branch at position {open_at} is never closed by a JoinBranches."
+            f"Branch at position {open_at}{_inside(context)} is never closed by "
+            f"a JoinBranches."
         )
 
 
-def _check_columns(steps: list[Step]) -> None:
-    known = _initial_columns(steps[0])
-    for step in steps[1:]:
-        if known is not None:
-            missing = [col for col in _required_columns(step) if col not in known]
-            if missing:
-                raise PipelineValidationError(
-                    f"Step '{step.name}' references column(s) {missing} that are "
-                    f"not available. Available columns: {sorted(known)}."
-                )
-        known = _next_columns(step, known)
+def _validate_children(step: Step, known: set[str] | None, context: str) -> None:
+    """Recurse into a step's sub-pipelines."""
+    if isinstance(step, Branch):
+        for name, path in step.paths.items():
+            path_context = _nested(context, f"Branch path '{name}'")
+            path_steps = _as_steps(path)
+            _reject_nested_branch(path_steps, path_context)
+            _validate_sequence(
+                path_steps,
+                known=known,
+                context=path_context,
+                needs_source=False,
+                allow_sink=False,
+            )
+    elif isinstance(step, Concat):
+        for i, source in enumerate(step._sources):
+            _validate_sequence(
+                _as_steps(source),
+                known=None,
+                context=_nested(context, f"Concat source {i}"),
+                needs_source=True,
+                allow_sink=False,
+            )
+    elif isinstance(step, Join):
+        _validate_sequence(
+            _as_steps(step._right),
+            known=None,
+            context=_nested(context, f"Join right side of '{step.name}'"),
+            needs_source=True,
+            allow_sink=False,
+        )
+
+
+def _reject_nested_branch(steps: list[Step], context: str) -> None:
+    """A Branch inside a Branch path would overwrite the outer branch metadata,
+    so JoinBranches silently drops every record. Reject it outright."""
+    for i, step in enumerate(steps):
+        if isinstance(step, Branch):
+            raise PipelineValidationError(
+                f"Branch at position {i}{_inside(context)}: nesting a Branch "
+                f"inside a branch path is not supported — the inner branch "
+                f"overwrites the outer branch metadata. Close the outer Branch "
+                f"with a JoinBranches first."
+            )
 
 
 def _initial_columns(source: Step) -> set[str] | None:
@@ -121,6 +242,8 @@ def _required_columns(step: Step) -> list[str]:
         cols += step._by
     elif isinstance(step, Pair):
         cols += step._within + step._across
+    elif isinstance(step, Join):
+        cols += step._on  # read from the upstream (left) records
     elif isinstance(step, Sample) and isinstance(step._by, str):
         cols.append(step._by)
 

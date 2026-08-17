@@ -52,11 +52,11 @@ def test_top_level_exports_support_basic_pipeline_composition():
 
 
 def test_factory_exports_are_available(monkeypatch):
-    import datafast.llms as llms_module
+    import datafast.llm.served_model as served_model_module
 
-    monkeypatch.setattr(llms_module, "load_env_once", lambda: None)
+    monkeypatch.setattr(served_model_module, "load_env_once", lambda: None)
     monkeypatch.setattr(
-        llms_module,
+        served_model_module,
         "maybe_configure_langfuse_tracing",
         lambda load_env=False: False,
     )

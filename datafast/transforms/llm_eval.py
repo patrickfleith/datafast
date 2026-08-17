@@ -9,7 +9,7 @@ from loguru import logger
 from datafast.core.config import LLMCall
 from datafast.core.step import Step
 from datafast.core.types import Record
-from datafast.llm.provider import LLMProvider
+from datafast.llm.served_model import ServedModel
 from datafast.tracing import build_trace_metadata
 from datafast.transforms.sample import Sample
 
@@ -39,8 +39,8 @@ def _format_input_content(record: Record, input_columns: list[str]) -> str:
 
 
 def _normalize_models(
-    model: LLMProvider | list[LLMProvider] | Sample,
-) -> list[LLMProvider]:
+    model: ServedModel | list[ServedModel] | Sample,
+) -> list[ServedModel]:
     """Get list of models, resolving Sample if needed."""
     if isinstance(model, Sample):
         return list(model.pick())
@@ -52,7 +52,7 @@ def _normalize_models(
 def _build_output_record(
     input_record: Record,
     new_fields: dict[str, Any],
-    model: LLMProvider | None,
+    model: ServedModel | None,
     forward_columns: list[str] | None,
     exclude_columns: list[str] | None,
 ) -> Record:
@@ -135,7 +135,7 @@ class Classify(Step):
         multi_label: bool = False,
         include_explanation: bool = False,
         include_confidence: bool = False,
-        llm: LLMProvider | list[LLMProvider] | Sample | None = None,
+        llm: ServedModel | list[ServedModel] | Sample | None = None,
         prompt: str | None = None,
         fn: Callable[[Record], str | list[str]] | None = None,
         labels_description: dict[str, str] | None = None,
@@ -294,14 +294,14 @@ class Classify(Step):
         self,
         records: list[Record],
         skip_call_ids: set[str] | None = None,
-    ) -> tuple[list[LLMCall], dict[str, LLMProvider]]:
+    ) -> tuple[list[LLMCall], dict[str, ServedModel]]:
         """Collect LLM calls for batched execution by the Runner."""
         if self._llm is None:
             return [], {}
 
         skip_call_ids = skip_call_ids or set()
         calls: list[LLMCall] = []
-        models_map: dict[str, LLMProvider] = {}
+        models_map: dict[str, ServedModel] = {}
 
         models = _normalize_models(self._llm)
 
@@ -330,7 +330,7 @@ class Classify(Step):
         return calls, models_map
 
     def apply_result(
-        self, call: LLMCall, result: str, model: LLMProvider
+        self, call: LLMCall, result: str, model: ServedModel
     ) -> Record:
         """Convert an LLM result into an output record."""
         fields = self._parse_llm_result(result)
@@ -451,7 +451,7 @@ class Score(Step):
         output_column: str = "score",
         score_range: tuple[float, float] = (1, 10),
         include_explanation: bool = False,
-        llm: LLMProvider | list[LLMProvider] | Sample | None = None,
+        llm: ServedModel | list[ServedModel] | Sample | None = None,
         prompt: str | None = None,
         fn: Callable[[Record], float] | None = None,
         criteria: str | None = None,
@@ -583,14 +583,14 @@ class Score(Step):
         self,
         records: list[Record],
         skip_call_ids: set[str] | None = None,
-    ) -> tuple[list[LLMCall], dict[str, LLMProvider]]:
+    ) -> tuple[list[LLMCall], dict[str, ServedModel]]:
         """Collect LLM calls for batched execution by the Runner."""
         if self._llm is None:
             return [], {}
 
         skip_call_ids = skip_call_ids or set()
         calls: list[LLMCall] = []
-        models_map: dict[str, LLMProvider] = {}
+        models_map: dict[str, ServedModel] = {}
 
         models = _normalize_models(self._llm)
 
@@ -619,7 +619,7 @@ class Score(Step):
         return calls, models_map
 
     def apply_result(
-        self, call: LLMCall, result: str, model: LLMProvider
+        self, call: LLMCall, result: str, model: ServedModel
     ) -> Record:
         """Convert an LLM result into an output record."""
         fields = self._parse_llm_result(result)
@@ -757,7 +757,7 @@ class Compare(Step):
         output_column: str = "comparison",
         output_mode: str = "winner",
         score_range: tuple[float, float] = (1, 10),
-        llm: LLMProvider | list[LLMProvider] | Sample | None = None,
+        llm: ServedModel | list[ServedModel] | Sample | None = None,
         prompt: str | None = None,
         fn: Callable[[Record], dict[str, Any] | str] | None = None,
         system_prompt: str | None = None,
@@ -923,14 +923,14 @@ class Compare(Step):
         self,
         records: list[Record],
         skip_call_ids: set[str] | None = None,
-    ) -> tuple[list[LLMCall], dict[str, LLMProvider]]:
+    ) -> tuple[list[LLMCall], dict[str, ServedModel]]:
         """Collect LLM calls for batched execution by the Runner."""
         if self._llm is None:
             return [], {}
 
         skip_call_ids = skip_call_ids or set()
         calls: list[LLMCall] = []
-        models_map: dict[str, LLMProvider] = {}
+        models_map: dict[str, ServedModel] = {}
 
         models = _normalize_models(self._llm)
 
@@ -959,7 +959,7 @@ class Compare(Step):
         return calls, models_map
 
     def apply_result(
-        self, call: LLMCall, result: str, model: LLMProvider
+        self, call: LLMCall, result: str, model: ServedModel
     ) -> Record:
         """Convert an LLM result into an output record."""
         fields = self._parse_llm_result(result)

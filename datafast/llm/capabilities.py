@@ -1,6 +1,8 @@
-"""Capability resolution for Datafast LLM targets."""
+"""Capability resolution for Datafast served models."""
 
 from __future__ import annotations
+
+from dataclasses import replace
 
 from datafast.llm.types import (
     BatchMode,
@@ -8,7 +10,7 @@ from datafast.llm.types import (
     EndpointMode,
     Modality,
     StructuredOutputMode,
-    TargetCapabilities,
+    ServedModelCapabilities,
 )
 
 
@@ -23,6 +25,14 @@ SAMPLING_CHAT_PARAMS = frozenset({
     "frequency_penalty",
 })
 
+# Ollama speaks its own API rather than the OpenAI wire format, and its
+# repetition control is repeat_penalty: a multiplier neutral at 1.0, where
+# values below 1.0 *reward* repetition. LiteLLM renames frequency_penalty onto
+# it without rescaling, so an OpenAI-style 0.15 arrives as strong repetition
+# encouragement. Datafast therefore does not offer frequency_penalty here;
+# repeat_penalty goes through provider_params, e.g. ollama(repeat_penalty=1.2).
+OLLAMA_SAMPLING_CHAT_PARAMS = frozenset({"top_p"})
+
 REASONING_PARAMS = frozenset({
     "thinking",
     "reasoning_effort",
@@ -36,11 +46,12 @@ RESPONSES_PARAMS = frozenset({
     "timeout",
     "thinking",
     "reasoning_effort",
+    "reasoning_summary",
     "previous_response_id",
 })
 
 
-HOSTED_CHAT = TargetCapabilities(
+HOSTED_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -51,7 +62,7 @@ HOSTED_CHAT = TargetCapabilities(
 )
 
 
-MISTRAL_REASONING_CHAT = TargetCapabilities(
+MISTRAL_REASONING_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=(
@@ -61,17 +72,31 @@ MISTRAL_REASONING_CHAT = TargetCapabilities(
     structured_output=StructuredOutputMode.JSON_SCHEMA,
     batch_mode=BatchMode.LITELLM_BATCH,
     cache_mode=CacheMode.PROVIDER_PROMPT,
+    files_require_file_id=True,
     supports_reasoning=True,
     reasoning_requires_allowlist=True,
+    reasoning_effort_on="high",
+    reasoning_off_param=("reasoning_effort", "none"),
+    reasoning_efforts=frozenset({"high", "none"}),
     notes=(
         "Reasoning is opt-in via reasoning_effort. Magistral models enable it "
         "natively; mistral-medium/small accept it server-side but LiteLLM only "
         "forwards it through the allowed_openai_params escape hatch.",
+        "The Mistral API accepts only 'high' and 'none'; 'low'/'medium' are "
+        "rejected with a 400.",
+        "File input means an uploaded file_id only: upload_file() returns one, "
+        "and it goes in a file part's url. Mistral's chat API rejects inline "
+        "base64 file data with a 422, so Datafast refuses it client-side.",
     ),
 )
 
 
-GEMINI_CHAT = TargetCapabilities(
+# Mistral models with no reasoning control. Identical to HOSTED_CHAT except for the
+# file carrier, which is a property of the Mistral chat API rather than of the model.
+MISTRAL_CHAT = replace(HOSTED_CHAT, files_require_file_id=True)
+
+
+GEMINI_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=(
@@ -88,14 +113,45 @@ GEMINI_CHAT = TargetCapabilities(
     batch_mode=BatchMode.LITELLM_BATCH,
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
+    reasoning_off_param=("reasoning_effort", "none"),
     notes=(
         "Reasoning is forwarded natively via reasoning_effort (thinking=True "
         "maps to effort 'low'); LiteLLM handles gemini/* without an allowlist.",
+        "Reasoning must be requested off explicitly: Gemini 3 models think by "
+        "default, so omitting the parameter still bills reasoning tokens.",
+        "thinking=False does not mean no reasoning. Gemini 3 has no off "
+        "switch — LiteLLM turns 'none' into the model's lowest thinking level "
+        "with the trace hidden, so those tokens are still billed.",
+        "temperature, top_p and top_k are deprecated for Gemini 3+ and slated "
+        "for removal, and any temperature below 1.0 is warned against. They "
+        "stay supported here because they still function and datafast never "
+        "sends one unless a caller asks; drop them once Google removes them.",
     ),
 )
 
 
-OPENAI_RESPONSES = TargetCapabilities(
+# Gemini 3 models whose lowest thinking level is 'low' rather than 'minimal'.
+# They reject the value 'none' resolves to, so there is nothing thinking=False
+# could send: the only honest answer is to refuse it.
+GEMINI_NO_MINIMAL_CHAT = replace(
+    GEMINI_CHAT,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    reasoning_efforts=frozenset({"low", "medium", "high"}),
+    notes=GEMINI_CHAT.notes[:1]
+    + (
+        "'minimal' is rejected outright, which is what 'none' maps to, so "
+        "thinking=False raises rather than silently reasoning at the model's "
+        "own default ('medium' for gemini-3.7-flash).",
+        "At effort 'low' the reasoning is real but invisible: no "
+        "reasoning_content and no thinking_blocks come back, only an opaque "
+        "thought_signatures entry. Callers who need a readable trace should "
+        "ask for a higher effort.",
+    ),
+)
+
+
+OPENAI_RESPONSES = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.RESPONSES,
     supported_params=RESPONSES_PARAMS,
@@ -104,10 +160,21 @@ OPENAI_RESPONSES = TargetCapabilities(
     batch_mode=BatchMode.FALLBACK_CONCURRENCY,
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
+    reasoning_off_param=("reasoning_effort", "none"),
+    notes=(
+        "Reasoning must be turned off explicitly rather than by omission: the "
+        "default effort is per-model — 'none' for gpt-5.4 and its mini/nano "
+        "variants, but 'medium' for gpt-5.5, which would otherwise reason "
+        "despite thinking=False. Every GPT-5.x model accepts 'none'.",
+        "reasoning_content is a summary written after the fact, not the trace "
+        "itself, and it arrives only when reasoning_summary asks for one. "
+        "Cheap reasoning returns an empty summary, so a readable one needs "
+        "effort 'medium' or above and a prompt worth summarising.",
+    ),
 )
 
 
-OPENAI_CHAT = TargetCapabilities(
+OPENAI_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -118,7 +185,7 @@ OPENAI_CHAT = TargetCapabilities(
 )
 
 
-ANTHROPIC_CHAT = TargetCapabilities(
+ANTHROPIC_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | REASONING_PARAMS,
@@ -127,11 +194,51 @@ ANTHROPIC_CHAT = TargetCapabilities(
     batch_mode=BatchMode.LITELLM_BATCH,
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
-    supports_thinking=True,
+    reasoning_locks_temperature=True,
+    notes=(
+        "Anthropic accepts only temperature=1 while thinking is enabled, so "
+        "Datafast omits temperature on reasoning requests and lets the "
+        "provider default apply.",
+    ),
 )
 
 
-OPENROUTER_CHAT = TargetCapabilities(
+# Claude Sonnet 5 and the models that follow it: thinking is adaptive rather
+# than off by default, and the sampling controls are gone. Both differences are
+# silent under ANTHROPIC_CHAT, which is why these models need their own profile
+# rather than the provider default.
+ANTHROPIC_ADAPTIVE_CHAT = replace(
+    ANTHROPIC_CHAT,
+    supported_params=ANTHROPIC_CHAT.supported_params - {"temperature"},
+    reasoning_off_param=("thinking", {"type": "disabled"}),
+    reasoning_efforts=frozenset({"low", "medium", "high", "xhigh", "max"}),
+    reasoning_locks_temperature=False,
+    notes=(
+        "Reasoning must be requested off explicitly: these models think by "
+        "default, so omitting the parameter still bills reasoning tokens.",
+        "The off switch is the native thinking block, not an effort. LiteLLM "
+        "maps reasoning_effort='none' to dropping the parameter, which lands "
+        "back on the model's own default, so thinking=False sends "
+        "thinking={'type': 'disabled'} instead.",
+        "'none' and 'minimal' are excluded from the accepted efforts: 'none' "
+        "would read as off while leaving the default in force, and 'minimal' "
+        "is silently mapped to 'low'.",
+        "temperature is rejected at any value but 1, whether or not reasoning "
+        "is on, so it is unsupported here rather than merely locked while "
+        "thinking. top_p never applied to Anthropic in Datafast.",
+        "The trace is real but unreadable: thinking_blocks come back with "
+        "empty text and reasoning_content is empty too, because Anthropic "
+        "omits the written summary by default and Datafast has no control to "
+        "ask for one.",
+        "Thinking is billed out of the same budget as the answer and can "
+        "consume all of it — a hard prompt capped at 10000 tokens sometimes "
+        "returns no answer at all — so raise max_completion_tokens when "
+        "reasoning is on.",
+    ),
+)
+
+
+OPENROUTER_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -147,10 +254,10 @@ OPENROUTER_CHAT = TargetCapabilities(
 )
 
 
-OLLAMA_CHAT = TargetCapabilities(
+OLLAMA_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
-    supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
+    supported_params=COMMON_CHAT_PARAMS | OLLAMA_SAMPLING_CHAT_PARAMS,
     modalities=frozenset({Modality.TEXT, Modality.IMAGE}),
     structured_output=StructuredOutputMode.JSON_SCHEMA,
     batch_mode=BatchMode.FALLBACK_CONCURRENCY,
@@ -161,15 +268,21 @@ OLLAMA_CHAT = TargetCapabilities(
         "LiteLLM's response_format translation, plus Datafast validation.",
         "Image input requires a vision-capable Ollama model (e.g. gemma3, "
         "gemma4, llama3.2-vision); text-only models will reject it server-side.",
+        "frequency_penalty is not supported: Ollama's repetition control is "
+        "repeat_penalty, a multiplier neutral at 1.0 where lower values reward "
+        "repetition, and LiteLLM renames frequency_penalty onto it without "
+        "rescaling. Pass repeat_penalty through provider_params instead.",
     ),
 )
 
 
-OLLAMA_REASONING_CHAT = TargetCapabilities(
+OLLAMA_REASONING_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=(
-        COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS | frozenset({"reasoning_effort"})
+        COMMON_CHAT_PARAMS
+        | OLLAMA_SAMPLING_CHAT_PARAMS
+        | frozenset({"reasoning_effort"})
     ),
     modalities=frozenset({Modality.TEXT, Modality.IMAGE}),
     structured_output=StructuredOutputMode.JSON_SCHEMA,
@@ -177,17 +290,26 @@ OLLAMA_REASONING_CHAT = TargetCapabilities(
     cache_mode=CacheMode.LOCAL_KV,
     no_api_key=True,
     supports_reasoning=True,
+    reasoning_off_param=("think", False),
     notes=(
         "Thinking-capable models (deepseek-r1, qwen3, gpt-oss, magistral) accept "
         "reasoning via thinking/reasoning_effort; LiteLLM maps it onto Ollama's "
         "think parameter and normalizes the trace into reasoning_content.",
         "gpt-oss honors the effort level (low/medium/high); other thinking models "
         "treat any level as on/off.",
+        "Reasoning must be turned off explicitly: omitting the parameter leaves "
+        "the model default, which is on for qwen3. think=false is passed "
+        "directly because LiteLLM's reasoning_effort mapping sends the literal "
+        "string for gpt-oss, which Ollama rejects.",
+        "frequency_penalty is not supported: Ollama's repetition control is "
+        "repeat_penalty, a multiplier neutral at 1.0 where lower values reward "
+        "repetition, and LiteLLM renames frequency_penalty onto it without "
+        "rescaling. Pass repeat_penalty through provider_params instead.",
     ),
 )
 
 
-VLLM_CHAT = TargetCapabilities(
+VLLM_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -207,7 +329,7 @@ VLLM_CHAT = TargetCapabilities(
 )
 
 
-LLAMACPP_CHAT = TargetCapabilities(
+LLAMACPP_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=COMMON_CHAT_PARAMS | SAMPLING_CHAT_PARAMS,
@@ -232,7 +354,7 @@ LLAMACPP_CHAT = TargetCapabilities(
 )
 
 
-OPENAI_COMPATIBLE_CHAT = TargetCapabilities(
+OPENAI_COMPATIBLE_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.CHAT,
     supported_params=frozenset({"timeout"}),
@@ -245,24 +367,29 @@ OPENAI_COMPATIBLE_CHAT = TargetCapabilities(
 )
 
 
-_CATALOG: dict[tuple[str, str], TargetCapabilities] = {
+_SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("openai", "gpt-5.5"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-mini"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-nano"): OPENAI_RESPONSES,
+    ("anthropic", "claude-sonnet-5"): ANTHROPIC_ADAPTIVE_CHAT,
     ("anthropic", "claude-sonnet-4-6"): ANTHROPIC_CHAT,
     ("anthropic", "claude-haiku-4-5"): ANTHROPIC_CHAT,
+    ("gemini", "gemini-3.7-flash"): GEMINI_NO_MINIMAL_CHAT,
     ("gemini", "gemini-3.5-flash"): GEMINI_CHAT,
+    ("gemini", "gemini-3.5-flash-lite"): GEMINI_CHAT,
     ("gemini", "gemini-3.1-flash-lite"): GEMINI_CHAT,
     ("mistral", "mistral-medium-3-5"): MISTRAL_REASONING_CHAT,
-    ("mistral", "mistral-large-2512"): HOSTED_CHAT,
+    ("mistral", "mistral-large-2512"): MISTRAL_CHAT,
     ("mistral", "mistral-small-2603"): MISTRAL_REASONING_CHAT,
-    ("mistral", "ministral-14b-2512"): OPENAI_COMPATIBLE_CHAT,
-    ("mistral", "ministral-8b-2512"): OPENAI_COMPATIBLE_CHAT,
-    ("mistral", "ministral-3b-2512"): OPENAI_COMPATIBLE_CHAT,
+    # Ministral 3 is served from Mistral's own API — hosted chat with vision and
+    # native schema support, not a self-hosted OpenAI-compatible endpoint.
+    ("mistral", "ministral-14b-2512"): MISTRAL_CHAT,
+    ("mistral", "ministral-8b-2512"): MISTRAL_CHAT,
+    ("mistral", "ministral-3b-2512"): MISTRAL_CHAT,
 }
 
-_PROVIDER_DEFAULTS: dict[str, TargetCapabilities] = {
+_PROVIDER_DEFAULTS: dict[str, ServedModelCapabilities] = {
     "anthropic": ANTHROPIC_CHAT,
     "gemini": GEMINI_CHAT,
     "llamacpp": LLAMACPP_CHAT,
@@ -270,26 +397,22 @@ _PROVIDER_DEFAULTS: dict[str, TargetCapabilities] = {
     "vllm": VLLM_CHAT,
 }
 
-_OPENAI_COMPATIBLE_PROVIDERS = frozenset({
-    "openai_compatible",
-})
-
 
 def resolve_capabilities(
-    provider: str,
+    provider_id: str,
     model_id: str,
     *,
     api_base_url: str | None = None,
-    explicit: TargetCapabilities | None = None,
-) -> TargetCapabilities:
-    """Resolve target capabilities with conservative defaults."""
+    explicit: ServedModelCapabilities | None = None,
+) -> ServedModelCapabilities:
+    """Resolve served-model capabilities with conservative defaults."""
     if explicit is not None:
         return explicit
 
-    normalized_provider = provider.lower()
+    normalized_provider = provider_id.lower()
     normalized_model = model_id.lower()
 
-    catalog_match = _CATALOG.get((normalized_provider, normalized_model))
+    catalog_match = _SERVED_MODEL_CATALOG.get((normalized_provider, normalized_model))
     if catalog_match is not None:
         return catalog_match
 
@@ -306,34 +429,43 @@ def resolve_capabilities(
     if provider_default is not None:
         return provider_default
 
-    if normalized_provider in _OPENAI_COMPATIBLE_PROVIDERS:
-        return OPENAI_COMPATIBLE_CHAT
-
+    # A self-hosted server we have no profile for: assume only what the
+    # OpenAI-compatible wire format itself guarantees.
     if api_base_url:
         return OPENAI_COMPATIBLE_CHAT
 
     return _unknown_capabilities()
 
 
-def _resolve_openai_capabilities(model_id: str) -> TargetCapabilities:
+def _resolve_openai_capabilities(model_id: str) -> ServedModelCapabilities:
     if _looks_like_openai_reasoning_model(model_id):
         return OPENAI_RESPONSES
     return OPENAI_CHAT
 
 
-def _resolve_mistral_capabilities(model_id: str) -> TargetCapabilities:
-    # Magistral is Mistral's reasoning family; LiteLLM enables reasoning_effort
-    # for any model whose id contains "magistral". Everything else falls back to
-    # the standard hosted-chat profile.
-    if "magistral" in model_id:
+def _resolve_mistral_capabilities(model_id: str) -> ServedModelCapabilities:
+    # Magistral was Mistral's reasoning family, and LiteLLM still keys its
+    # reasoning_effort support off that name. Reasoning has since moved into the
+    # mainline models, which mark it in the id instead — Ministral 3 ships
+    # "-reasoning" post-trained variants beside the instruct ones. Matching both
+    # keeps an uncatalogued reasoning model from silently resolving to a profile
+    # with reasoning switched off.
+    if "magistral" in model_id or "-reasoning" in model_id:
         return MISTRAL_REASONING_CHAT
-    return HOSTED_CHAT
+    return MISTRAL_CHAT
 
 
 # Ollama model families that accept the `think` parameter (LiteLLM maps
 # reasoning_effort onto it). "-thinking" also matches models an author has
 # explicitly tagged as a thinking variant, e.g. lfm2.5-thinking. Models outside
 # this set reject reasoning.
+#
+# Entries name families that are wholly thinking-capable, never a family with a
+# mix: matching "nemotron" would catch nemotron-3-super, which does think, along
+# with nemotron-mini and the Nemotron-70B-Instruct models, which do not. A false
+# positive sends `think` to a model that rejects it, so the bar for adding a name
+# is the whole family, and single models that think without saying so in their id
+# are left to `probe_capabilities()`.
 _OLLAMA_REASONING_MODELS = (
     "deepseek-r1",
     "deepseek-v3.1",
@@ -346,7 +478,7 @@ _OLLAMA_REASONING_MODELS = (
 )
 
 
-def _resolve_ollama_capabilities(model_id: str) -> TargetCapabilities:
+def _resolve_ollama_capabilities(model_id: str) -> ServedModelCapabilities:
     # Only thinking-capable families accept a reasoning control; every other
     # Ollama model keeps the plain chat profile.
     if any(family in model_id for family in _OLLAMA_REASONING_MODELS):
@@ -363,22 +495,26 @@ def _looks_like_openai_reasoning_model(model_id: str) -> bool:
     )
 
 
-def _unknown_capabilities() -> TargetCapabilities:
-    return TargetCapabilities(
+def _unknown_capabilities() -> ServedModelCapabilities:
+    return ServedModelCapabilities(
         endpoint_modes=frozenset({EndpointMode.CHAT}),
         default_endpoint_mode=EndpointMode.CHAT,
         supported_params=frozenset({"timeout"}),
         structured_output=StructuredOutputMode.PROMPTED_JSON,
         batch_mode=BatchMode.FALLBACK_CONCURRENCY,
-        notes=("Unknown target; optional Datafast parameters are omitted by default.",),
+        notes=(
+            "Unknown served model; optional Datafast parameters are omitted by default.",
+        ),
     )
 
 
 __all__ = [
+    "ANTHROPIC_ADAPTIVE_CHAT",
     "ANTHROPIC_CHAT",
     "GEMINI_CHAT",
     "HOSTED_CHAT",
     "LLAMACPP_CHAT",
+    "MISTRAL_CHAT",
     "MISTRAL_REASONING_CHAT",
     "OLLAMA_CHAT",
     "OLLAMA_REASONING_CHAT",
