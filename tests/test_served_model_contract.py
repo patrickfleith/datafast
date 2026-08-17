@@ -494,6 +494,71 @@ def test_anthropic_without_thinking_keeps_temperature(monkeypatch):
     assert captured["temperature"] == 0.0
 
 
+def test_sonnet_5_thinking_false_sends_the_native_disable(monkeypatch):
+    """claude-sonnet-5 thinks by default, so omitting the parameter is not off.
+
+    LiteLLM maps reasoning_effort='none' to dropping the parameter, which lands
+    back on that default — the off switch has to be Anthropic's own thinking
+    block.
+    """
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id="claude-sonnet-5", api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["thinking"] == {"type": "disabled"}
+    assert "reasoning_effort" not in captured
+
+
+def test_sonnet_5_refuses_a_caller_temperature(monkeypatch):
+    """Anthropic rejects any temperature but 1 on this line, reasoning or not,
+    so it is unsupported rather than locked while thinking like on haiku."""
+    monkeypatch.setattr(
+        served_model_module.litellm,
+        "completion",
+        lambda **kwargs: _DummyChatResponse("ok"),
+    )
+
+    model = anthropic(
+        model_id="claude-sonnet-5",
+        api_key="test-key",
+        thinking=False,
+        temperature=0.0,
+    )
+
+    with pytest.warns(UserWarning, match="temperature"):
+        assert model.generate(prompt="ping") == "ok"
+
+
+def test_sonnet_5_rejects_an_effort_that_reads_as_off():
+    """'none' would read as off while leaving the model's default in force, and
+    'minimal' is silently mapped to 'low'. Both are refused with the real list."""
+    caps = resolve_capabilities("anthropic", "claude-sonnet-5")
+    assert caps.reasoning_efforts == {"low", "medium", "high", "xhigh", "max"}
+
+    for effort in ("none", "minimal"):
+        model = anthropic(
+            model_id="claude-sonnet-5", api_key="test-key", reasoning_effort=effort
+        )
+        with pytest.raises(ValueError, match="not supported"):
+            model.generate(prompt="ping")
+
+
+def test_sonnet_4_6_keeps_the_older_profile():
+    """The new profile is per-model, not per-provider: 4.6 still takes a
+    temperature while thinking is off, and still has no explicit disable."""
+    caps = resolve_capabilities("anthropic", "claude-sonnet-4-6")
+
+    assert "temperature" in caps.supported_params
+    assert caps.reasoning_off_param is None
+
+
 def test_mistral_rejects_unsupported_reasoning_effort(monkeypatch):
     monkeypatch.setattr(
         served_model_module.litellm,
