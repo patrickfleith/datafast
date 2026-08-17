@@ -73,7 +73,6 @@ class ServedModelCapabilities:
     batch_mode: BatchMode = BatchMode.FALLBACK_CONCURRENCY
     cache_mode: CacheMode = CacheMode.NONE
     supports_reasoning: bool = False
-    supports_thinking: bool = False
     reasoning_requires_allowlist: bool = False
     # reasoning_effort value that thinking=True maps to.
     reasoning_effort_on: str = "low"

@@ -194,7 +194,6 @@ ANTHROPIC_CHAT = ServedModelCapabilities(
     batch_mode=BatchMode.LITELLM_BATCH,
     cache_mode=CacheMode.PROVIDER_PROMPT,
     supports_reasoning=True,
-    supports_thinking=True,
     reasoning_locks_temperature=True,
     notes=(
         "Anthropic accepts only temperature=1 while thinking is enabled, so "
