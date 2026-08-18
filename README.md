@@ -1,13 +1,17 @@
 # Datafast
 
-Datafast is a python library for synthetic data generation using llms.
+Datafast is a pipeline-first Python library for generating synthetic datasets with
+LLMs.
 
-The old dataset-class API has been removed. The canonical package is `datafast`, and the primary model is:
+You describe the axes your dataset should cover, compose the steps that fill it in, and
+run the pipeline. What you get back is a dataset — a JSONL or CSV file, a Parquet file,
+a Hugging Face Hub repo, or records in memory — with every row still carrying the seed
+values and the model that produced it.
 
-- create records with `Source` or `Seed`
-- transform them with composable steps such as `AddUUID`, `Map`, and `Filter`
-- call LLMs with `LLMStep`, `Classify`, `Score`, `Compare`, `Rewrite`, or `Extract`
-- persist results with `Sink`
+Documentation: **[patrickfleith.github.io/datafast](https://patrickfleith.github.io/datafast/)**
+· [Quickstart](https://patrickfleith.github.io/datafast/quickstart/)
+· [Cookbook](https://patrickfleith.github.io/datafast/cookbook/)
+· [API reference](https://patrickfleith.github.io/datafast/api/)
 
 ## Installation
 
@@ -33,36 +37,50 @@ pip install "datafast[hub]"
 ## Quick Start
 
 ```python
-from datafast import LLMStep, Seed, Sink, openrouter
-
-model = openrouter("z-ai/glm-4.6")
+from datafast import LLMStep, Seed, Sink, openai
 
 pipeline = (
     Seed.product(
-        Seed.values("topic", ["robotics", "energy storage"]),
-        Seed.values("audience", ["beginner", "expert"]),
+        Seed.values("topic", ["photosynthesis", "plate tectonics", "vaccines"]),
+        Seed.values("level", ["beginner", "advanced"]),
     )
     >> LLMStep(
         prompt=(
-            "Write one short {audience} question about {topic}. "
+            "Write one {level} exam question about {topic}, with its answer. "
             "Return JSON with fields question and answer."
         ),
-        input_columns=["topic", "audience"],
+        input_columns=["topic", "level"],
         output_columns=["question", "answer"],
         parse_mode="json",
-        model=model,
+        model=openai(),
     )
-    >> Sink.jsonl("examples/outputs/quickstart.jsonl")
+    >> Sink.jsonl("questions.jsonl")
 )
 
-pipeline.run(batch_size=4)
+pipeline.run()
 ```
+
+Three topics and two levels produce six rows: the seed expands the combinations, the
+LLM step fills each one in, and the sink writes the result. The full walkthrough is in
+the [Quickstart](https://patrickfleith.github.io/datafast/quickstart/).
+
+## Why pipelines
+
+- **Coverage is declarative.** `Seed.product` expands the combinations instead of you
+  writing nested loops.
+- **Runs are resumable.** LLM calls are checkpointed per call, so an interrupted run
+  resumes instead of being paid for twice.
+- **Providers are interchangeable.** One configuration surface covers OpenAI,
+  Anthropic, Gemini, Mistral, OpenRouter, Ollama and any OpenAI-compatible server.
+- **Mistakes surface before the spend.** `Pipeline.compile()` validates structure and
+  column references before a single call is made.
 
 ## Main Building Blocks
 
 - `Source`: load records from Python lists, files, or Hugging Face datasets
 - `Seed`: generate record combinations declaratively
 - `AddUUID`, `Map`, `FlatMap`, `Filter`, `Group`, `Pair`, `Concat`, `Join`: data operations
+- `Sample`: draw a subset by one of nine strategies
 - `LLMStep`: free-form generation
 - `Classify`, `Score`, `Compare`, `Rewrite`, `Extract`: higher-level LLM transforms
 - `Branch` and `JoinBranches`: multi-path pipelines
@@ -83,12 +101,13 @@ model = openai("gpt-5.4-mini", temperature=0.7)
 ```
 
 The factories are the public entry points; `ServedModel` is exported for annotations.
+Each reads its own API key from the environment — `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
+and so on — or from a `.env` file, loaded once when the first served model is built.
 
 ## Optional Langfuse Tracing
 
-If you install the optional extra, Datafast can auto-enable Langfuse tracing through LiteLLM.
-
-`.env`
+With the `langfuse` extra installed, Datafast enables Langfuse tracing through LiteLLM
+automatically. Put the credentials in `.env`:
 
 ```env
 LANGFUSE_PUBLIC_KEY=pk-lf-...
@@ -96,15 +115,15 @@ LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_HOST=https://cloud.langfuse.com
 ```
 
-Once those values are present, tracing is enabled automatically when you create a served model.
+Tracing then switches on when you create a served model — no code change:
 
 ```python
-from datafast import LLMStep, Seed, openrouter
+from datafast import openai
 
-model = openrouter("z-ai/glm-4.6")
+model = openai()  # traced if the Langfuse credentials are present
 ```
 
-If you prefer an explicit startup call, use:
+To enable it explicitly instead, call `configure_langfuse_tracing()` at startup:
 
 ```python
 from datafast import configure_langfuse_tracing
@@ -127,3 +146,6 @@ configure_langfuse_tracing()
 ```bash
 .venv/bin/pytest
 ```
+
+Tests under `tests/live/` call real providers. They self-skip unless you opt in with
+`--run-live`, and you can deselect them outright with `-m "not live"`.

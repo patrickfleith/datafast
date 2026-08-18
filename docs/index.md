@@ -1,43 +1,62 @@
 # Datafast
 
-Datafast is a composable pipeline library for synthetic data generation.
+Datafast is a pipeline-first Python library for generating synthetic datasets with
+LLMs.
 
-The old dataset-class API has been removed. The supported path is to build a pipeline from steps and run it with the built-in runner.
+You describe the axes your dataset should cover, compose the steps that fill it in, and
+run the pipeline. What you get back is a dataset — a JSONL or CSV file, a Parquet file,
+a Hugging Face Hub repo, or records in memory — with every row still carrying the seed
+values and the model that produced it.
 
 ```python
-from datafast import LLMStep, Seed, Sink, openrouter
+from datafast import LLMStep, Seed, Sink, openai
 
 pipeline = (
     Seed.product(
-        Seed.values("topic", ["robotics", "materials"]),
-        Seed.values("style", ["brief", "technical"]),
+        Seed.values("topic", ["photosynthesis", "plate tectonics", "vaccines"]),
+        Seed.values("level", ["beginner", "advanced"]),
     )
     >> LLMStep(
-        prompt=(
-            "Write one {style} question about {topic}. "
-            "Return JSON with fields question and answer."
-        ),
-        input_columns=["topic", "style"],
+        prompt="Write one {level} exam question about {topic}, with its answer. "
+               "Return JSON with fields question and answer.",
+        input_columns=["topic", "level"],
         output_columns=["question", "answer"],
         parse_mode="json",
-        model=openrouter("z-ai/glm-4.6"),
+        model=openai(),
     )
-    >> Sink.jsonl("examples/outputs/home_example.jsonl")
+    >> Sink.jsonl("questions.jsonl")
 )
 
-pipeline.run(batch_size=4)
+pipeline.run()
 ```
 
-## What Changed
+Three topics and two levels produce six rows — the seed expands the combinations, the
+LLM step fills each one in, and the sink writes the result.
 
-- `datafast` is now step-based and pipeline-first
-- legacy dataset/config/prompt modules are gone
-- examples and docs are centered on pipelines, not preset dataset classes
+## Why pipelines
 
-## Start Here
+A synthetic dataset is rarely one prompt. It is a set of axes you want covered, a
+generation step, usually a filter or a scoring pass, and somewhere to put the output.
+Datafast makes each of those a step, composed with `>>`:
 
-- Read [Concepts](concepts.md) for the execution model
-- Read [Building Pipelines](guides/building_pipelines.md) for sources, transforms, and sinks
-- Read [LLM Steps](guides/llm_steps.md) for generation and evaluation steps
-- Read [Checkpointing](guides/checkpointing.md) for resume and execution controls
-- Read [Langfuse Tracing](guides/langfuse_tracing.md) for optional observability setup
+- **Coverage is declarative.** `Seed.product` expands the combinations instead of you
+  writing nested loops.
+- **Runs are resumable.** LLM calls are checkpointed per call, so an interrupted run
+  resumes instead of being paid for twice.
+- **Providers are interchangeable.** One configuration surface covers OpenAI,
+  Anthropic, Gemini, Mistral, OpenRouter, Ollama and any OpenAI-compatible server.
+- **Mistakes surface before the spend.** `Pipeline.compile()` validates structure and
+  column references before a single call is made.
+
+## Start here
+
+- Follow the [Quickstart](quickstart.md) — install to first dataset, one page.
+- Read [Concepts](concepts.md) for the execution model.
+- Read [Building Pipelines](guides/building_pipelines.md) for sources, transforms and
+  sinks.
+- Read [LLM Steps](guides/llm_steps.md) for generation and evaluation steps.
+- Read [Checkpointing](guides/checkpointing.md) for resume and execution controls.
+- Read [Served models](llms.md) for provider configuration, reasoning and multimodal
+  input.
+- Browse the [Cookbook](cookbook/index.md) for complete recipes.
+- Look up anything in the [API reference](api.md).
