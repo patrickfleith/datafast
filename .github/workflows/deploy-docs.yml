@@ -41,7 +41,7 @@ jobs:
       # Docs dependencies live in the `docs` extra, so CI and a local build
       # cannot drift apart.
       - run: pip install -e ".[docs]"
-      - run: mkdocs build --strict
+      - run: zensical build --strict
       
       - uses: actions/upload-pages-artifact@v3
         with:
