@@ -92,7 +92,67 @@ class AddUUID(Step):
 
 
 class Filter(Step):
-    """Keep or drop records based on conditions."""
+    """Keep or drop records based on conditions.
+
+    A condition is either a predicate (`fn=`) or a declarative `where=` mapping
+    of column to expected value. A bare value tests equality; a nested dict
+    applies one of the operators below. Several operators in one dict must all
+    hold, as must several columns in one `where`.
+
+    Comparison operators:
+
+    | Operator | Keeps a record when the column |
+    |----------|--------------------------------|
+    | `$eq`    | equals the value (the same as a bare value) |
+    | `$ne`    | differs from the value |
+    | `$gt`    | is greater than the value |
+    | `$gte`   | is greater than or equal to the value |
+    | `$lt`    | is less than the value |
+    | `$lte`   | is less than or equal to the value |
+
+    Membership operators:
+
+    | Operator | Keeps a record when the column |
+    |----------|--------------------------------|
+    | `$in`    | is one of the listed values |
+    | `$nin`   | is none of the listed values |
+    | `$contains` | contains the value (substring, or list member) |
+    | `$all`   | is a collection holding every listed value |
+    | `$any`   | is a collection holding at least one listed value |
+
+    String operators, which ignore non-string columns:
+
+    | Operator | Keeps a record when the column |
+    |----------|--------------------------------|
+    | `$startswith` | starts with the value |
+    | `$endswith`   | ends with the value |
+    | `$regex`      | matches the pattern anywhere (`re.search`) |
+
+    Length operators, which apply to anything with a length — strings, lists,
+    dicts:
+
+    | Operator | Keeps a record when the column's length |
+    |----------|-----------------------------------------|
+    | `$len_eq`  | equals the value |
+    | `$len_gt`  | is greater than the value |
+    | `$len_gte` | is greater than or equal to the value |
+    | `$len_lt`  | is less than the value |
+    | `$len_lte` | is less than or equal to the value |
+
+    Presence and type:
+
+    | Operator | Keeps a record when the column |
+    |----------|--------------------------------|
+    | `$exists` | is present and non-null (`True`), or absent/null (`False`) |
+    | `$type`   | has this type: `"str"`, `"int"`, `"float"`, `"bool"`, `"list"`, `"dict"`, `"none"` |
+
+    Logical operators take a list of conditions and sit at the top level of
+    `where` rather than under a column: `$or` keeps a record matching any of
+    them, `$and` one matching all.
+
+    A missing column is never an error — it simply fails its condition, except
+    under `$exists: False`, which it satisfies.
+    """
 
     TYPE_MAP = {
         "list": list,
