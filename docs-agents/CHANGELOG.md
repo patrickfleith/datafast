@@ -8,6 +8,28 @@ First stable release.
 
 ### Added
 
+- **The first reference pages.** `docs/reference/sources_and_seed.md` documents every
+  way a pipeline can start — the eight `Source` constructors and the five `Seed` ones —
+  with every parameter, and the behaviour that is easy to get wrong: `.json` files are
+  read as JSONL, malformed JSONL lines are skipped rather than raised, CSV values are
+  always strings, and `Seed.range` is inclusive at both ends.
+  `docs/reference/served_models.md` documents every `ServedModelConfig` field, how
+  capabilities are resolved through the catalog and its fallbacks, and the
+  `unsupported_params` policy. `docs/reference/providers/openai.md` adds the model
+  table, both capability profiles, and why reasoning has to be turned off explicitly on
+  GPT-5.5. Each page is pinned by a test that fails when the code grows a parameter the
+  page does not mention.
+
+- **A published glossary and a rewritten Concepts page.** `docs/glossary.md` defines
+  the 29 terms datafast uses precisely — the pipeline vocabulary (record, column, step,
+  runner, checkpoint, manifest, compile, seed, dimension, branch path) alongside the
+  served-model vocabulary — each with the terms it deliberately avoids, so searching
+  for "row" or "backend" finds the word datafast uses instead. `docs/concepts.md` is
+  rebuilt on record → step → pipeline → runner: the `process(records) -> records`
+  contract every step satisfies, why the runner materializes each step in full, and how
+  the manifest's pipeline fingerprint makes resume safe. Tests execute the page's code
+  and pin the published glossary against the canonical one in both directions.
+
 - **An installation & environment reference.** `docs/installation.md` documents the
   base install, the extras, every environment variable datafast reads, and the `.env`
   rules. A test scans the package for environment lookups and fails if the page misses

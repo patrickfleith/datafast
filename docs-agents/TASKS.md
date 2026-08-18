@@ -8,6 +8,292 @@
 - [ ] Consider supporting nested `Branch` inside a branch path — needs a metadata stack; `compile()` rejects the shape today because the inner branch overwrites the outer `_branch_id`
 - [ ] <task> <!-- optional (context) -->
 
+## Documentation (v1 launch)
+
+Twelve pages remain for the v1 docs site. Each task below is self-contained: it names the
+file to create, the source of truth to read, what to cover, and the test to write. Work
+them in any order — they touch different files on purpose.
+
+### Rules that apply to every task in this section
+
+- **Read first:** `docs/reference/sources_and_seed.md` (page template),
+  `tests/test_reference_sources_and_seed.py` (test template), `docs/glossary.md`
+  (approved vocabulary), `AGENTS.md` (project rules).
+- **Style:** plain, short sentences and simple words. A reader who has never seen this
+  codebase must understand every sentence. Use the glossary's terms and avoid the words
+  it lists under *Avoid*. Be concise — a shorter clear page beats a longer complete one.
+  Say what a thing is for before listing its parameters.
+- **Test contract:** every page gets a test file. Assert **code → docs** first: for each
+  documented callable, every parameter `inspect.signature` reports must appear on the
+  page in backticks. Then execute every self-contained example on the page. Then prove
+  each behavioural claim with a real call rather than paraphrasing the source. Add a test
+  that every relative `.md` link resolves. No test may pass vacuously — assert the
+  introspection found something.
+- **Never make a live LLM call.** `.env` in the repo root holds real keys and datafast
+  loads it automatically, so an unstubbed example spends real money. Stub the provider
+  factory on the `datafast` module itself — injecting a stub into an `exec` namespace is
+  overwritten by the example's own import. A page test taking more than a few seconds is
+  the symptom.
+- **Run only your own test file:** `.venv/bin/pytest tests/<your file>.py` (pytest is not
+  on PATH). Other agents may be working in this repo at the same time.
+- **Do not edit `mkdocs.yml`** — nav is wired separately, and a page outside the nav still
+  builds clean. Do not edit `docs-agents/` or any existing page or test unless your task
+  says to.
+- **Only link to pages that already exist on disk.** Check with `ls` first;
+  `zensical build --strict` exits 1 on a link to a missing page.
+- **The docstrings are not reliable.** Twelve reference pages turned up ten defects and
+  six risks (see `CONCERNS.md`), several of them docstrings contradicting their own code.
+  Ground every claim in the source, and if the code disagrees with its docstring,
+  document the code and add the mismatch to `CONCERNS.md`.
+
+### Guides
+
+- [X] **Pipeline & execution guide** → `docs/guides/pipelines_and_execution.md`
+  <!-- Read: datafast/core/step.py (Pipeline.compile/run), core/runner.py, core/config.py
+  (RunConfig), core/validation.py, core/checkpoint.py. Cover: `>>` composition; what
+  compile() catches (source-first, nothing after the sinks, Branch<->JoinBranches pairing,
+  column references, sub-pipeline rules); then everything run()/RunConfig/run_pipeline()
+  expose — checkpoint_dir, resume, resume_from, stop_after, limit, batch_size,
+  llm_strategy (by_model/round_robin/by_record), checkpoint_every. State plainly that
+  throughput and rate limiting live on the served model (rpm_limit, max_concurrent,
+  timeout, retries), never on the runner, and why: two steps sharing one served model must
+  share one limit. RunConfig's field set is pinned by tests/test_runner_execution.py, so
+  all eight fields are live. Test: tests/test_guide_pipelines_and_execution.py — assert
+  every RunConfig field and every run() parameter is documented, via dataclasses.fields
+  and inspect.signature. This page supersedes docs/guides/checkpointing.md (33 lines) —
+  do NOT delete that file, the nav restructure task folds it in. -->
+
+  <!-- Done (322 lines) + tests/test_guide_pipelines_and_execution.py (51 tests, offline).
+  Two claims were measured rather than read off the source, and both went onto the page:
+  the checkpoint fingerprint covers step *names and classes only*, so changing a prompt,
+  a served model or a Map's lambda leaves it identical and resume continues silently
+  (the mechanism behind the CONCERNS entry on misaligned resume); and llm_strategy sets
+  the order records come *out* in, not just the order calls go out — by_model groups a
+  model's rows together, round_robin and by_record interleave and are indistinguishable
+  unless calls per record are uneven. Also documented: limit truncates after the source
+  has read everything, and batch_size is not concurrency (max_concurrent is). -->
+
+- [X] **Structured output guide** → `docs/guides/structured_output.md`
+  <!-- Read: datafast/llm/parsing.py, datafast/llm/types.py (StructuredOutputMode),
+  datafast/transforms/llm_step.py (parse_mode). Cover the two different things readers
+  confuse: step-level `parse_mode` (text/json/xml), which splits a response that has
+  already come back, versus provider-level Pydantic `response_format`, which constrains
+  the response in the first place. Then how the served model's StructuredOutputMode
+  (json_schema / json_object / prompted_json / none) decides which of the two you actually
+  get. The glossary defines both "parse mode" and "structured output" — use those
+  definitions verbatim. Test: tests/test_guide_structured_output.py — assert every
+  StructuredOutputMode member and every parse_mode value is documented; prove the parse
+  behaviour of each mode with a stub served model. -->
+
+  <!-- Done (226 lines) + tests/test_guide_structured_output.py (41 tests, offline). The
+  finding that shaped the page: **no step passes `response_format`** — grep it, it is
+  absent from all of datafast/transforms/. LLMStep appends JSON instructions to the
+  prompt and parses the reply; the specialized steps json.loads a reply they asked for in
+  prose. So provider-side schema enforcement is only reachable by calling a served model
+  directly, even though every shipped provider but an unprofiled openai_compatible()
+  declares json_schema. Logged as a CONCERNS risk and stated plainly on the page rather
+  than papered over. Also pinned: XML mode never raises (missing tag → empty string),
+  only JSON mode can fail, and parse-mode columns are always strings. -->
+
+- [X] **Multimodal input guide** → `docs/guides/multimodal_input.md`
+  <!-- Read: datafast/llm/types.py (ContentPart, Modality, ContentPartType) and the
+  normalization + gating code in datafast/llm/served_model.py. Cover every ContentPart
+  field (type, text, url, data, media_type, media_id, filename, provider_options), the
+  image/video/file/document shapes, and how Modality gates each served model. Two traps
+  already paid for in live testing: Mistral takes files only as an uploaded id
+  (files_require_file_id), and OpenAI's Responses API rejects inline file data without
+  `filename`. Note that a rejected modality RAISES locally in _validate_modalities — it
+  does not warn-and-drop like an unsupported parameter, so the unsupported_params policy
+  does not apply. Also note Modality.DOCUMENT is declared by no served model and document
+  parts normalize to file before gating. Test:
+  tests/test_guide_multimodal_input.py — assert every ContentPart field and every Modality
+  member is documented; prove the gate raises for an unsupported modality. -->
+
+  <!-- Done (221 lines) + tests/test_guide_multimodal_input.py (64 tests, offline). Both
+  known traps are on the page, plus one the task did not list: **an unknown part type is
+  silently treated as text** — _normalize_content_part passes it through untouched and
+  _modality_for_part reports TEXT, so `type="imgae"` clears the gate on a text-only model
+  and fails at the provider. Logged as a CONCERNS risk. One correction to the task's
+  framing: upload_file/delete_file live on _MistralServedModel, not on ServedModel, so
+  the page says they are Mistral-only and a test pins that they have not moved to the base
+  class. Also pinned: audio has no URL form at all, DOCUMENT is declared by no profile,
+  and VLLM_CHAT is the only profile that forwards media_id as a uuid. -->
+
+- [X] **Calling a served model directly** → `docs/guides/calling_a_served_model.md`
+  <!-- Read: datafast/llm/served_model.py (generate, generate_batch, generate_response,
+  generate_batch_response) and types.py (NormalizedResponse). Cover all four methods with
+  their signatures, every NormalizedResponse field (text, raw, reasoning_content,
+  thinking_blocks, images, audio, output_items), and when to reach for one instead of an
+  LLMStep — you want one answer, not a dataset; inside a pipeline LLMStep calls these for
+  you and adds checkpointing, batching and the _model column. examples/providers/ has
+  runnable material the site has never linked to; read it but never run it. Test:
+  tests/test_guide_calling_a_served_model.py — assert every method parameter and every
+  NormalizedResponse field is documented; execute examples against a stub. -->
+
+  <!-- Done (211 lines) + tests/test_guide_calling_a_served_model.py (45 tests, offline,
+  litellm.completion replaced by a recorder). Three things measured rather than read:
+  (1) the endpoint asymmetry — the chat branch never fills `output_items` and the
+  Responses branch never fills `thinking_blocks`, so an empty thinking_blocks does not
+  mean the model did not reason; (2) the error contract — ValueError passes through and
+  everything else is wrapped in RuntimeError with the provider named; (3) retries cover
+  only litellm's RateLimitError / APIConnectionError / Timeout / InternalServerError /
+  ServiceUnavailableError, so a bad key raises on the first failure. Also: generate_response
+  and generate_batch_response take no response_format, so you can have a validated object
+  or the metadata, never both — pinned by a test. Logged a CONCERNS risk: openai() defaults
+  to a Responses reasoning model with no native batching, so every batch on the default
+  configuration emits a UserWarning. -->
+
+- [X] **Error handling & troubleshooting** → `docs/guides/troubleshooting.md`
+  <!-- Read: core/validation.py (PipelineValidationError), core/checkpoint.py
+  (PipelineChangedError, compute_pipeline_hash), transforms/llm_step.py (on_parse_error),
+  llm/served_model.py (unsupported_params handling). Cover: what each error means and what
+  to do about it; that on_parse_error="skip" is the DEFAULT and silently drops records;
+  partial results; resuming after a crash; when the pipeline fingerprint invalidates a
+  checkpoint; how to read an unsupported_params warning; common provider errors. Read
+  CONCERNS.md first — several entries are exactly what a troubleshooting reader hits, in
+  particular that on_parse_error="raise" is ignored under Pipeline.run() and that "skip"
+  swallows every exception, not only parse failures. Document the behaviour as it is. Test:
+  tests/test_guide_troubleshooting.py — assert every exception type the package defines is
+  documented; trigger each one and assert the page's described cause matches. -->
+
+  <!-- Done (320 lines) + tests/test_guide_troubleshooting.py (58 tests, offline). Two
+  findings were measured and both are now defects in CONCERNS.md. (1) **One failing LLM
+  call abandons its whole batch group** — the runner wraps a per-model group in a single
+  try, so the first exception drops every record in it, including calls never attempted.
+  Eight records with one failure on call 2: batch_size=1 keeps 7, batch_size=4 keeps 4,
+  batch_size=8 keeps 0. The page tables this, because batch_size is the knob that controls
+  it and nothing said so. (2) **Resume duplicates records** completed since the last
+  progress save — records are appended per call, completed ids only every checkpoint_every
+  calls, so the gap is re-run and re-appended (8 in, 9 out). Also logged as risks: the
+  checkpoint_every=100 default means most crashes recover nothing, stop_after silently
+  ignores an unknown step name where resume_from validates, and PipelineValidationError is
+  the one exception missing from the top-level exports. Confirmed from CONCERNS and put on
+  the page: on_parse_error="raise" is ignored under run(), and "skip" swallows every
+  exception. structured_output.md's two deferred on_parse_error links now point here. -->
+
+### Cookbook
+
+- [X] **Deepen `docs/cookbook/text_classification.md`** (118 lines today)
+  <!-- Its script is examples/scripts/45_cookbook_text_classification.py. Turn a pointer at
+  a script into a true end-to-end walkthrough: seed design and why those axes, model
+  choice, the prompt, execution, checkpointing, the output schema, and the Hub push. Show
+  what a row actually looks like. Do not edit the script. Test:
+  tests/test_cookbook_text_classification.py — assert every step the script uses appears on
+  the page, and that any code the page shows matches the script (or runs, if standalone). -->
+
+  <!-- Done (349 lines, was 118) + tests/test_cookbook_text_classification.py (39 tests,
+  offline). The test imports the script itself with datafast.openrouter stubbed, then runs
+  its real pipeline in a tmp dir, so the page's numbers are measured rather than copied:
+  the record-count table is checked row by row against the run's manifest, the JSON row is
+  compared key-for-key with the real output, and the checkpoint file list is the one the
+  run wrote. What the walkthrough adds over the old pointer page: why label and
+  label_description are ONE dimension (a raw SeedDimension, not two Seed.values — crossing
+  them would give 16 pairs of which 12 are contradictions), why two model families rather
+  than one, that {language} is the code and {language_name} the name (the prompt uses the
+  name; the code lands in _language), that input_columns is a whitelist so a real column
+  left out of it raises KeyError, why the Map drops label_description, and why the Hub push
+  sits outside the pipeline. Named steps become the checkpoint file names and the
+  resume_from argument — shown end to end. Two CONCERNS logged: SeedDimension is public and
+  constructible but the reference page documents no way to build one (Seed.expand is
+  two-column only), and its `values` field is annotated with the builtin `any` rather than
+  typing.Any, which the pending py.typed task will expose. -->
+
+- [X] **Deepen `docs/cookbook/persona_generation.md`** (100 lines today)
+  <!-- Its script is examples/scripts/43_cookbook_persona_generation.py, which chains
+  Sink.jsonl >> Sink.hub — the recipe that motivated DEC-005. Same treatment as above, and
+  explain the chained sinks: one run, two destinations, because sinks pass records through.
+  Test: tests/test_cookbook_persona_generation.py. -->
+
+  <!-- Done (388 lines, was 100) + tests/test_cookbook_persona_generation.py (42 tests,
+  offline). The test imports the script with datafast.openrouter stubbed, swaps the
+  HuggingFace source for a fake corpus and drops the HubSink, then runs the real pipeline —
+  so the row count, the column set, the checkpoint file names and the appended JSON
+  instruction are all measured. The old page had drifted from the script in three places
+  and now matches it: it claimed 100 rows (n=10), Sample(n=100) (n=10) and resume=True
+  (resume=False). The chained sinks are explained as DEC-005 intends — a sink yields its
+  records through, so Sink.jsonl >> Sink.hub is one run and two destinations, pinned by a
+  test that also asserts a step after a sink still fails. What else the walkthrough adds:
+  Sample has two jobs (a picker given items, a step given none) and the script uses both
+  four lines apart; the second LLM step never sees the article, only the persona; neither
+  prompt file mentions JSON, parse_mode appends it, quoted verbatim from a real call; and
+  on_parse_error="raise" is set on both steps but does not raise under run(), so the page
+  tells readers to count the output. One CONCERNS logged: the step named take_first_100
+  takes ten, and that name is what lands on disk as a checkpoint file. -->
+
+- [X] **Deepen `docs/cookbook/space_text_generation.md`** (103 lines today)
+  <!-- Its script is examples/scripts/44_cookbook_space_text_generation.py. Same treatment.
+  Note this script keeps an out-of-pipeline push helper deliberately: its push is opt-in
+  behind DATAFAST_PUSH_TO_HUB=1, and a sink in the chain would run unconditionally.
+  Explain that trade-off rather than hiding it. Test:
+  tests/test_cookbook_space_text_generation.py. -->
+
+  <!-- Done (378 lines, was 103) + tests/test_cookbook_space_text_generation.py (40 tests,
+  offline). The test imports the script with datafast.openrouter stubbed and runs its real
+  pipeline in a tmp dir, so the counts are measured: 72 seed records → 144 rows, the
+  step-by-step table checked row by row against the run's manifest, the checkpoint file
+  names taken from what the run wrote, and the JSON row compared key-for-key with a real
+  record. The push trade-off is tabled rather than hidden — every run vs on request, in the
+  manifest or not, checkpointed or not, seen by compile() or not, and needing list() or not
+  — with the persona cookbook named as the opposite, equally valid choice. The argument that
+  makes the env-var design work is measured: a second run costs zero LLM calls and returns
+  the same 144 records with the same ids, so `DATAFAST_PUSH_TO_HUB=1` on a repeat run
+  publishes for free. Two CONCERNS logged, both from probing this page's JSON mode: a reply
+  missing an output column is filled with "" and counts as a success, so on_parse_error
+  never fires and an empty `text` reaches the dataset (the page tells readers to grep for
+  it); and num_outputs > 1 stamps no index column, so sibling records are indistinguishable.
+  Also corrected one clause on text_classification.md: it said an unshuffled split would put
+  one model in each half, but datasets' train_test_split shuffles by default, so shuffle
+  =True is a shuffle before the split, not what prevents a contiguous one. -->
+
+- [ ] **New cookbook: preference data with scoring** → `docs/cookbook/preference_with_scoring.md`
+  <!-- From examples/scripts/42_pipeline_preference_with_scoring.py — the roadmap's top
+  candidate, the most architecture per line: Branch plus Score. This is the recipe that
+  shows why branching exists. Read docs/reference/branching.md first and link to it rather
+  than re-explaining. Cover the whole run end to end as above. Test:
+  tests/test_cookbook_preference_with_scoring.py. -->
+
+- [ ] **Examples index** → `docs/cookbook/examples.md`
+  <!-- A table mapping all 45 scripts in examples/scripts/ to what each one demonstrates.
+  Read every script's header. Group them so the table is scannable (sources/seeds, data
+  ops, LLM steps, branching, full cookbooks). This is mechanical but high value — the site
+  currently never links to examples/scripts/ at all. Test: tests/test_examples_index.py —
+  assert every .py file in examples/scripts/ appears in the table, and every script the
+  table names exists. This one guard is the whole point of the page. -->
+
+### Release and contribution
+
+- [ ] **Contributing & development guide** → `docs/contributing.md`
+  <!-- Read: AGENTS.md, pytest.ini, tests/conftest.py, tests/live/conftest.py. Cover:
+  project layout; the two test layers (tests/ mocked, tests/live/<provider>/ gated); the
+  real commands — .venv/bin/pytest -m "not live" by default, --run-live to opt in, live
+  tests self-skip on a missing key or absent daemon; and how to add a served model or a
+  step. Note the docs-page test convention: every page carries a test that pins it against
+  the code. Test: tests/test_contributing_page.py — assert every command the page gives
+  actually works (run the -m "not live" collection, not the full suite), and that every
+  marker it names is registered in pytest.ini. -->
+
+- [ ] **"What's in v1" release notes** → `docs/whats_in_v1.md`
+  <!-- Read docs-agents/CHANGELOG.md, which is already populated for 1.0.0. Turn it into a
+  reader-facing page: what datafast does at v1, what shipped, what is deliberately not
+  there. NO migration guide — everything before v1 is experimental and unsupported, so v1
+  is the starting point, not a transition. Write this LAST: it summarises the other pages
+  and should link to them. Test: tests/test_whats_in_v1.py — assert the version it names
+  matches pyproject.toml, and that every page it links to exists. -->
+
+### Infrastructure (not pages — do these after the pages exist)
+
+- [ ] **Nav restructure** — target IA: Home · Get started (install, quickstart, concepts,
+  glossary) · Guides · Reference · Cookbook · Contributing. Fold
+  `docs/guides/checkpointing.md` into the pipeline & execution guide and delete it; fold or
+  delete `docs/models.md`, now redundant against the seven provider pages; move
+  `docs/PUBLISHING.md` out of the published tree (it is a maintainer runbook, absent from
+  the nav). This task owns `mkdocs.yml` — no other task may touch it.
+- [ ] **Ship `py.typed`** — the file does not exist; the package is fully annotated and
+  advertises none of it. Add it plus the `package-data` entry in `pyproject.toml`.
+- [ ] **Retire `SOFTWARE_DESCRIPTION.md`** — fold into the docs above, generate
+  `docs-agents/SUM.md` with the `write-manual` skill, then delete it.
+
+
 ## Done
 
 - [X] Review the documentation and identify missing blocks before publishing the new version of datafast <!-- audit written up as ROADMAP "Documentation (v1 launch)". 13 published pages / ~1,220 lines against ~10,100 lines of code: the site names the steps and documents almost none of their parameters. Turned up six non-doc blockers that have to be settled before pages are written — dead `show_progress`/`log_level` RunConfig fields, six declared-but-unimported dependencies plus three lazily-imported undeclared ones, no mkdocstrings behind the "auto-generated" API page, README and SOFTWARE_DESCRIPTION.md pointing at a deleted design doc, 0.0.35/Alpha release metadata, and the two-sink cookbook script that `compile()` rejects -->

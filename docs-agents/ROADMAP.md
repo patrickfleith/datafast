@@ -187,6 +187,95 @@
   a served model does **not** validate the API key — construction stores `None` and the
   failure surfaces on the first call, which is worth knowing before a long run.
 
+- Glossary published and Concepts rewritten (`docs/glossary.md`, `docs/concepts.md`) —
+  the first of the ordered documentation groups, and first deliberately, because every
+  reference page still to be written leans on this vocabulary. `docs-agents/GLOSSARY.md`
+  grew from 9 served-model terms to 29 across two sections, adding the pipeline half it
+  had never had: record, column, step, transform, pipeline, runner, checkpoint,
+  manifest, compile, seed, dimension, branch path, prompt template, and the two
+  strategy terms. The published page carries the definitions verbatim and renders the
+  `_avoid:_` notes as **Avoid** lines, which earn their place on a public page rather
+  than only an internal one: a reader searching for "row", "DAG" or "backend" lands on
+  the term datafast actually uses. `tests/test_glossary_page.py` pins the pair in both
+  directions — no canonical term unpublished, no published term invented — and asserts
+  the definitions are byte-identical, since two definitions of one term is the exact
+  failure a glossary exists to prevent. It also checks the code the glossary names:
+  10 classes against `datafast.__all__`, 5 dotted attributes by `hasattr`, and the
+  three execution strategies against the `LLMExecutionStrategy` enum.
+  `docs/concepts.md` was 71 lines of headings restating the API; it is now 188 lines
+  built on record → step → pipeline → runner, and says the things the old page left
+  out — that a step's whole contract is `process(records) -> records`, that a pipeline
+  is itself a step (which is how `Concat` takes pipelines), that the runner materializes
+  each step in full and what that trade buys, that the manifest's pipeline fingerprint
+  is what makes resume safe, and that checkpointing inside an LLM step is per call.
+  `tests/test_concepts_page.py` executes every self-contained block and asserts the
+  numbers the prose quotes. Writing the tests corrected the page twice: the `as_step`
+  block imported `Source` without using it, and the source list named five factories
+  when there are eight.
+
+- Reference templates written, opening the parallel fan-out: `docs/reference/
+  sources_and_seed.md` (271 lines) for the step reference, and
+  `docs/reference/served_models.md` (199) plus `docs/reference/providers/openai.md`
+  (95) for the provider reference. Three pages chosen deliberately over one: each
+  family needs its own shape settled before five or six more are written against it,
+  and the provider pages additionally need the shared configuration surface to link to
+  rather than re-explain seven times.
+
+  **The shape the remaining reference pages follow.** Intro saying what the family is
+  for and where it sits · an at-a-glance table of every constructor · one section per
+  constructor with a parameter table (`Parameter | Type | Default | Meaning`), a runnable
+  example, and the behaviour worth knowing · a "Things worth knowing" list of the traps ·
+  a "Where to go next" block. Links point only at pages that already exist.
+
+  **The test shape**, which matters more, because it is what keeps 22 pages honest at
+  once. Every page test asserts code → docs first: every parameter `inspect.signature`
+  reports must appear on the page, since a parameter that exists and is undocumented
+  cannot be discovered while the reverse is merely untidy. Then every self-contained
+  example is executed, and every behavioural claim is asserted against a real call
+  rather than paraphrased from the source. `tests/test_reference_sources_and_seed.py`
+  (36 tests), `tests/test_reference_served_models.py` (24) and
+  `tests/test_reference_provider_openai.py` (19) are the three to copy; the suite is
+  375 passing, verified with sockets blocked.
+
+  Writing them turned up things a hand-written page would have got wrong. `Source.file`
+  reads `.json` as **JSONL**, so a conventional JSON array silently fails to load. A
+  malformed JSONL line is skipped with a warning rather than raising, so a corrupt file
+  loads partially. CSV and TSV values are always strings — no type inference. `Seed.range`
+  is **inclusive** at both ends, unlike Python's `range`. Two seed dimensions filling the
+  same column silently overwrite, last one winning. And the signature guard immediately
+  caught its own page: `Seed.product` and `Seed.zip` had no parameter table when every
+  other constructor did.
+
+- Step and provider reference written in parallel: twelve pages by twelve agents against
+  the two templates, in one pass. Step reference — `sinks.md` (169), `data_ops.md` (335),
+  `sample.md` (288), `llm_step.md` (275), `llm_specialized.md` (311), `branching.md`
+  (276). Provider reference — `anthropic.md` (108), `gemini.md` (98), `mistral.md` (120),
+  `openrouter.md` (130), `ollama.md` (144), `openai_compatible.md` (158). The reference
+  is now 14 pages and ~3000 lines. The suite went 375 → 848 passing, verified offline
+  with sockets blocked; `zensical build --strict` clean with all 14 in the nav.
+
+  The roadmap's single "LLM steps" page became two. `LLMStep` plus the five specialized
+  steps is ~2200 lines of source, and one page over all six would have been the worst
+  page on the site.
+
+  **Parallelism held because the coupling was removed first, not managed.** A page
+  outside the nav still builds clean, so twelve writers never touched `mkdocs.yml` — the
+  one file they would all have collided on — and the nav was wired once at the end. Each
+  agent created exactly two new files. Nothing was edited twice and no conflict occurred.
+
+  **The test contract is what made it safe to write twelve pages without reading twelve
+  pages.** Every page asserts code → docs first: each parameter `inspect.signature`
+  reports must appear on the page. Four agents mutation-checked their own guards by
+  breaking a claim and confirming the right test failed. That guard is why the pages
+  describe the code rather than the docstrings — and the gap between the two turned out
+  to be large. See CONCERNS.md for the ten defects and six risks this surfaced.
+
+  One of them was mine. This roadmap listed "per-step `temperature`/`max_tokens`
+  overriding the served model" as behaviour to document. Both are stored and never read,
+  so the audit line was wrong: it was written from the constructor without checking the
+  call site. Corrected above, documented truthfully on the page, and pinned by a test
+  that fails the day someone wires them up.
+
 ## In progress
 
 Nothing in flight — the next item is picked from Next up.
@@ -196,7 +285,8 @@ Nothing in flight — the next item is picked from Next up.
 Launch checklist, grouped by area. All pipeline-architecture items gating the
 release have landed, and so have every code and packaging fix the doc audit turned
 up, including the last blocker and the Zensical migration (see Shipped). What
-remains is writing.
+remains is writing: one of the five target-shape deliverables is done, and the
+other four are eleven pages, ordered under Documentation below.
 
 ### Documentation (v1 launch)
 
@@ -206,7 +296,8 @@ replace the earlier list, which predated it and had gone stale in several places
 
 **Target shape.** Five things the site must deliver, in this order of importance:
 
-1. **Quickstart** — install to first stored dataset, one page, no detours.
+1. ~~**Quickstart** — install to first stored dataset, one page, no detours.~~ — done,
+   with `docs/installation.md` beside it and the landing pages rewritten to match.
 2. **Cookbooks** — two or three *deep* end-to-end recipes, plus an index mapping the
    45 scripts in `examples/scripts/` to what each demonstrates.
 3. **Provider reference** — every factory, every supported model, every parameter.
@@ -214,19 +305,69 @@ replace the earlier list, which predated it and had gone stale in several places
    stored dataset.
 5. **Concepts & glossary** — the vocabulary, published rather than agent-only.
 
-**Current state.** Re-checked on 2026-08-18, after `docs/api.md` became generated.
-The parameter gap this section opened with is now largely closed by that page: the
-nine `Sample` strategies, the 23 `Filter` operators, the `Rewrite` modes, the
-`Extract` presets, `Group`'s aggregation spec, `Pair`'s strategies,
-`Join`/`JoinBranches` modes and `Seed.expand` all render from their docstrings.
-What remains is not reference material but *narrative* — the prose pages that say
-which step to reach for and why, in what order, and the worked examples. The
+**Current state.** Re-checked on 2026-08-18, after the reference templates landed.
+The published site is 20 pages (`docs/` holds two more that the nav does not carry:
+`PUBLISHING.md` and `cookbook/assets/index.md`). Nine of the twenty are v1 work —
+`quickstart.md` (113 lines), `installation.md` (158), `concepts.md` (188),
+`glossary.md` (70), the rewritten `index.md` (62), the generated `api.md` (85 lines of
+directives, ~82k rendered characters) and the three reference templates
+(`reference/sources_and_seed.md` 271, `reference/served_models.md` 199,
+`reference/providers/openai.md` 95). The other eleven predate v1, and six of them
+are under 60 lines: `guides/index.md` (8), `cookbook/index.md` (16),
+`guides/checkpointing.md` (33), `models.md` (36), `guides/llm_steps.md` (49) and
+`guides/building_pipelines.md` (59) are placeholders in all but name.
+
+The parameter gap this section opened with is now largely closed by `docs/api.md`
+becoming generated: the nine `Sample` strategies, the 23 `Filter` operators, the
+`Rewrite` modes, the `Extract` presets, `Group`'s aggregation spec, `Pair`'s
+strategies, `Join`/`JoinBranches` modes and `Seed.expand` all render from their
+docstrings. What remains is not reference material but *narrative* — the prose pages
+that say which step to reach for and why, in what order, and the worked examples. The
 generated page is a lookup surface, not a guide, and it publishes only what the
 docstrings say: `Pipeline`, `Step`, `Record`, `RunConfig`, `ServedModel` and the
 concrete sinks still carry one-line docstrings and render thin. `docs/models.md`
 (36 lines) lists seven factory defaults and nothing else, while `capabilities.py`
 holds 17 catalogued models, 15 capability profiles and four layers of fallback for
 everything not catalogued — the provider reference is still to write.
+
+**What is left, in the order it should be written.** Eleven pages to write or
+rewrite, and they are not equal — the first three groups are the launch, and the last is
+bookkeeping that only makes sense once the pages exist.
+
+1. ~~**Concepts & glossary** (2 pages)~~ — done. It went first, though it is the
+   smallest group, because every reference page below leans on the vocabulary and
+   writing them in the other order means writing the terms repeatedly and
+   inconsistently.
+2. ~~**Step reference**~~ — done, 7 pages (the single "LLM steps" page became two).
+3. **Pipeline & execution guide** (1 page) — absorbs `guides/checkpointing.md`.
+4. ~~**Provider & served-model reference**~~ — done, 8 pages. `docs/models.md` is now
+   redundant and should be folded in or deleted during the nav restructure.
+5. **Cookbooks** (3 deepened + 1 examples index) — the second target-shape deliverable,
+   and the first thing that shows the library doing real work end to end.
+6. **Specialist guides** (3 pages) — structured output, multimodal input, calling a
+   served model directly.
+7. **Error handling & troubleshooting** (1 page).
+8. **Contributing** (1 page) and the **"What's in v1"** release-notes page (1 page).
+9. **Build & infrastructure** — the nav restructure last, since it is a rearrangement of
+   pages that must exist first; `py.typed` and retiring `SOFTWARE_DESCRIPTION.md` can
+   happen at any point.
+
+Each numbered group is a coherent unit of work — the larger ones split family by
+family, one commit each — and each group is independently shippable, so the site stays
+coherent if the launch date arrives partway down the list.
+
+**Parallelism.** Groups 2, 4 and 5 are the wide ones: their pages are independent files
+over independent code. With both templates written, 15 of the remaining 22 can be
+written concurrently — 5 step-reference pages, 6 provider pages, and the 4 cookbook
+items — plus Contributing and `py.typed`, which were never coupled to anything. Two things couple
+them, and both are removable up front. `zensical build --strict` exits 1 on a link to a
+page that does not exist yet (verified, not assumed), so either the whole file skeleton
+and the final nav land in one commit first, or no page may link to an unwritten
+sibling. And each family needs one page written first as the template — Sources & Seed
+for the step reference, one provider page for the provider reference — or six pages
+arrive in six different shapes. The parallelism is therefore 1-then-(N−1) per family,
+not N. Nav restructure and the "What's in v1" page cannot be parallelised at all: the
+first rearranges every page, the second summarises them.
 
 #### New pages to write
 
@@ -257,8 +398,10 @@ everything not catalogued — the provider reference is still to write.
   - *LLM steps* — LLMStep (expansion math prompt × model × language × num_outputs,
     `parse_mode` text/json/xml, `output_column` vs `output_columns`, prompt-from-`Path`,
     `forward_columns`/`exclude_columns`, `skip_if`, `system_prompt`,
-    `{language}`/`{language_name}`, per-step `temperature`/`max_tokens` overriding the
-    served model, and the `_model`/`_prompt_index`/`_language` metadata columns);
+    `{language}`/`{language_name}`, and the `_model`/`_prompt_index`/`_language`
+    metadata columns) — note the earlier claim here that per-step `temperature` and
+    `max_tokens` override the served model was **wrong**: both are stored and never
+    read (see Shipped);
     Classify (`multi_label`, `labels_description`, `include_explanation`,
     `include_confidence`); Score (`score_range`, `criteria`, `rubric`); Compare
     (`output_mode`); the llm-vs-`fn` dual mode shared by all three; Rewrite (eight
@@ -316,11 +459,6 @@ everything not catalogued — the provider reference is still to write.
   silently drops records, partial results, resuming after a crash,
   `PipelineChangedError` and when the pipeline hash invalidates a checkpoint, reading an
   `unsupported_params` warning, and common provider errors.
-- **Glossary & concepts (published).** `docs/concepts.md` is 71 lines and does not
-  define a single term from `docs-agents/GLOSSARY.md`. Publish the glossary — served
-  model, provider, model, capabilities, capability profile, served-model catalog,
-  transport, parse mode — and rewrite Concepts around the record → step → pipeline →
-  runner model with the checkpoint/manifest vocabulary.
 - **Contributing & development guide.** Project layout, the test layers
   (`tests/` mocked, `tests/live/<provider>/` gated), the real commands
   (`.venv/bin/pytest -m "not live"` by default, `--run-live` to opt in, live tests
@@ -352,7 +490,9 @@ everything not catalogued — the provider reference is still to write.
   quickstart, concepts, glossary) · Guides (pipelines, execution & checkpointing,
   structured output, multimodal, tracing, troubleshooting) · Reference (sources & seed,
   data ops, sample, LLM steps, branching, sinks, providers ×7, API) · Cookbook
-  (recipes + examples index) · Contributing.
+  (recipes + examples index) · Contributing. `installation.md` and `quickstart.md` are
+  in the nav in the right order but still flat under Home — the grouping waits until
+  there are pages to group, so this is the last item, not the next one.
 - **Ship `py.typed`.** The file does not exist; the package is fully annotated and
   advertises none of it. Add it and the `package-data` entry in `pyproject.toml`.
 - **Retire `SOFTWARE_DESCRIPTION.md`.** Fold into the docs above, generate
