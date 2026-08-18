@@ -147,6 +147,46 @@
   is the standing risk; `mkdocs.yml` staying the source of truth makes reverting a
   one-line change.
 
+- Quickstart page (`docs/quickstart.md`), the first of the five target-shape pages:
+  install, one API key, a 15-line pipeline, the file it writes and the row it writes.
+  `tests/test_quickstart.py` extracts the page's own code block and executes it with a
+  stub served model, so the documented pipeline is the one under test — it pins the
+  six-row expansion, the exact output columns, and that the JSON sample row on the page
+  names the same fields a run produces. Writing it caught two things a hand-written page
+  would have shipped wrong: `Seed.values` returns a dimension, not a source (only
+  `Seed.product`/`Seed.zip` return one), and `_model` is the single metadata column a
+  plain single-model step adds. Note for anyone pinning docs this way: the block imports
+  `openai` from `datafast`, so the factory has to be patched on the module — a stub
+  injected into the exec namespace is silently overwritten by the block's own import,
+  and the test calls the real API instead.
+
+- `docs/index.md` and `README.md` stopped being changelogs. Both opened on "the old
+  dataset-class API has been removed" and a "What Changed" section, contrasting v1
+  against something no v1 reader has ever used. They now open on what datafast is, what
+  it produces, and a "Why pipelines" section giving the four reasons the shape earns
+  itself — declarative coverage, per-call resume, interchangeable providers, and
+  `compile()` catching mistakes before the spend. The README gained the docs-site links
+  it never had, `Sample` in a building-blocks list that had omitted it, and the
+  `--run-live` note; its Langfuse section had a code block that imported `LLMStep` and
+  `Seed`, used neither, and demonstrated nothing, now replaced by one that shows the
+  auto-enable. All three documents open on the same pipeline as the quickstart, and
+  `tests/test_quickstart.py` executes each of the three as written — a broken opening
+  example being the worst kind to ship.
+
+- Installation & environment reference (`docs/installation.md`): the base install and
+  its five runtime dependencies, the four extras, all eleven environment variables, the
+  `.env` rules (loaded once at first served-model construction, never overriding a real
+  variable), Langfuse setup and the logging control. `tests/test_installation_page.py`
+  scans the package for `os.getenv` and `env_key_name` and fails on any variable the
+  page does not document — the direction that matters, since a variable the code reads
+  and the docs omit cannot be discovered. It finds 10; `LANGFUSE_HOST` is written for
+  langfuse to read and never read back, so it is pinned separately. The page also pins
+  each API key to the factory that declares it, the extras against `optional-dependencies`,
+  the dependency table against `dependencies`, and the Python floor against
+  `requires-python`. Writing it corrected a claim that had already been drafted: building
+  a served model does **not** validate the API key — construction stores `None` and the
+  failure surfaces on the first call, which is worth knowing before a long run.
+
 ## In progress
 
 Nothing in flight — the next item is picked from Next up.
@@ -190,14 +230,6 @@ everything not catalogued — the provider reference is still to write.
 
 #### New pages to write
 
-- **Quickstart.** Install, one API key, a ~15-line pipeline, the file it writes, and
-  what the output rows look like. Today the only quickstart is a code block on
-  `docs/index.md` wedged between "what changed" notes.
-- **Installation & environment reference.** Extras (settled above), every env var —
-  `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`,
-  `OPENROUTER_API_KEY`, `OLLAMA_API_BASE`, `HF_TOKEN`, `LANGFUSE_*`,
-  `DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO` — and the `.env` loading behaviour (loaded
-  once, when a served model is constructed).
 - **Step reference — the largest gap.** One page per family, every parameter:
   - *Sources & Seed* — `Source.list/file/jsonl/csv/tsv/txt/parquet/huggingface` (note
     `file` sniffs by extension, `txt` takes `text_column`, `huggingface` takes
@@ -299,11 +331,6 @@ everything not catalogued — the provider reference is still to write.
 
 #### Rewrites of existing pages
 
-- **`docs/index.md` and `README.md` must stop being changelogs.** Both lead with "the
-  old dataset-class API has been removed" and a "What Changed" section. For a v1 launch
-  there is no old API to contrast against; both should open on what datafast *is*, what
-  it produces, and where to start. README also needs the feature list, doc-site links
-  and the fixed repo-layout section.
 - **`docs/models.md` → the supported-model tables** described above, or fold it into
   the per-provider pages and delete it. As a standalone list of seven defaults it
   answers a question nobody asks twice.

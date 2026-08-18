@@ -8,6 +8,16 @@ First stable release.
 
 ### Added
 
+- **An installation & environment reference.** `docs/installation.md` documents the
+  base install, the extras, every environment variable datafast reads, and the `.env`
+  rules. A test scans the package for environment lookups and fails if the page misses
+  one, so the list cannot fall behind the code.
+
+- **A quickstart page.** `docs/quickstart.md` takes a reader from `pip install` to a
+  stored dataset on one page: one API key, a 15-line pipeline, and the rows it writes.
+  Its code block is executed by `tests/test_quickstart.py` against a stub served model,
+  so the page cannot drift from the library without failing the suite.
+
 - **A pipeline may end in several sinks.** `compile()` previously required the sink
   to be the single last step, so writing one dataset to both a file and the Hub took
   two runs. Sinks pass their records through, so a chain needs nothing from the
@@ -54,6 +64,12 @@ First stable release.
   `unsupported_params` policy like any other unsupported parameter.
 
 ### Changed
+
+- **The README and the docs home page open on the library, not on its history.** Both
+  led with the removal of the pre-1.0 dataset-class API and a "What Changed" section —
+  a contrast against something no v1 reader has used. They now state what datafast is,
+  what it produces, and why the pipeline shape earns itself, and both share the
+  quickstart's pipeline, which the test suite executes as written.
 
 - **The docs site builds with Zensical instead of MkDocs + Material.** Material for
   MkDocs goes end-of-life on 2026-11-05 and has been in maintenance since November
