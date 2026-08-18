@@ -31,7 +31,7 @@ pipeline.
 - **Filter:** 300–500 words, first 100 matches
 - **Local output:** `examples/outputs/43_persona_cookbook.jsonl`
 - **Checkpoints:** `examples/checkpoints/43_persona_cookbook`
-- **Hub output:** set `HF_REPO_ID` and the `repo_id` in `push_records_to_hub()` to repos under your own Hugging Face username or organization
+- **Hub output:** set `HF_REPO_ID` to a repo under your own Hugging Face username or organization; the pipeline's `Sink.hub` pushes there privately
 
 The example keeps first-match sampling for reproducibility. For local JSONL corpora with metadata such as `document_filename`, stratified sampling is usually a better fit.
 

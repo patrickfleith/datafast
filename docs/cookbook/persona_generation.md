@@ -51,10 +51,21 @@ Prerequisites:
 - Hugging Face authentication via `HF_TOKEN` in `.env` or a cached `huggingface_hub` login
 - Base dependencies from `pyproject.toml` installed
 
-Before running, replace the example Hugging Face namespaces in the script with your own username or organization:
+Before running, set `HF_REPO_ID` in the script to a repo under your own Hugging
+Face username or organization:
 
-- `HF_REPO_ID = "<your-username-or-org>/new-persona-cookbook-dataset"` controls the private pipeline sink.
-- `repo_id = "<your-username-or-org>/datafast-persona-cookbook"` inside `push_records_to_hub()` controls the public publish step.
+```python
+HF_REPO_ID = "<your-username-or-org>/new-persona-cookbook-dataset"
+```
+
+The pipeline ends in two sinks, and the run writes both — sinks pass their records
+through, so `Sink.jsonl` stores the dataset locally and `Sink.hub` pushes the same
+records to the Hub, privately, in a single pass:
+
+```python
+    >> Sink.jsonl(OUTPUT_PATH)
+    >> Sink.hub(HF_REPO_ID, private=True)
+```
 
 ```bash
 python examples/scripts/43_cookbook_persona_generation.py
