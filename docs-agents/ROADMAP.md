@@ -122,6 +122,31 @@
   `reasoning_content`, which is 3162 characters there and empty on sonnet 5, so moving
   them would have turned two working demos into blank output.
 
+- A pipeline may end in several sinks (DEC-005). `compile()`'s rule went from "a sink
+  must be the last step" to "nothing may follow the sinks", which is all that stood in
+  the way: sinks already yield every record through, so the runner needed no change and
+  chaining worked mechanically. This was the last documentation blocker —
+  `43_cookbook_persona_generation.py` chained `Sink.jsonl >> Sink.hub` and could not
+  compile, so the published recipe described a pipeline that would not run. Fixing it
+  retired the script's out-of-pipeline `push_records_to_hub()` workaround, which had
+  quietly made one run publish to two different Hub repos — the private one named by
+  `HF_REPO_ID`, and a second, hardcoded, **public** one. A sweep of all 45 example
+  scripts confirmed 43 was the only real chain; `44_cookbook_space_text_generation.py`
+  keeps its helper deliberately, since its push is opt-in behind `DATAFAST_PUSH_TO_HUB`
+  and a sink in the chain would run unconditionally.
+
+- Docs site migrated to Zensical (DEC-006), before the v1 pages are written rather than
+  after, so nothing gets written twice. Material for MkDocs goes end-of-life on
+  2026-11-05. `mkdocs.yml` is unchanged — Zensical reads it natively — and the migration
+  is two lines: the `docs` extra and the build command. The open question was
+  mkdocstrings, adopted only just before this; Zensical supports it directly and names
+  it in an error if it is configured but missing. Verified by building both and diffing:
+  the same 16 pages, and an API page with identical 152 symbol anchors (zero difference
+  in either direction), 46 parameter tables, 68 highlighted code blocks and 214
+  permalinks. `zensical build --strict` is clean. Zensical is pre-1.0 at 0.0.55, which
+  is the standing risk; `mkdocs.yml` staying the source of truth makes reverting a
+  one-line change.
+
 ## In progress
 
 Nothing in flight — the next item is picked from Next up.
@@ -129,12 +154,13 @@ Nothing in flight — the next item is picked from Next up.
 ## Next up
 
 Launch checklist, grouped by area. All pipeline-architecture items gating the
-release have landed (see Shipped); what remains is documentation, plus the handful
-of code and packaging fixes the doc audit turned up (see "Settle these first").
+release have landed, and so have every code and packaging fix the doc audit turned
+up, including the last blocker and the Zensical migration (see Shipped). What
+remains is writing.
 
 ### Documentation (v1 launch)
 
-Bring the published docs (mkdocs, `docs/`) to release quality for **v1**. Re-audited
+Bring the published docs (Zensical, `docs/`) to release quality for **v1**. Re-audited
 against the code on 2026-08-17, after the served-model refactor; the notes below
 replace the earlier list, which predated it and had gone stale in several places.
 
@@ -161,12 +187,6 @@ concrete sinks still carry one-line docstrings and render thin. `docs/models.md`
 (36 lines) lists seven factory defaults and nothing else, while `capabilities.py`
 holds 17 catalogued models, 15 capability profiles and four layers of fallback for
 everything not catalogued — the provider reference is still to write.
-
-#### Settle these first — each one changes what gets written
-
-- **`43_cookbook_persona_generation.py` chains two sinks**, which `compile()` rejects
-  (tracked in TASKS). It is a cookbook script, so this is a docs blocker: the published
-  recipe currently describes a pipeline that will not compile.
 
 #### New pages to write
 
@@ -301,18 +321,6 @@ everything not catalogued — the provider reference is still to write.
 
 #### Build & infrastructure
 
-- **Check migration to Zensical, and migrate if confirmed.** Material for MkDocs
-  reaches end of life on **November 5, 2026** — maintenance mode since Nov 2025, only
-  critical bug and security fixes until then, no new features. The successor is
-  Zensical, from the same maintainers, which reads `mkdocs.yml` natively. Our setup is
-  the easy case: plain `theme: material`, no Insiders features, no theme overrides,
-  `search` as the only plugin. Trial-build against the current `mkdocs.yml`, confirm
-  the feature set survives (navigation tabs/sections/indexes, search highlight,
-  admonitions, pymdownx superfences/highlight/details/inlinehilite, toc permalinks,
-  attr_list, md_in_html, def_list), then switch `pyproject.toml`'s `docs` extra and the
-  build. Do this **before** writing the bulk of the pages, so nothing is written twice.
-  If mkdocstrings is adopted above, its Zensical support is the one thing to verify
-  first. Ref: https://github.com/squidfunk/mkdocs-material/issues/8523
 - **Nav restructure.** The target IA is roughly: Home · Get started (install,
   quickstart, concepts, glossary) · Guides (pipelines, execution & checkpointing,
   structured output, multimodal, tracing, troubleshooting) · Reference (sources & seed,

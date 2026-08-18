@@ -4,7 +4,7 @@
 
 ## To do
 
-- [ ] Fix `43_cookbook_persona_generation.py`: it chains two sinks (`Sink.jsonl >> Sink.hub`), which `compile()` rejects — decide whether to split into two runs or let a pipeline end in several sinks
+- [X] Fix `43_cookbook_persona_generation.py`: it chains two sinks (`Sink.jsonl >> Sink.hub`), which `compile()` rejects <!-- Resolved as DEC-005: a pipeline may end in several sinks. Sinks already pass records through, so only the validation rule changed — "a sink must be last" became "nothing may follow the sinks". Removed the script's push_records_to_hub() workaround, which had made one run publish to two different Hub repos, the second hardcoded and public. Script 44 keeps its own helper: its push is opt-in behind DATAFAST_PUSH_TO_HUB, and a sink in the chain would run unconditionally -->
 - [ ] Consider supporting nested `Branch` inside a branch path — needs a metadata stack; `compile()` rejects the shape today because the inner branch overwrites the outer `_branch_id`
 - [ ] <task> <!-- optional (context) -->
 

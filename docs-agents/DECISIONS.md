@@ -7,6 +7,48 @@
 ## Decided
 
 
+### DEC-006 — the docs site moves to Zensical
+
+Decided by: Author with Agent
+Date: 2026-08-18
+
+**Decision:** The `docs` extra drops `mkdocs` and `mkdocs-material` for `zensical`,
+and both the deploy workflow and local builds run `zensical build --strict`.
+`mkdocs.yml` is unchanged — Zensical reads it natively. `mkdocstrings` stays and is
+supported directly by Zensical, which errors by name if it is configured but absent.
+
+**Rationale:** Material for MkDocs goes end-of-life on 2026-11-05, and Zensical is
+the successor from the same maintainers. Doing it before the v1 pages are written
+means none of them get written twice. Confirmed by trial build rather than by
+reputation: the two builds produce the same 16 pages, and the generated API page
+carries the identical 152 symbol anchors — zero difference in either direction — with
+the same 46 parameter tables, 68 highlighted code blocks and 214 permalinks. Zensical
+is at 0.0.55 and pre-1.0, which is the standing risk; the mitigation is that
+`mkdocs.yml` stays the source of truth, so reverting is a one-line change to the
+`docs` extra.
+
+
+### DEC-005 — a pipeline may end in several sinks
+
+Decided by: Author with Agent
+Date: 2026-08-18
+
+**Decision:** `compile()` accepts a trailing chain of sinks. The rule changed from
+"a sink must be the last step" to "no step may follow a sink", so
+`... >> Sink.jsonl(path) >> Sink.hub(repo)` is one run writing two destinations.
+
+**Rationale:** Sinks already yield every record through, so the runner needed no
+change and chaining worked mechanically — only the validation rule forbade it. The
+alternative, splitting into two runs, would have meant re-running or hand-carrying
+records to reach a second destination, which is what
+`43_cookbook_persona_generation.py` was doing with an out-of-pipeline
+`push_records_to_hub()` helper. Sinks stay last as a group because a sink is a side
+effect: a step after one would write before the pipeline had finished shaping the
+records. An opt-in push (as in `44_cookbook_space_text_generation.py`, gated on
+`DATAFAST_PUSH_TO_HUB`) still belongs outside the pipeline, since a sink in the chain
+runs unconditionally.
+
+
 ### DEC-004 — v1 ships as 1.0.0 / Production/Stable, published on merge
 
 Decided by: Author with Agent

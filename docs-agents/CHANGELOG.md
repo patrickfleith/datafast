@@ -8,6 +8,13 @@ First stable release.
 
 ### Added
 
+- **A pipeline may end in several sinks.** `compile()` previously required the sink
+  to be the single last step, so writing one dataset to both a file and the Hub took
+  two runs. Sinks pass their records through, so a chain needs nothing from the
+  runner — only the validation rule changed, from "a sink must be last" to "nothing
+  may follow the sinks". `43_cookbook_persona_generation.py` is the recipe that
+  motivated it: it chained `Sink.jsonl >> Sink.hub` and could not compile at all.
+
 - **Docstrings for the six provider factories.** `openai`, `anthropic`, `gemini`,
   `mistral`, `openrouter` and `ollama` had none at all — they rendered as a bare
   signature on the generated API page. Each now documents its API-key environment
@@ -48,11 +55,20 @@ First stable release.
 
 ### Changed
 
+- **The docs site builds with Zensical instead of MkDocs + Material.** Material for
+  MkDocs goes end-of-life on 2026-11-05 and has been in maintenance since November
+  2025. Zensical is its successor from the same maintainers, reads `mkdocs.yml`
+  natively and renders the same theme, so no page and no configuration changed.
+  Verified by building both and diffing the output: the generated API page carries
+  the same 152 symbols and 46 parameter tables, with identical code highlighting,
+  table-of-contents permalinks and navigation. Done before writing the v1 pages so
+  nothing would be written twice.
+
 - **`docs/api.md` is generated from docstrings.** The page was a hand-maintained
   bullet list that had drifted to 34 of the 48 exported names, and it published only
   names — never parameters. It is now `:::` directives rendered by mkdocstrings
   (added to the `docs` extra), so the reference cannot fall behind the code. Building
-  the docs now requires `pip install "datafast[docs]"`; `mkdocs build --strict` is
+  the docs now requires `pip install "datafast[docs]"`; `zensical build --strict` is
   clean.
 
 - **Breaking: renamed the provider layer to the served-model vocabulary.** A *provider*
