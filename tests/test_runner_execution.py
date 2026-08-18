@@ -1,3 +1,5 @@
+from dataclasses import fields
+
 import pytest
 
 from datafast import LLMStep, ListSink, Map, Source
@@ -216,3 +218,21 @@ def test_resume_mid_llm_step_skips_completed_calls(tmp_path):
 
     assert model.calls == 5  # only the 2 remaining calls ran
     assert len(output) == 4
+
+
+def test_run_config_exposes_only_fields_the_runner_reads():
+    """Every RunConfig field must be honoured by the runner.
+
+    A field that nothing reads reads as a working knob to users and to the docs.
+    Logging is configured with `datafast.configure_logger`, not per-run.
+    """
+    assert {f.name for f in fields(RunConfig)} == {
+        "checkpoint_dir",
+        "resume",
+        "resume_from",
+        "stop_after",
+        "limit",
+        "batch_size",
+        "llm_strategy",
+        "checkpoint_every",
+    }

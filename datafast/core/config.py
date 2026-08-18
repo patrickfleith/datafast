@@ -46,12 +46,6 @@ class RunConfig:
 
     checkpoint_every: int = 100
     """Checkpoint LLM progress every N calls."""
-    
-    show_progress: bool = True
-    """Show progress bar during execution."""
-    
-    log_level: str = "INFO"
-    """Logging level."""
 
     def get_strategy(self) -> LLMExecutionStrategy:
         """Get the LLM execution strategy enum value."""
