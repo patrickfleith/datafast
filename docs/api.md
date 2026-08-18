@@ -1,81 +1,85 @@
-# API Overview
+# API Reference
 
-## Top-Level Package
+Generated from the source docstrings, so it cannot drift from the code.
 
-The recommended import surface is the top-level `datafast` package.
+The recommended import surface is the top-level `datafast` package:
 
 ```python
 from datafast import Source, LLMStep, Sink, openrouter
 ```
 
-## Core Types
+Everything on this page is exported from `datafast` directly. The served-model
+internals (capability profiles, parsers, transport enums) live in `datafast.llm`
+and are documented under [Served models](llms.md).
 
-- `Record`
-- `Step`
-- `Pipeline`
-- `RunConfig`
-- `Runner`
-- `run_pipeline`
-- `CheckpointManager`
+## Core
 
-## Sources and Seeds
+::: datafast.Record
+::: datafast.Step
+::: datafast.Pipeline
+::: datafast.Runner
+::: datafast.RunConfig
+::: datafast.LLMExecutionStrategy
+::: datafast.run_pipeline
+::: datafast.CheckpointManager
+::: datafast.PipelineChangedError
 
-- `Source.list(...)`
-- `Source.file(...)`
-- `Source.jsonl(...)`
-- `Source.csv(...)`
-- `Source.parquet(...)`
-- `Source.tsv(...)`
-- `Source.txt(...)`
-- `Source.huggingface(...)`
-- `Seed.values(...)`
-- `Seed.product(...)`
-- `Seed.zip(...)`
-- `Seed.range(...)`
+## Sources and seeds
 
-## Data Operations
+::: datafast.Source
+::: datafast.HuggingFaceSource
+::: datafast.Seed
+::: datafast.SeedDimension
 
-- `Sample`
-- `AddUUID`
-- `Map`
-- `FlatMap`
-- `Filter`
-- `Group`
-- `Pair`
-- `Concat`
-- `Join`
+## Data operations
 
-## LLM Operations
+::: datafast.Sample
+::: datafast.AddUUID
+::: datafast.Map
+::: datafast.FlatMap
+::: datafast.Filter
+::: datafast.Group
+::: datafast.Pair
+::: datafast.Concat
+::: datafast.Join
 
-- `LLMStep`
-- `Classify`
-- `Score`
-- `Compare`
-- `Rewrite`
-- `Extract`
-- `configure_langfuse_tracing(...)`
-- `is_langfuse_tracing_enabled()`
+## LLM operations
 
-## Branching and Sinks
+::: datafast.LLMStep
+::: datafast.Classify
+::: datafast.Score
+::: datafast.Compare
+::: datafast.Rewrite
+::: datafast.Extract
 
-- `Branch`
-- `JoinBranches`
-- `Sink.jsonl(...)`
-- `Sink.csv(...)`
-- `Sink.parquet(...)`
-- `Sink.hub(...)`
-- `Sink.list()`
+## Branching
 
-## Served Models
+::: datafast.Branch
+::: datafast.JoinBranches
 
-- `ServedModel` — the provider-and-model pair you construct and call
+## Sinks
 
-Provider factories, the public way to build one:
+::: datafast.Sink
+::: datafast.JSONLSink
+::: datafast.CSVSink
+::: datafast.ParquetSink
+::: datafast.ListSink
+::: datafast.HubSink
 
-- `openai(...)`
-- `anthropic(...)`
-- `gemini(...)`
-- `mistral(...)`
-- `openrouter(...)`
-- `ollama(...)`
-- `openai_compatible(...)`
+## Served models
+
+::: datafast.ServedModel
+::: datafast.openai
+::: datafast.anthropic
+::: datafast.gemini
+::: datafast.mistral
+::: datafast.openrouter
+::: datafast.ollama
+::: datafast.openai_compatible
+
+## Utilities
+
+::: datafast.configure_logger
+::: datafast.configure_langfuse_tracing
+::: datafast.is_langfuse_tracing_enabled
+::: datafast.get_version
