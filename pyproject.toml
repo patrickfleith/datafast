@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datafast"
-version = "0.0.35"
+version = "1.0.0"
 description = "Pipeline-first synthetic data generation for Python"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["synthetic-data", "pipeline", "llm", "generation"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3.10",
@@ -22,23 +22,33 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
+# Every runtime dependency below is imported at module scope by the package.
+# LiteLLM is the only LLM path: provider SDKs (anthropic, google-generativeai,
+# openai) are not imported here — LiteLLM reaches those providers over its own
+# HTTP transport. Optional file formats and Hub I/O live in the extras.
 dependencies = [
-    "datasets>=3.0",
-    "instructor",
-    "google-generativeai",
-    "python-dotenv",
-    "anthropic",
-    "openai",
-    "pydantic",
     "litellm",
-    "httpx",
-    "gradio",
     "loguru",
-    "botocore",
+    "pydantic",
+    "httpx",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]
+# Parquet I/O: `Source.parquet(...)` and `ParquetSink`.
+parquet = [
+    "pyarrow>=15.0",
+]
+# HuggingFace Hub I/O: `HuggingFaceSource` and `HubSink`.
+hub = [
+    "datasets>=3.0",
+    "huggingface-hub>=0.25",
+]
+all = [
+    "datafast[parquet,hub]",
+]
 dev = [
+    "datafast[parquet,hub]",
     "pytest>=6.0",
     "ruff>=0.9.0",
 ]
@@ -46,6 +56,8 @@ docs = [
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.6.0",
     "pymdown-extensions>=10.0.0",
+    # docs/api.md is `:::` directives only — without this it renders as raw text.
+    "mkdocstrings[python]>=0.26",
 ]
 langfuse = [
     "langfuse",
@@ -69,6 +81,6 @@ ignore = ["E501"]
 
 
 [project.urls]
-"Documentation" = "https://github.com/patrickfleith/datafast"
+"Documentation" = "https://patrickfleith.github.io/datafast/"
 "Issue Tracker" = "https://github.com/patrickfleith/datafast/issues"
 "Discussions" = "https://github.com/patrickfleith/datafast/discussions"

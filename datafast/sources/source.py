@@ -2,6 +2,7 @@
 
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -141,7 +142,7 @@ class FileSource(Step):
         except ImportError:
             raise ImportError(
                 "pyarrow is required for reading Parquet files. "
-                "Install it with: pip install pyarrow"
+                "Install it with: pip install 'datafast[parquet]'"
             )
 
         table = pq.read_table(self._path, **self._kwargs)
@@ -188,7 +189,7 @@ class HuggingFaceSource(Step):
         except ImportError:
             raise ImportError(
                 "datasets is required for HuggingFaceSource. "
-                "Install it with: pip install datasets"
+                "Install it with: pip install 'datafast[hub]'"
             )
 
         logger.info(
@@ -261,7 +262,7 @@ class Source:
     def file(
         path: str | Path,
         format: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> FileSource:
         """
         Load data from a local file.
@@ -283,7 +284,7 @@ class Source:
         return FileSource(path=path, format=format, **kwargs)
 
     @staticmethod
-    def jsonl(path: str | Path, **kwargs) -> FileSource:
+    def jsonl(path: str | Path, **kwargs: Any) -> FileSource:
         """
         Load data from a JSONL file.
 
@@ -297,7 +298,7 @@ class Source:
         return FileSource(path=path, format="jsonl", **kwargs)
 
     @staticmethod
-    def csv(path: str | Path, **kwargs) -> FileSource:
+    def csv(path: str | Path, **kwargs: Any) -> FileSource:
         """
         Load data from a CSV file.
 
@@ -311,7 +312,7 @@ class Source:
         return FileSource(path=path, format="csv", **kwargs)
 
     @staticmethod
-    def parquet(path: str | Path, **kwargs) -> FileSource:
+    def parquet(path: str | Path, **kwargs: Any) -> FileSource:
         """
         Load data from a Parquet file.
 
@@ -325,7 +326,7 @@ class Source:
         return FileSource(path=path, format="parquet", **kwargs)
 
     @staticmethod
-    def tsv(path: str | Path, **kwargs) -> FileSource:
+    def tsv(path: str | Path, **kwargs: Any) -> FileSource:
         """
         Load data from a TSV file.
 
@@ -339,7 +340,7 @@ class Source:
         return FileSource(path=path, format="tsv", **kwargs)
 
     @staticmethod
-    def txt(path: str | Path, text_column: str = "text", **kwargs) -> FileSource:
+    def txt(path: str | Path, text_column: str = "text", **kwargs: Any) -> FileSource:
         """
         Load data from a TXT file (one record per line).
 

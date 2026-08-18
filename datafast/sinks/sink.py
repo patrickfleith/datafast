@@ -162,7 +162,7 @@ class ParquetSink(Step):
         except ImportError:
             raise ImportError(
                 "pyarrow is required for ParquetSink. "
-                "Install it with: pip install pyarrow"
+                "Install it with: pip install 'datafast[parquet]'"
             )
 
         self._path.parent.mkdir(parents=True, exist_ok=True)
@@ -227,7 +227,7 @@ class HubSink(Step):
         except ImportError:
             raise ImportError(
                 "huggingface_hub is required for HubSink. "
-                "Install it with: pip install huggingface-hub"
+                "Install it with: pip install 'datafast[hub]'"
             )
 
         api = HfApi(token=token)
@@ -263,7 +263,7 @@ class HubSink(Step):
         except ImportError:
             raise ImportError(
                 "datasets is required for HubSink. "
-                "Install it with: pip install datasets"
+                "Install it with: pip install 'datafast[hub]'"
             )
 
         token = self._get_token()

@@ -15,10 +15,19 @@ The old dataset-class API has been removed. The canonical package is `datafast`,
 pip install datafast
 ```
 
-Optional Langfuse tracing:
+The base install covers every step, all six provider factories (plus
+`openai_compatible`), and the JSONL, CSV and in-memory sinks. Optional file
+formats and Hub I/O ship as extras:
+
+| Extra | Enables | Pulls in |
+|-------|---------|----------|
+| `datafast[parquet]` | `Source.parquet(...)`, `ParquetSink` | `pyarrow` |
+| `datafast[hub]` | `HuggingFaceSource`, `HubSink` | `datasets`, `huggingface-hub` |
+| `datafast[langfuse]` | Langfuse tracing | `langfuse` |
+| `datafast[all]` | `parquet` + `hub` | — |
 
 ```bash
-pip install "datafast[langfuse]"
+pip install "datafast[hub]"
 ```
 
 ## Quick Start
@@ -108,8 +117,8 @@ configure_langfuse_tracing()
 - `datafast/`: canonical source package
 - `examples/scripts/`: runnable pipeline examples
 - `examples/providers/`: direct provider usage examples
-- `docs/`: pipeline-first documentation
-- `datafast_new_design_document.md`: retained design reference
+- `docs/`: pipeline-first documentation, published at
+  [patrickfleith.github.io/datafast](https://patrickfleith.github.io/datafast/)
 
 ## Running Tests
 
