@@ -10,6 +10,12 @@
 - Example suites (11 scripts each) for openai, anthropic, gemini, mistral, ollama, openrouter.
 - Mocked contract/capability/adapter/reliability tests in `tests/test_served_model_contract.py` (reliability: bounded retries, backoff growth, jitter range, timeout forwarding, RPM throttling, batch-retry ordering).
 - Pipeline execution controls: `limit` and `resume_from` implemented; dead `rate_limits` / runner-level `max_concurrent` removed (throughput lives on the provider). Covered by `tests/test_runner_execution.py` (limit, resume_from, stop_after, llm_strategy ordering, full + mid-LLM-step checkpoint resume).
+- Dead `RunConfig` fields removed: `show_progress` and `log_level` were declared and read nowhere. `log_level` duplicated `configure_logger(level=...)`, which is exported from `datafast` and is the real mechanism — loguru's config is global, so a per-run field would have applied a process-wide side effect scoped to one `run()`. `show_progress` had no infrastructure behind it (no tqdm or rich, neither a dependency) and the runner already reports per-step progress via `logger.info`. `RunConfig`'s field set is now pinned by `tests/test_runner_execution.py`, so the execution guide can document all eight fields as live.
+- Dependency surface trimmed to what the package imports. Runtime dependencies are now `litellm`, `loguru`, `pydantic`, `httpx` and `python-dotenv` — the five imported at module scope. The six unused declarations (`instructor`, `google-generativeai`, `anthropic`, `openai`, `gradio`, `botocore`) are gone: LiteLLM is the only LLM path and reaches Anthropic/Gemini over its own HTTP transport, and it declares `openai` itself. The three lazily-imported packages became feature extras — `datafast[parquet]` (pyarrow) and `datafast[hub]` (datasets, huggingface-hub), with `datafast[all]` for both — so `datasets` no longer forces pyarrow, pandas and the Hub stack into every install. A base install resolves to 50 packages against the old 107; `datafast[all]` takes 59. The five `ImportError` messages now name the extra. `tests/test_dependencies.py` walks the package AST and fails on drift in either direction: a declared dependency nothing imports, or a third-party import nothing declares.
+- API page generated from docstrings. `docs/api.md` is now `:::` directives rendered by mkdocstrings (added to the `docs` extra and `mkdocs.yml`) instead of a hand-maintained bullet list that had drifted to 34 of 48 names. Chosen over pinning the hand-written list with a test because the content the audit wants — every step's parameters — already lives in the docstrings, so it publishes immediately rather than being transcribed and then maintained twice; a test can pin names but not parameter documentation. The page went from 81 lines of bare names to ~82k rendered characters and 85 parameter tables. Adopting it exposed the docstrings that rendered blank: the six provider factories had none and now document their API-key env var, transport and defaults, and `Filter` named 6 of its 23 operators and now carries the full table. `mkdocs build --strict` is clean, which required annotating eight public `**kwargs`. `tests/test_api_page.py` pins page coverage against `__all__`, and `tests/test_filter_operators.py` (36 cases) pins every operator the page publishes — they had no tests at all.
+- Dangling design-document references removed. `README.md` and `SOFTWARE_DESCRIPTION.md` both pointed at `datafast_new_design_document.md`, deleted long ago; they now point at the published docs site and `docs/concepts.md`. Auditing the same class of claim turned up two more: `[project.urls] Documentation` pointed at the GitHub repo rather than the docs site, and `docs/PUBLISHING.md` asked for `PYPI_USERNAME`/`PYPI_PASSWORD` while the workflow uploads as `__token__` with `PYPI_API_TOKEN` — following that guide could not have worked. Both corrected.
+- Release metadata set for v1: `1.0.0`, `Development Status :: 5 - Production/Stable`, documentation URL on the docs site (DEC-004). The roadmap's "version is `0.0.35`" was a stale read of this branch — `main` had already auto-bumped to `0.0.36`, so merging as-is would have made the publish workflow re-tag an existing `v0.0.35` and fail. Worth knowing for any future release: that workflow publishes whatever version is in `pyproject.toml` at merge time, straight to PyPI, and rejects non-`X.Y.Z` strings, so release candidates are not possible without changing it. The changelog's empty `[0.1.0]` placeholder, which contradicted the v1 framing and was never tagged, is gone; `[Unreleased]` became `[1.0.0] — 2026-08-18`.
+- Docs CI aligned with the `docs` extra: `.github/workflows/deploy-docs.yml` installed a hand-listed set of packages and now installs `-e ".[docs]"` and builds with `--strict`, so CI and a local build cannot drift.
 - Pipeline pre-flight validation: `Pipeline.compile()` (`datafast/core/validation.py`) runs before execution and raises an actionable `PipelineValidationError` — source-first / sink-last, Branch↔JoinBranches pairing, and conservative column-reference checks (`tests/test_pipeline_validation.py`).
 - Branch runner integration: the runner recurses into `Branch` paths (and nested sub-pipelines), so LLM steps inside a path get batching, `llm_strategy` ordering and per-call checkpoint/resume. Nested steps share the parent manifest entry and own checkpoint files keyed by dotted path name; the pipeline hash now covers branch-path structure (`tests/test_runner_branch.py`).
 - Served-model vocabulary rename: `LLMProvider` → `ServedModel`, `TargetConfig` → `ServedModelConfig`, `TargetCapabilities` → `ServedModelCapabilities`, `_CATALOG` → `_SERVED_MODEL_CATALOG`; fields `provider` → `provider_id` and `litellm_provider` → `litellm_route`; the seven per-provider subclasses are private, leaving the lowercase factories as the only public entry points. `llm/provider.py` → `llm/served_model.py`, `datafast/llms.py` deleted, trace key → `datafast_provider_id`. Docs, README and the mocked suite (`tests/test_served_model_contract.py`, `tests/test_served_model_unit.py`) follow the settled `GLOSSARY.md` terms.
@@ -142,43 +148,22 @@ replace the earlier list, which predated it and had gone stale in several places
    stored dataset.
 5. **Concepts & glossary** — the vocabulary, published rather than agent-only.
 
-**Current state.** 13 published pages, ~1,220 lines, against ~10,100 lines of code.
-The site is a tour, not a reference: it names the steps but documents almost none of
-their parameters. Concretely, nothing published today covers the nine `Sample`
-strategies, the 21 `Filter` operators, the eight `Rewrite` modes, the six `Extract`
-presets, `Group`'s aggregation spec, `Pair`'s strategies, `Join`/`JoinBranches` modes,
-or `Seed.expand`. `docs/models.md` (36 lines) lists seven factory defaults and nothing
-else, while `capabilities.py` holds 17 catalogued models, 15 capability profiles and
-four layers of fallback for everything not catalogued.
+**Current state.** Re-checked on 2026-08-18, after `docs/api.md` became generated.
+The parameter gap this section opened with is now largely closed by that page: the
+nine `Sample` strategies, the 23 `Filter` operators, the `Rewrite` modes, the
+`Extract` presets, `Group`'s aggregation spec, `Pair`'s strategies,
+`Join`/`JoinBranches` modes and `Seed.expand` all render from their docstrings.
+What remains is not reference material but *narrative* — the prose pages that say
+which step to reach for and why, in what order, and the worked examples. The
+generated page is a lookup surface, not a guide, and it publishes only what the
+docstrings say: `Pipeline`, `Step`, `Record`, `RunConfig`, `ServedModel` and the
+concrete sinks still carry one-line docstrings and render thin. `docs/models.md`
+(36 lines) lists seven factory defaults and nothing else, while `capabilities.py`
+holds 17 catalogued models, 15 capability profiles and four layers of fallback for
+everything not catalogued — the provider reference is still to write.
 
 #### Settle these first — each one changes what gets written
 
-- **Dead `RunConfig` fields.** `show_progress` and `log_level` are declared in
-  `datafast/core/config.py` and read nowhere in the package. Documenting them would
-  publish a lie; remove them or implement them before the execution guide is written.
-  Same failure mode as `rate_limits` and runner-level `max_concurrent`, which is
-  exactly what the old roadmap entry warned about.
-- **Dependency surface.** `pyproject.toml` requires `instructor`,
-  `google-generativeai`, `anthropic`, `openai`, `gradio` and `botocore`, and the
-  package imports none of them — LiteLLM is the only LLM path. Meanwhile `pyarrow` and
-  `huggingface_hub` are imported lazily with "install it with…" errors but are declared
-  nowhere, and `datasets` is a hard dependency that only `HubSink` and
-  `HuggingFaceSource` use, both behind lazy imports. An honest install page needs the
-  real answer first: trim the unused six, and turn datasets/pyarrow/huggingface_hub
-  into extras (`datafast[hub]`, `datafast[parquet]`, or one `datafast[data]`).
-- **API page mechanism.** The old entry assumed mkdocstrings; it is not installed and
-  not configured. `docs/api.md` is a hand-maintained bullet list, already missing
-  `Seed.expand`, `LLMExecutionStrategy`, `PipelineChangedError`, `SeedDimension`,
-  `HuggingFaceSource`, `configure_logger`, `get_version`, the concrete sink classes and
-  everything in `datafast.llm` (`ContentPart`, `Modality`, `ServedModelCapabilities`, …)
-  — 48 names in `__all__` against a list that covers roughly two-thirds. Decide:
-  adopt mkdocstrings (add to the `docs` extra and `mkdocs.yml`), or keep it hand-written
-  and pin it with a test. `tests/test_public_api.py` already exists and is the place.
-- **Broken references to a deleted file.** `README.md` and `SOFTWARE_DESCRIPTION.md`
-  both point at `datafast_new_design_document.md`, which no longer exists.
-- **Release metadata.** Version is `0.0.35` with `Development Status :: 3 - Alpha`, and
-  `[project.urls] Documentation` points at the GitHub repo rather than the docs site.
-  All three need to change for a 1.0 tag.
 - **`43_cookbook_persona_generation.py` chains two sinks**, which `compile()` rejects
   (tracked in TASKS). It is a cookbook script, so this is a docs blocker: the published
   recipe currently describes a pipeline that will not compile.
