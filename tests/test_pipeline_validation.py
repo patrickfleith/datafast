@@ -52,9 +52,35 @@ def test_source_after_first_rejected():
         pipeline.compile()
 
 
-def test_sink_must_be_last():
+def test_step_after_sink_rejected():
     pipeline = Source.list([{"a": 1}]) >> ListSink() >> Map(lambda r: r)
-    with pytest.raises(PipelineValidationError, match="must be the last step"):
+    with pytest.raises(PipelineValidationError, match="comes after the sink"):
+        pipeline.compile()
+
+
+def test_chained_sinks_accepted():
+    """Sinks pass records through, so a run may write to several destinations."""
+    pipeline = Source.list([{"a": 1}]) >> ListSink() >> ListSink()
+    pipeline.compile()
+
+
+def test_chained_sinks_each_receive_every_record():
+    first, second = ListSink(), ListSink()
+    records = [{"a": 1}, {"a": 2}]
+
+    output = (Source.list(records) >> first >> second).run()
+
+    assert first.records == records
+    assert second.records == records
+    assert output == records
+
+
+def test_step_after_a_chain_of_sinks_rejected():
+    """The rule is that nothing follows the sinks, not that only one may appear."""
+    pipeline = (
+        Source.list([{"a": 1}]) >> ListSink() >> ListSink() >> Map(lambda r: r)
+    )
+    with pytest.raises(PipelineValidationError, match="comes after the sink at position 1"):
         pipeline.compile()
 
 

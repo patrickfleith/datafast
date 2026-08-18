@@ -64,7 +64,7 @@ def _validate_sequence(
             Ignored when *needs_source* is set (the source defines the schema).
         context: Human-readable location, empty for the top-level pipeline.
         needs_source: Whether the sequence must begin with a source.
-        allow_sink: Whether a sink may appear as the last step.
+        allow_sink: Whether sinks may appear as the trailing steps.
     """
     if not steps:
         raise PipelineValidationError(f"{context or 'Pipeline'} is empty.")
@@ -118,7 +118,11 @@ def _check_structure(
             f"'{first.name}' ({type(first).__name__})."
         )
 
-    last_index = len(steps) - 1
+    # Sinks pass their records through, so a pipeline may end in several of them
+    # — writing the same dataset to a file and to the Hub is one run, not two.
+    # They must still come last together: a sink is a side effect, and a step
+    # after one would write before the pipeline had finished shaping the records.
+    first_sink: int | None = None
     for i, step in enumerate(steps):
         if isinstance(step, _PRODUCERS) and (i > 0 or not needs_source):
             raise PipelineValidationError(
@@ -136,11 +140,14 @@ def _check_structure(
                     f"Sink '{step.name}' at position {i} is not allowed"
                     f"{_inside(context)}."
                 )
-            if i != last_index:
-                raise PipelineValidationError(
-                    f"Sink '{step.name}' at position {i}{_inside(context)} must be "
-                    f"the last step."
-                )
+            if first_sink is None:
+                first_sink = i
+        elif first_sink is not None:
+            raise PipelineValidationError(
+                f"Step '{step.name}' at position {i}{_inside(context)} comes after "
+                f"the sink at position {first_sink}; sinks must be the last steps. "
+                f"Several sinks may be chained, but nothing may follow them."
+            )
 
 
 def _check_branches(steps: list[Step], context: str) -> None:
