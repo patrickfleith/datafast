@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from datafast.core.types import Record
 
@@ -81,7 +81,7 @@ class Pipeline(Step):
         resume_from: str | None = None,
         limit: int | None = None,
         stop_after: int | str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> list[Record]:
         """
         Execute the pipeline and return all records.

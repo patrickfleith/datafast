@@ -5,7 +5,7 @@ import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -628,7 +628,7 @@ def run_pipeline(
     resume_from: str | None = None,
     limit: int | None = None,
     stop_after: int | str | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> list[Record]:
     """
     Execute a pipeline with the runner.
