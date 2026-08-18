@@ -111,26 +111,14 @@ def build_pipeline():
 )
 
 
-def push_records_to_hub(records: list[dict]) -> None:
-    repo_id = "patrickfleith/datafast-persona-cookbook"
-    private = False
-
-    list(
-        Sink.hub(
-            repo_id=repo_id,
-            private=private,
-            commit_message=f"Publish cookbook 43 persona dataset with {MODEL_ID}",
-        ).process(records)
-    )
-
-
 def main() -> None:
-    records = build_pipeline().run(
+    # Both sinks are part of the pipeline: sinks pass their records through, so
+    # the JSONL file and the Hub dataset are written in the same run.
+    build_pipeline().run(
         batch_size=1,
         checkpoint_dir=CHECKPOINT_DIR,
         resume=False,
     )
-    push_records_to_hub(records)
 
 
 if __name__ == "__main__":
