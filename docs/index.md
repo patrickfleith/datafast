@@ -1,12 +1,11 @@
 # Datafast
 
-Datafast is a pipeline-first Python library for generating synthetic datasets with
+Datafast is a Python library for generating synthetic datasets with
 LLMs.
 
-You describe the axes your dataset should cover, compose the steps that fill it in, and
-run the pipeline. What you get back is a dataset — a JSONL or CSV file, a Parquet file,
-a Hugging Face Hub repo, or records in memory — with every row still carrying the seed
-values and the model that produced it.
+You describe what your dataset should cover, compose synthetic data generation steps,
+and run the pipeline. What you get back is a dataset carrying full traceability from
+seeds to metadata and models' outputs.
 
 ```python
 from datafast import LLMStep, Seed, Sink, openai
