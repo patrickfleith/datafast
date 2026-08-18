@@ -42,4 +42,5 @@ Execution supports:
 
 Canonical example scripts live under `examples/scripts/`.
 
-The repository also retains `datafast_new_design_document.md` as the architecture reference for the pipeline model.
+The architecture reference for the pipeline model is `docs/concepts.md`, published
+at [patrickfleith.github.io/datafast/concepts](https://patrickfleith.github.io/datafast/concepts/).
