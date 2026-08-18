@@ -39,6 +39,7 @@ nav:
   - Installation: installation.md
   - Quickstart: quickstart.md
   - Concepts: concepts.md
+  - Glossary: glossary.md
   - Guides:
       - guides/index.md
       - Building Pipelines: guides/building_pipelines.md
@@ -50,8 +51,25 @@ nav:
       - Text Classification: cookbook/text_classification.md
       - Persona Generation: cookbook/persona_generation.md
       - Space Engineering Text Generation: cookbook/space_text_generation.md
-  - Served models: llms.md
+  - Served models guide: llms.md
   - Models: models.md
+  - Reference:
+      - Sources & Seed: reference/sources_and_seed.md
+      - Data ops: reference/data_ops.md
+      - Sample: reference/sample.md
+      - LLM step: reference/llm_step.md
+      - Specialized LLM steps: reference/llm_specialized.md
+      - Branching: reference/branching.md
+      - Sinks: reference/sinks.md
+      - Served models: reference/served_models.md
+      - Providers:
+          - OpenAI: reference/providers/openai.md
+          - Anthropic: reference/providers/anthropic.md
+          - Gemini: reference/providers/gemini.md
+          - Mistral: reference/providers/mistral.md
+          - OpenRouter: reference/providers/openrouter.md
+          - Ollama: reference/providers/ollama.md
+          - OpenAI-compatible: reference/providers/openai_compatible.md
   - API: api.md
 
 plugins:
