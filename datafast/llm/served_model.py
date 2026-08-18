@@ -1300,18 +1300,71 @@ class _OpenAICompatibleServedModel(ServedModel):
 
 
 def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> ServedModel:
+    """Build a served model on OpenAI.
+
+    Reads `OPENAI_API_KEY` unless `api_key=` is passed. Reasoning models are
+    reached over the Responses endpoint and plain chat models over Chat
+    Completions; `endpoint_mode=` overrides the choice.
+
+    Args:
+        model_id: OpenAI model name.
+        **kwargs: Any `ServedModelConfig` field — `temperature`, `max_tokens`,
+            `reasoning_effort`, `max_concurrent`, `rpm_limit`, `timeout`, ...
+
+    Returns:
+        A `ServedModel` bound to OpenAI.
+    """
     return _OpenAIServedModel(model_id=model_id, **kwargs)
 
 
 def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> ServedModel:
+    """Build a served model on Anthropic.
+
+    Reads `ANTHROPIC_API_KEY` unless `api_key=` is passed. Requests go through
+    LiteLLM's own HTTP transport, so the `anthropic` SDK is not required.
+
+    Args:
+        model_id: Anthropic model name.
+        **kwargs: Any `ServedModelConfig` field — `thinking`, `temperature`,
+            `max_tokens`, `max_concurrent`, ...
+
+    Returns:
+        A `ServedModel` bound to Anthropic.
+    """
     return _AnthropicServedModel(model_id=model_id, **kwargs)
 
 
 def gemini(model_id: str = "gemini-3.5-flash-lite", **kwargs: Any) -> ServedModel:
+    """Build a served model on Google Gemini.
+
+    Reads `GEMINI_API_KEY` unless `api_key=` is passed. Requests go through
+    LiteLLM's own HTTP transport, so `google-generativeai` is not required.
+
+    Args:
+        model_id: Gemini model name.
+        **kwargs: Any `ServedModelConfig` field — `thinking`, `temperature`,
+            `max_tokens`, `max_concurrent`, ...
+
+    Returns:
+        A `ServedModel` bound to Gemini.
+    """
     return _GeminiServedModel(model_id=model_id, **kwargs)
 
 
 def mistral(model_id: str = "mistral-small-2603", **kwargs: Any) -> ServedModel:
+    """Build a served model on Mistral.
+
+    Reads `MISTRAL_API_KEY` unless `api_key=` is passed.
+
+    Args:
+        model_id: Mistral model name. `magistral` and `-reasoning` models
+            resolve to a reasoning-capable profile.
+        **kwargs: Any `ServedModelConfig` field — `temperature`, `max_tokens`,
+            `max_concurrent`, ...
+
+    Returns:
+        A `ServedModel` bound to Mistral.
+    """
     return _MistralServedModel(model_id=model_id, **kwargs)
 
 
@@ -1319,10 +1372,38 @@ def openrouter(
     model_id: str = "openai/gpt-5.4-mini",
     **kwargs: Any,
 ) -> ServedModel:
+    """Build a served model on OpenRouter.
+
+    Reads `OPENROUTER_API_KEY` unless `api_key=` is passed. OpenRouter fronts
+    many upstream providers, so `model_id` carries a `vendor/model` prefix.
+
+    Args:
+        model_id: OpenRouter model name, e.g. `"openai/gpt-5.4-mini"`.
+        **kwargs: Any `ServedModelConfig` field — `temperature`, `max_tokens`,
+            `max_concurrent`, ...
+
+    Returns:
+        A `ServedModel` bound to OpenRouter.
+    """
     return _OpenRouterServedModel(model_id=model_id, **kwargs)
 
 
 def ollama(model_id: str = "gemma4:12b", **kwargs: Any) -> ServedModel:
+    """Build a served model on a local Ollama daemon.
+
+    Needs no API key. The daemon is reached at `http://localhost:11434` unless
+    `OLLAMA_API_BASE` or `api_base_url=` says otherwise; capabilities are read
+    from the daemon itself rather than a static catalogue.
+
+    Args:
+        model_id: Ollama model tag, e.g. `"gemma4:12b"`.
+        **kwargs: Any `ServedModelConfig` field. Use `repeat_penalty` rather
+            than `frequency_penalty` — Ollama's knob is a multiplier neutral
+            at `1.0`.
+
+    Returns:
+        A `ServedModel` bound to the local Ollama daemon.
+    """
     return _OllamaServedModel(model_id=model_id, **kwargs)
 
 
