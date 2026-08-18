@@ -15,12 +15,22 @@ This process is triggered whenever:
 - A push is made to the `main` branch (typically through a merge)
 - The workflow is manually dispatched through GitHub Actions interface
 
+Because every merge to `main` cuts a release, the workflow ignores pushes that
+touch only paths which cannot reach the built package: `docs/**`, `docs-agents/**`,
+`AGENTS.md`, `CLAUDE.md` and `SOFTWARE_DESCRIPTION.md`. A merge confined to those
+publishes nothing, since the resulting distribution would be identical to the one
+before it. `README.md` is not in that list — it becomes the PyPI project
+description, so editing it does change what is published.
+
+To release anyway after a docs-only change, dispatch the workflow manually; that
+path ignores the filter.
+
 ## Required Secrets
 
-To enable PyPI publishing, you need to set up the following secrets in your GitHub repository:
+To enable PyPI publishing, set one secret in your GitHub repository:
 
-1. `PYPI_USERNAME`: Your PyPI username
-2. `PYPI_PASSWORD`: Your PyPI password or token (recommended)
+1. `PYPI_API_TOKEN`: A PyPI API token. The workflow uploads as `__token__`, so a
+   token is the only supported credential — a username and password will not work.
 
 ### Setting Up GitHub Secrets
 

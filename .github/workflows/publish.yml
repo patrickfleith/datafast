@@ -3,7 +3,18 @@ name: Publish Python Package
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Allows manual triggering
+    # Every merge to main cuts a release, so skip the ones that cannot change
+    # what gets published. None of these paths reach the wheel or the sdist, so
+    # a release built from them would be byte-identical to the one before it.
+    # README.md is deliberately absent: it becomes the PyPI project description,
+    # so editing it does change the artifact.
+    paths-ignore:
+      - 'docs/**'
+      - 'docs-agents/**'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'SOFTWARE_DESCRIPTION.md'
+  workflow_dispatch:  # Allows manual triggering — bypasses paths-ignore
 
 # Required permissions for the workflow to function properly
 permissions:

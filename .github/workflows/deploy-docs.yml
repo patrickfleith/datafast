@@ -38,9 +38,10 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
       
-      - run: pip install mkdocs-material mkdocstrings[python] mkdocs-material-extensions
-      - run: pip install -e .
-      - run: mkdocs build
+      # Docs dependencies live in the `docs` extra, so CI and a local build
+      # cannot drift apart.
+      - run: pip install -e ".[docs]"
+      - run: mkdocs build --strict
       
       - uses: actions/upload-pages-artifact@v3
         with:
