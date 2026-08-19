@@ -51,10 +51,11 @@ Datafast makes each of those a step, composed with `>>`:
 
 - Follow the [Quickstart](quickstart.md) — install to first dataset, one page.
 - Read [Concepts](concepts.md) for the execution model.
-- Read [Building Pipelines](guides/building_pipelines.md) for sources, transforms and
-  sinks.
-- Read [LLM Steps](guides/llm_steps.md) for generation and evaluation steps.
-- Read [Checkpointing](guides/checkpointing.md) for resume and execution controls.
+- Read [Sources & seed](reference/sources_and_seed.md) and [Data
+  ops](reference/data_ops.md) for sources, transforms and sinks.
+- Read [LLM step](reference/llm_step.md) for generation and evaluation steps.
+- Read [Pipelines & execution](guides/pipelines_and_execution.md) for resume and
+  execution controls.
 - Read [Served models](llms.md) for provider configuration, reasoning and multimodal
   input.
 - Browse the [Cookbook](cookbook/index.md) for complete recipes.

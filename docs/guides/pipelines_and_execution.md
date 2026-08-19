@@ -318,9 +318,8 @@ time — it only means the runner checkpoints and logs less often.
 ## Where to go next
 
 - [Concepts](../concepts.md) — the record → step → pipeline → runner model.
-- [Building Pipelines](building_pipelines.md) — the sources, transforms and sinks you
-  chain together.
-- [LLM Steps](llm_steps.md) — the steps that make the calls this page schedules.
+- [Data ops](../reference/data_ops.md) — the transforms and sinks you chain together.
+- [LLM step](../reference/llm_step.md) — the steps that make the calls this page schedules.
 - [Branching](../reference/branching.md) — `Branch` and `JoinBranches` in full.
 - [Served models](../reference/served_models.md) — every rate limit, timeout and retry
   setting.

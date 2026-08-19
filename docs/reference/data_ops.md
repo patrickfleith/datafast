@@ -328,7 +328,7 @@ several times on both sides yields one record per combination.
 
 ## Where to go next
 
-- [Building Pipelines](../guides/building_pipelines.md) — how these steps chain together.
+- [Pipelines & execution](../guides/pipelines_and_execution.md) — how these steps chain together.
 - [Sources & Seed](sources_and_seed.md) — the steps that come first.
 - [Concepts](../concepts.md) — the record → step → pipeline model.
 - [Glossary](../glossary.md) — what record, column, step and transform mean here.

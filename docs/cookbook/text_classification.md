@@ -343,7 +343,7 @@ Two things worth adding once the shape is right:
 ## Where to go next
 
 - [Sources & Seed](../reference/sources_and_seed.md) — every dimension and combiner.
-- [LLM steps](../guides/llm_steps.md) — the rest of what `LLMStep` takes.
+- [LLM step](../reference/llm_step.md) — the rest of what `LLMStep` takes.
 - [Pipelines & execution](../guides/pipelines_and_execution.md) — checkpoints and run controls.
 - [Sinks](../reference/sinks.md) — `Sink.jsonl`, `Sink.hub` and the others.
 - [Persona generation](persona_generation.md) — a cookbook that starts from real text instead of a seed.

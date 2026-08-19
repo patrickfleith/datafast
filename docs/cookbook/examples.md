@@ -51,7 +51,7 @@ The transforms that reshape records between the source and the sink. All of
 ## LLM steps
 
 One `LLMStep` feature per script. Together they cover most of
-[LLM steps](../guides/llm_steps.md).
+[LLM step](../reference/llm_step.md).
 
 | Script | What it shows |
 |---|---|

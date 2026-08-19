@@ -318,7 +318,7 @@ datafast logs through [loguru](https://loguru.readthedocs.io/). The lines that m
 ## Where to go next
 
 - [Pipelines & execution](pipelines_and_execution.md) — checkpoints, resume and the run controls in full.
-- [LLM steps](llm_steps.md) — every option on a step, including `on_parse_error`.
+- [LLM step](../reference/llm_step.md) — every option on a step, including `on_parse_error`.
 - [Structured output & parse modes](structured_output.md) — why a reply failed to parse.
 - [Calling a served model directly](calling_a_served_model.md) — the error contract outside a pipeline.
 - [Served models](../reference/served_models.md) — declaring capabilities yourself.

@@ -51,23 +51,20 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Quickstart: quickstart.md
-  - Concepts: concepts.md
-  - Glossary: glossary.md
+  - Get started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+      - Concepts: concepts.md
+      - Glossary: glossary.md
   - Guides:
       - guides/index.md
-      - Building Pipelines: guides/building_pipelines.md
-      - LLM Steps: guides/llm_steps.md
-      - Checkpointing: guides/checkpointing.md
-      - Langfuse Tracing: guides/langfuse_tracing.md
-  - Cookbook:
-      - cookbook/index.md
-      - Text Classification: cookbook/text_classification.md
-      - Persona Generation: cookbook/persona_generation.md
-      - Space Engineering Text Generation: cookbook/space_text_generation.md
-  - Served models guide: llms.md
-  - Models: models.md
+      - Pipelines & execution: guides/pipelines_and_execution.md
+      - Structured output: guides/structured_output.md
+      - Multimodal input: guides/multimodal_input.md
+      - Calling a served model: guides/calling_a_served_model.md
+      - Error handling & troubleshooting: guides/troubleshooting.md
+      - Served models guide: llms.md
+      - Langfuse tracing: guides/langfuse_tracing.md
   - Reference:
       - Sources & Seed: reference/sources_and_seed.md
       - Data ops: reference/data_ops.md
@@ -77,6 +74,7 @@ nav:
       - Branching: reference/branching.md
       - Sinks: reference/sinks.md
       - Served models: reference/served_models.md
+      - Model defaults: models.md
       - Providers:
           - OpenAI: reference/providers/openai.md
           - Anthropic: reference/providers/anthropic.md
@@ -85,7 +83,15 @@ nav:
           - OpenRouter: reference/providers/openrouter.md
           - Ollama: reference/providers/ollama.md
           - OpenAI-compatible: reference/providers/openai_compatible.md
-  - API: api.md
+      - API: api.md
+  - Cookbook:
+      - cookbook/index.md
+      - All examples: cookbook/examples.md
+      - Text Classification: cookbook/text_classification.md
+      - Persona Generation: cookbook/persona_generation.md
+      - Space Engineering Text Generation: cookbook/space_text_generation.md
+      - Preference Data with Scoring: cookbook/preference_with_scoring.md
+  - Contributing: contributing.md
 
 plugins:
   - search

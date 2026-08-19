@@ -104,10 +104,10 @@ fans out across several models, prompts or languages.
 ## Where to go next
 
 - [Concepts](concepts.md) — the record → step → pipeline → runner model.
-- [Building Pipelines](guides/building_pipelines.md) — the full set of sources,
-  transforms and sinks.
-- [LLM Steps](guides/llm_steps.md) — multiple models, languages, structured output and
+- [Sources & seed](reference/sources_and_seed.md) — the full set of sources, and
+  [Data ops](reference/data_ops.md) for the transforms and sinks.
+- [LLM step](reference/llm_step.md) — multiple models, languages, structured output and
   the evaluation steps.
-- [Checkpointing](guides/checkpointing.md) — resume a long run instead of paying for it
-  twice.
+- [Pipelines & execution](guides/pipelines_and_execution.md) — resume a long run instead
+  of paying for it twice.
 - [Cookbook](cookbook/index.md) — complete recipes that produce real datasets.

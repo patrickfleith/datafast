@@ -129,7 +129,7 @@ pipelines.
 Inside an LLM step, checkpointing is **per call** rather than per step. A run
 interrupted halfway through a thousand generations resumes at call 501, so the first
 five hundred are not paid for twice. See
-[Checkpointing](guides/checkpointing.md) for the execution controls.
+[Pipelines & execution](guides/pipelines_and_execution.md) for the execution controls.
 
 Steps are named for the checkpoint by their class, and you can name them yourself when
 one class appears more than once:
@@ -184,8 +184,7 @@ alongside the generated fields, and every row carries its own provenance.
 
 - [Glossary](glossary.md) — the precise definition of every term used here.
 - [Quickstart](quickstart.md) — the shortest path from install to a stored dataset.
-- [Building Pipelines](guides/building_pipelines.md) — the sources, transforms and
-  sinks available.
-- [LLM Steps](guides/llm_steps.md) — generation and the evaluation steps.
+- [Data ops](reference/data_ops.md) — the transforms and sinks available.
+- [LLM step](reference/llm_step.md) — generation and the evaluation steps.
 - [Served models](llms.md) — how a provider and a model are configured together.
 - [API reference](api.md) — every class and every parameter.

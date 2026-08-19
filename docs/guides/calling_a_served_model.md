@@ -16,7 +16,7 @@ print(answer)
 
 | You want | Use |
 |---|---|
-| a dataset — many records, written out | an [LLM step](llm_steps.md) in a pipeline |
+| a dataset — many records, written out | an [LLM step](../reference/llm_step.md) in a pipeline |
 | one answer, right now | `generate()` |
 | the reasoning trace, or the provider's raw reply | `generate_response()` |
 | a quick check that a model and key work | `generate()` |
@@ -206,7 +206,7 @@ response metadata, timeouts and rate limits. They make real calls, so read befor
 
 ## Where to go next
 
-- [LLM Steps](llm_steps.md) — the same calls, inside a pipeline.
+- [LLM step](../reference/llm_step.md) — the same calls, inside a pipeline.
 - [Structured output](structured_output.md) — `response_format` in full.
 - [Multimodal input](multimodal_input.md) — sending images, audio and files.
 - [Served models](../reference/served_models.md) — every construction setting.

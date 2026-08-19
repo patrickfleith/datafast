@@ -275,5 +275,5 @@ lengths it got. Calling either combiner with no dimensions gives an empty source
 
 - [Concepts](../concepts.md) — how sources fit the record → step → pipeline model.
 - [Glossary](../glossary.md) — the precise meaning of seed, dimension, record and column.
-- [Building Pipelines](../guides/building_pipelines.md) — the transforms that come next.
+- [Data ops](data_ops.md) — the transforms that come next.
 - [API reference](../api.md) — generated signatures for everything on this page.

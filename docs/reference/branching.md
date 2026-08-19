@@ -198,7 +198,7 @@ The name of the `Branch` step is in every one of those file names, so
 **Resume.** A path that finished before the crash is read back from its file rather than
 run again, and a path that crashed part way through only re-runs the LLM calls it had
 not completed. This is the same per-call resume LLM steps get at the top level; see
-[Checkpointing](../guides/checkpointing.md).
+[Pipelines & execution](../guides/pipelines_and_execution.md).
 
 ### Path steps must be deterministic
 
@@ -269,8 +269,7 @@ pipeline.compile()
 - [Concepts](../concepts.md) — records, steps, the runner, and checkpoints.
 - [Glossary](../glossary.md) — the precise meaning of branch path, record and column.
 - [Sources & Seed](sources_and_seed.md) — the steps a pipeline starts with.
-- [Building Pipelines](../guides/building_pipelines.md) — `Map`, `Filter` and the other
-  transforms a path is made of.
-- [Checkpointing](../guides/checkpointing.md) — resume, and the per-call progress a path
-  relies on.
+- [Data ops](data_ops.md) — `Map`, `Filter` and the other transforms a path is made of.
+- [Pipelines & execution](../guides/pipelines_and_execution.md) — resume, and the
+  per-call progress a path relies on.
 - [API reference](../api.md) — generated signatures for both steps.

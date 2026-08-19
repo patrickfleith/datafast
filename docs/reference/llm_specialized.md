@@ -304,7 +304,7 @@ normally lists. An `"entities"` result with no organizations gives `""`, not `[]
 
 ## Where to go next
 
-- [LLM Steps](../guides/llm_steps.md) — `LLMStep`, the general one, and parse modes.
+- [LLM step](llm_step.md) — `LLMStep`, the general one, and parse modes.
 - [Served Models](served_models.md) — building the `llm` argument.
 - [Sources & Seed](sources_and_seed.md) — where the records come from.
 - [Glossary](../glossary.md) — the precise meaning of record, column, step and served model.

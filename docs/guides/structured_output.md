@@ -222,7 +222,7 @@ to reduce the pain:
 
 ## Where to go next
 
-- [LLM Steps](llm_steps.md) — every other option on an LLM step.
+- [LLM step](../reference/llm_step.md) — every other option on an LLM step.
 - [Served models](../reference/served_models.md) — declaring capabilities yourself.
 - [LLM step reference](../reference/llm_step.md) — the full parameter list.
 - [Error handling & troubleshooting](troubleshooting.md) — what to do when a reply will not parse.
