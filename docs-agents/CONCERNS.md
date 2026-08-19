@@ -188,8 +188,7 @@ rather than the library, and every one of them costs a new contributor time.
 
 ## Fixed
 
-Cleared on 2026-08-18, each with a test that fails if the behaviour comes back. See the
-CHANGELOG's *Fixed* section for what changed.
+Cleared on 2026-08-18, each with a test that fails if the behaviour comes back.
 
 - `Sample(n=0, strategy="last")` returned every record.
 - `ListSink.records` accumulated across runs.

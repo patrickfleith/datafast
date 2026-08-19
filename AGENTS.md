@@ -22,7 +22,6 @@ doesn't exist yet, don't fabricate one — create it with the skill noted below.
 |--------------|--------------------------|-----------------------------------------|----------------|
 | PRD          | docs-agents/PRD.md       | Product intent, users, requirements.    | edit           |
 | Roadmap      | docs-agents/ROADMAP.md   | Shipped / in progress / next / later.   | edit           |
-| Changelog    | docs-agents/CHANGELOG.md | Released changes, per version.          | edit           |
 | Manual (SUM) | docs-agents/SUM.md       | Install + usage guide for end users.    | `write-manual` |
 | Decisions    | docs-agents/DECISIONS.md | Pending (TBD) and settled decisions.    | `decide`       |
 | Glossary     | docs-agents/GLOSSARY.md  | Canonical term definitions.             | `glossary`     |

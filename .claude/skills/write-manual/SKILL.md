@@ -21,7 +21,7 @@ A SUM is long, so `docs-agents/SUM.md` opens with a `## Contents` map — the fi
 
 1. **Read the template** `templates/docs-agents/SUM.md` for the target structure.
 2. **Read `docs-agents/GLOSSARY.md`** — use its canonical terms verbatim; never invent a synonym for something the glossary already names.
-3. **Skim sibling docs for context, not for copying:** `docs-agents/PRD.md` (what & who it's for), `docs-agents/features/*` (feature intent), `README.md`, `docs-agents/CHANGELOG.md`. The SUM describes *how to use*, the PRD/FRD describe *what & why* — don't leak the latter in.
+3. **Skim sibling docs for context, not for copying:** `docs-agents/PRD.md` (what & who it's for), `docs-agents/features/*` (feature intent), `README.md`, `docs-agents/ROADMAP.md`. The SUM describes *how to use*, the PRD/FRD describe *what & why* — don't leak the latter in.
 
 ## Mode 1 — Generate a full SUM from the codebase
 
