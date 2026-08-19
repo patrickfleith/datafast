@@ -96,7 +96,8 @@ class LLMStep(Step):
                 values are names (adds {language} and {language_name} to context).
             skip_if: Function returning True to skip a record.
             system_prompt: System prompt to prepend to messages.
-            on_parse_error: Action on parse failure: "skip" or "raise".
+            on_parse_error: Action when a call fails, by parsing or otherwise:
+                "skip" drops the record and continues, "raise" stops the run.
         """
         super().__init__()
 

@@ -494,8 +494,9 @@ def test_process_skips_a_parse_failure_by_default():
     assert list(step.process(iter([{}]))) == []
 
 
-def test_the_runner_ignores_on_parse_error_and_finishes_short():
-    """The page's warning: under run() a raise-mode step loses records silently."""
+def test_on_parse_error_raise_stops_the_run():
+    """`run()` used to catch the error and finish short, so the same step behaved
+    differently depending on whether it was driven by `run()` or `process()`."""
     pipeline = (
         Source.list([{"t": "x"}])
         >> LLMStep(
@@ -509,7 +510,8 @@ def test_the_runner_ignores_on_parse_error_and_finishes_short():
         >> Sink.list()
     )
 
-    assert pipeline.run() == [], "no exception, and no records"
+    with pytest.raises(Exception, match="(?i)json"):
+        pipeline.run()
 
 
 # --- links ------------------------------------------------------------------

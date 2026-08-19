@@ -18,6 +18,7 @@
 
 ### Pipeline
 
+- Runner reliability: a failed batch is retried per call, resume writes each record once, and `on_parse_error="raise"` stops the run.
 - Pipeline pre-flight validation: `compile()` raises an actionable `PipelineValidationError` before execution, for structure and column references.
 - `compile()` recurses into branch paths, `Concat` sources and `Join` right sides, naming the location in every error.
 - Branch runner integration: the runner recurses into branch paths, so nested LLM steps get batching, ordering and per-call resume.
@@ -64,11 +65,6 @@ Nothing in flight — the next item is picked from Next up.
 
 ## Next up
 
-- **Runner reliability.** Four defects in `CONCERNS.md` lose or duplicate records silently, and all sit in one region of `runner.py` and `checkpoint.py`.
-  - One failed LLM call abandons its whole batch group, including calls never attempted.
-  - Resume re-writes the records finished since the last progress save.
-  - `on_parse_error="raise"` is ignored under `run()`, and `"skip"` swallows every exception.
-  - `checkpoint_every=100` means a crash before the first save recovers nothing.
 - **Generate `docs-agents/SUM.md`** with the `write-manual` skill, which only Patrick can invoke.
 - **Repository hygiene from `CONCERNS.md`.** Five small items, each costing a new contributor time.
   - `uv.lock` is stale and installs a different package than `pyproject.toml` describes.

@@ -244,10 +244,10 @@ settings decide temperature and length. Set them where the served model is built
 `on_parse_error` is `"skip"` or `"raise"`; anything else raises `ValueError` at
 construction.
 
-It only takes effect when the step runs its own `process()`. Under `Pipeline.run()` the
-runner logs a failed call and carries on regardless, so a run with
-`on_parse_error="raise"` and unparseable answers finishes with fewer records instead of
-raising. Compare the record count with the number you expected.
+It applies the same way under `Pipeline.run()` as under the step's own `process()`, and
+it covers any failed call — a rate limit or a timeout as much as an unparseable answer.
+With `"skip"`, compare the record count with the number you expected; with `"raise"`,
+the run stops on the first failure.
 
 ## Things worth knowing
 

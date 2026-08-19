@@ -253,3 +253,67 @@ def test_stop_after_rejects_an_index_outside_the_pipeline():
 
     with pytest.raises(ValueError, match="stop_after step 5 is out of range"):
         pipeline.run(stop_after=5)
+
+
+# --- reliability: the three defects the v1 audit measured --------------------------
+
+
+class _FailsOnOneInput:
+    """Fails for one input and answers the rest, like a provider rejecting one record.
+
+    `generate_batch` raises for the whole batch as a real provider does, which is what
+    used to cost every record in the group.
+    """
+
+    model_id = "stub"
+
+    def __init__(self, bad: str = "3") -> None:
+        self.bad = bad
+        self.calls = 0
+
+    def generate(self, messages=None, metadata=None, **kwargs) -> str:
+        self.calls += 1
+        if messages[-1]["content"] == self.bad:
+            raise RuntimeError("transient")
+        return "ok"
+
+    def generate_batch(self, messages, metadata=None, **kwargs) -> list[str]:
+        return [self.generate(messages=m) for m in messages]
+
+
+def _llm(model, **kwargs):
+    return LLMStep(
+        prompt="{text}", input_columns=["text"], output_column="out", model=model, **kwargs
+    )
+
+
+@pytest.mark.parametrize("batch_size", [1, 4, 8])
+def test_a_failed_batch_is_retried_one_call_at_a_time(batch_size):
+    """The whole group used to be abandoned, so batch_size=8 kept nothing of eight."""
+    model = _FailsOnOneInput(bad="3")
+    results = (
+        Source.list([{"text": str(i)} for i in range(8)]) >> _llm(model) >> ListSink()
+    ).run(batch_size=batch_size)
+    assert len(results) == 7, "only the call that failed should be lost"
+
+
+def test_the_call_id_lands_with_its_record_not_on_a_checkpoint_boundary(tmp_path):
+    """Ids used to be written every `checkpoint_every` calls while records were written
+    per call, so everything in the gap was re-run and appended a second time."""
+    directory = tmp_path / "ckpt"
+    model = _FailsOnOneInput(bad="none")
+    (
+        Source.list([{"text": str(i)} for i in range(4)]) >> _llm(model) >> ListSink()
+    ).run(checkpoint_dir=str(directory), checkpoint_every=100)
+
+    # A completed step keeps its records and drops its resume state.
+    assert not list(directory.glob("*.calls")), "resume state outlived the step"
+    assert not list(directory.glob("*.progress.json"))
+
+
+def test_raise_stops_the_run_on_a_transport_failure_not_only_a_parse_failure():
+    model = _FailsOnOneInput(bad="a")
+    with pytest.raises(RuntimeError, match="transient"):
+        (
+            Source.list([{"text": "a"}]) >> _llm(model, on_parse_error="raise") >> ListSink()
+        ).run()

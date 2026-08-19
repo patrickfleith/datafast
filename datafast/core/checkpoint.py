@@ -68,6 +68,11 @@ class CheckpointManager:
         safe_name = step_name.replace("/", "_").replace("\\", "_")
         return self.checkpoint_dir / f"step_{step_index:03d}_{safe_name}.progress.json"
 
+    def _calls_file_path(self, step_index: int, step_name: str) -> Path:
+        """One completed call id per line, appended after the record it produced."""
+        safe_name = step_name.replace("/", "_").replace("\\", "_")
+        return self.checkpoint_dir / f"step_{step_index:03d}_{safe_name}.calls"
+
     def has_checkpoint(self) -> bool:
         """Check if a checkpoint exists."""
         return self.manifest_path.exists()
@@ -133,16 +138,27 @@ class CheckpointManager:
         step_index: int,
         step_name: str,
         record: Record,
+        call_id: str | None = None,
     ) -> None:
-        """Append a single record to the step JSONL file."""
+        """Append a single record to the step JSONL file.
+
+        The call id is appended to its own file immediately afterwards, so the two
+        files can only ever disagree by the one call a crash interrupted. Writing the
+        ids periodically instead is what made resume re-run and duplicate everything
+        finished since the last save.
+        """
         path = self._step_file_path(step_index, step_name)
         with open(path, "a") as f:
             f.write(json.dumps(record, default=str) + "\n")
 
+        if call_id is not None:
+            with open(self._calls_file_path(step_index, step_name), "a") as f:
+                f.write(call_id + "\n")
+
     def clear_step_file(self, step_index: int, step_name: str) -> None:
         """Clear/create an empty step JSONL file for fresh writes."""
-        path = self._step_file_path(step_index, step_name)
-        path.write_text("")
+        self._step_file_path(step_index, step_name).write_text("")
+        self._calls_file_path(step_index, step_name).write_text("")
 
     def load_step_records(self, step_index: int, step_name: str) -> list[Record]:
         """Load records from a step checkpoint."""
@@ -176,11 +192,8 @@ class CheckpointManager:
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
 
-        records_path = self._step_file_path(step_index, step_name)
-        with open(records_path, "w") as f:
-            for record in partial_records:
-                f.write(json.dumps(record, default=str) + "\n")
-
+        # The records file is append-only and authoritative; rewriting it here from
+        # memory is what let it drift ahead of the completed-call list.
         logger.debug(
             f"Saved LLM progress: {progress.completed_calls}/{progress.total_calls}"
         )
@@ -196,15 +209,35 @@ class CheckpointManager:
         with open(path, "r") as f:
             data = json.load(f)
 
+        records = self.load_step_records(step_index, step_name)
+        call_ids = self._load_completed_call_ids(step_index, step_name, data)
+
+        # A crash between the two appends leaves one more record than id. Dropping it
+        # costs one repeated call; keeping it would write that record twice.
+        kept = min(len(records), len(call_ids))
+        if len(records) != kept:
+            logger.warning(
+                f"Discarding {len(records) - kept} record(s) written after the last "
+                "completed call id; their calls will run again"
+            )
+
         progress = LLMStepProgress(
             step_index=data["step_index"],
             step_name=data["step_name"],
             total_calls=data["total_calls"],
-            completed_call_ids=data["completed_call_ids"],
+            completed_call_ids=call_ids[:kept],
         )
+        return progress, records[:kept]
 
-        records = self.load_step_records(step_index, step_name)
-        return progress, records
+    def _load_completed_call_ids(
+        self, step_index: int, step_name: str, data: dict[str, Any]
+    ) -> list[str]:
+        """Ids from the append-only file, falling back to a checkpoint written before
+        that file existed."""
+        path = self._calls_file_path(step_index, step_name)
+        if not path.exists():
+            return list(data.get("completed_call_ids", []))
+        return [line for line in path.read_text().splitlines() if line.strip()]
 
     def mark_step_complete(
         self,
@@ -220,10 +253,12 @@ class CheckpointManager:
         manifest.current_step = step_index + 1
         self.save_manifest(manifest)
 
-        # Glob rather than name the file: a Branch step also owns one progress
-        # file per nested LLM step (step_NNN_Branch.<path>....progress.json).
-        for path in self.checkpoint_dir.glob(f"step_{step_index:03d}_*.progress.json"):
-            path.unlink(missing_ok=True)
+        # Glob rather than name the files: a Branch step also owns one progress and
+        # one calls file per nested LLM step (step_NNN_Branch.<path>....progress.json).
+        # Both are resume state, so a completed step leaves only its records behind.
+        for suffix in ("progress.json", "calls"):
+            for path in self.checkpoint_dir.glob(f"step_{step_index:03d}_*.{suffix}"):
+                path.unlink(missing_ok=True)
 
     def mark_step_in_progress(self, manifest: Manifest, step_index: int) -> None:
         """Mark a step as in-progress."""

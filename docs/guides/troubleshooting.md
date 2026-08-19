@@ -81,26 +81,19 @@ An `LLMStep` whose prompt is `"Write about {topic}"` while the records only carr
 `text` column stops the run with `KeyError: 'topic'`. This happens while the calls are
 being built, so nothing has been spent.
 
-### One failing call takes its batch with it
+### A failed call costs only that call
 
-The runner sends LLM calls in batches, grouped by served model. If any call in a group
-raises, the **whole group** is abandoned: every record in it is logged as failed and
-dropped, including the calls that had not been attempted yet.
+The runner sends LLM calls in batches, grouped by served model. A batch is
+all-or-nothing at the provider, so if any call in it raises, the whole batch comes back
+as one error.
 
-`batch_size` therefore sets how much one transient failure costs. With eight records and
-a single failure on the second call:
+When that happens the runner retries the group one call at a time. Only the calls that
+really fail are lost, whatever `batch_size` you set. With eight records and a single
+failure on the second call, you keep seven — at `batch_size` 1, 4 or 8 alike.
 
-| `batch_size` | Calls attempted | Records kept |
-|---|---|---|
-| `1` | 8 | 7 |
-| `4` (the default) | 6 | 4 |
-| `8` | 2 | 0 |
-
-If a step keeps losing records to occasional provider errors, lower `batch_size`. It
-costs some throughput and saves the rest of the batch.
-
-Note that the log prints one `LLM call failed` line per record in the group, all with the
-same error. Only one of them really failed.
+The retry costs a second attempt for the calls that had already succeeded inside the
+failed batch. That is the price of not losing them, and it is only paid on the failure
+path.
 
 ### `on_parse_error` and the records that disappear
 
@@ -111,18 +104,15 @@ Every LLM step takes `on_parse_error`, and it has two values:
 | `"skip"` | **the default.** Log a warning, drop the record, keep going |
 | `"raise"` | re-raise the error |
 
-Two things about it are not obvious.
+One thing about it is not obvious: **it is not only about parsing.** The `try` block
+around each record covers the whole call — building the messages, the provider request,
+and the parse. A rate limit, a timeout or a bad key is treated exactly like a malformed
+reply. With the default the record is dropped and the run continues; with `"raise"` the
+run stops on the first one, whichever kind it is.
 
-**It is not only about parsing.** The `try` block around each record covers the whole
-call — building the messages, the provider request, and the parse. A rate limit, a
-timeout or a bad key is treated exactly like a malformed reply: with the default, the
-record is dropped and the run continues.
+Both values behave the same way under `Pipeline.run()` as under `step.process(records)`.
 
-**`"raise"` does not raise under `Pipeline.run()`.** The runner catches the error itself,
-logs it, and moves to the next call. `on_parse_error="raise"` only raises when you call
-`step.process(records)` directly. Under `run()` both values behave the same way.
-
-So the way to find out whether a run went well is to count:
+With the default, the way to find out whether a run went well is to count:
 
 ```python
 from datafast import LLMStep, ListSink, Source, openai
@@ -244,21 +234,13 @@ pipeline = Source.list([{"text": "hello"}]) >> Map(lambda r: r) >> Sink.list()
 pipeline.run(checkpoint_dir="./checkpoints", checkpoint_every=10)
 ```
 
-There is a cost to that setting too. Output records are written one at a time, but the
-list of finished calls is only rewritten every `checkpoint_every` calls. Anything
-completed after the last save is in the records file without being marked done, so resume
-runs those calls again and **the records they produced appear twice**. Crashing at call 6
-with `checkpoint_every=10` gives you an extra copy of the records from calls 5 and 6.
+`checkpoint_every` controls how often the step's summary is written. It does not affect
+correctness: each record's call id is written immediately after the record itself, so
+resume knows exactly what finished no matter when the crash came. A resumed run produces
+each record once.
 
-Deduplicate after a resumed run if exact counts matter:
-
-```python
-records = [{"id": 1, "text": "a"}, {"id": 1, "text": "a"}, {"id": 2, "text": "b"}]
-
-seen = set()
-unique = [r for r in records if not (r["id"] in seen or seen.add(r["id"]))]
-assert len(unique) == 2
-```
+If a crash lands between those two writes, the record is discarded and its call runs
+again — one repeated call rather than a duplicated record.
 
 ## Provider errors
 
@@ -289,15 +271,13 @@ appear as `LLM call failed` in the log and as missing records in the result.
 The list worth re-reading when a run finishes and the output looks wrong.
 
 - **Dropped records.** The default `on_parse_error="skip"` swallows every exception, not
-  just parse failures. Compare the output count with the input count.
-- **One failure drops a whole batch.** Records you never see attempted are still counted
-  as failures.
+  just parse failures. Compare the output count with the input count, or set
+  `on_parse_error="raise"` to stop on the first one.
 - **A mistyped prompt file path becomes the prompt.** `prompt=Path("prompts/typo.txt")`
   sends the literal text `prompts/typo.txt` to the model when the file does not exist. No
   error, real spend. Check the file exists before the run.
 - **The checkpoint fingerprint ignores prompts and served models.** Only step names and
   classes are hashed.
-- **Resume can duplicate records** completed since the last progress save.
 - **`temperature` and `max_tokens` on an LLM step are ignored.** Set them on the served
   model instead.
 - **A parse mode never fails loudly in XML.** A missing tag gives an empty string.

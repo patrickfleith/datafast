@@ -92,9 +92,9 @@ documented in more detail on the page that covers it.
 
 - `temperature` and `max_tokens` passed to a step do nothing. Set them on the served
   model instead.
-- When a call fails, that record is dropped and the run continues. A single failure can
-  also take the rest of its batch with it. **Count your output records** against what
-  you expected.
+- When a call fails, that record is dropped and the run continues, so **count your
+  output records** against what you expected. Set `on_parse_error="raise"` on the step
+  to stop on the first failure instead.
 - If a model returns only some of the columns you asked for, the missing ones arrive
   empty rather than raising. An empty column is not reported as an error.
 - A prompt file path that does not exist is sent to the model as literal text. No error,
@@ -102,9 +102,6 @@ documented in more detail on the page that covers it.
 
 ### Resume and checkpoints
 
-- Resuming after a crash can write a few records twice. Check for duplicates.
-- Progress is saved periodically, not continuously, so a crash early in a step may
-  recover nothing.
 - Changing a prompt, a served model or the body of a transform does **not** invalidate a
   checkpoint. Resume will continue as if nothing changed. Point a changed pipeline at a
   fresh checkpoint directory.

@@ -269,30 +269,27 @@ class FailOnce(StubModel):
         return self.answer
 
 
-@pytest.mark.parametrize(
-    "batch_size,attempted,kept", [(1, 8, 7), (4, 6, 4), (8, 2, 0)]
-)
-def test_one_failing_call_takes_its_whole_batch_with_it(batch_size, attempted, kept):
-    """The page's batch_size table, measured rather than reasoned about."""
+@pytest.mark.parametrize("batch_size", [1, 4, 8])
+def test_one_failing_call_costs_only_that_call(batch_size):
+    """A failing batch used to drop every call in its group, including the ones never
+    sent: batch_size=4 kept 4 of 8 records and batch_size=8 kept none. The group is now
+    retried one call at a time, so the loss is the one call that actually failed."""
     model = FailOnce(fail_on=2)
     results = (
         Source.list([{"text": str(i)} for i in range(8)]) >> _step(model) >> ListSink()
     ).run(batch_size=batch_size)
-    assert model.calls == attempted, "records in the group were never attempted"
-    assert len(results) == kept
-    row = re.search(rf"^\| `{batch_size}`.*$", _page(), re.M)
-    assert row, f"the page's table has no row for batch_size={batch_size}"
-    cells = [c.strip() for c in row.group(0).strip("|").split("|")]
-    assert cells[1:] == [str(attempted), str(kept)], (
-        f"the page says {cells[1:]}, the code does {[attempted, kept]}"
+    assert len(results) == 7, "only the failing call should be lost"
+    assert "one failing call" not in _page().lower(), (
+        "the page still describes the batch as all-or-nothing"
     )
 
 
-def test_on_parse_error_raise_is_ignored_under_run():
-    """Documented plainly because it contradicts what the argument's name promises."""
-    model = StubModel(boom=RuntimeError("provider exploded"))
-    step = _step(model, on_parse_error="raise")
-    assert (Source.list([{"text": "a"}]) >> step >> ListSink()).run() == []
+def test_on_parse_error_raise_stops_the_run():
+    """The runner used to catch this, log it and finish short, so `raise` meant one
+    thing under `process()` and another under `run()`."""
+    step = _step(StubModel(boom=RuntimeError("provider exploded")), on_parse_error="raise")
+    with pytest.raises(RuntimeError, match="provider exploded"):
+        (Source.list([{"text": "a"}]) >> step >> ListSink()).run()
 
 
 def test_on_parse_error_raise_does_raise_under_process():
@@ -467,17 +464,17 @@ def test_a_crash_before_the_first_progress_save_loses_every_completed_call(tmp_p
     assert len(results) == 8
 
 
-def test_resume_duplicates_the_records_completed_since_the_last_progress_save(tmp_path):
-    """The page's warning about exact counts, proved rather than paraphrased."""
+def test_resume_writes_every_record_exactly_once(tmp_path):
+    """Records used to be appended per call while the completed-call list was saved
+    every `checkpoint_every` calls, so the gap was re-run and appended twice."""
     directory = str(tmp_path / "ckpt")
     _crashing_run(directory, crash_at=6, checkpoint_every=2)
 
-    results, resumed = _resumed_run(directory, checkpoint_every=2)
-    assert resumed.calls == 4, "the four recorded calls were skipped"
-    assert len(results) == 9, "eight records in, nine out — one is duplicated"
+    results, _ = _resumed_run(directory, checkpoint_every=2)
+    assert len(results) == 8, "eight records in, eight out"
 
-    duplicated = [r["text"] for r in results if [x["text"] for x in results].count(r["text"]) > 1]
-    assert duplicated, "the page says a record appears twice"
+    texts = [r["text"] for r in results]
+    assert len(set(texts)) == len(texts), "a record was written twice"
 
 
 # --- provider errors -------------------------------------------------------------

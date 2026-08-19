@@ -337,8 +337,8 @@ def test_both_llm_steps_set_on_parse_error_raise(script):
     assert "on_parse_error=" in _page()
 
 
-def test_on_parse_error_raise_still_drops_the_record_under_run(script):
-    """Proved rather than asserted: the page tells readers to count the output."""
+def test_on_parse_error_raise_stops_the_run(script):
+    """The script sets `raise` on both steps; under `run()` that used to be ignored."""
     from datafast import ListSink
 
     step = LLMStep(
@@ -349,8 +349,8 @@ def test_on_parse_error_raise_still_drops_the_record_under_run(script):
         parse_mode="json",
         on_parse_error="raise",
     )
-    results = (Source.list([{"document": "a"}]) >> step >> ListSink()).run()
-    assert results == [], "the page says a bad reply drops the record either way"
+    with pytest.raises(Exception, match="(?i)json"):
+        (Source.list([{"document": "a"}]) >> step >> ListSink()).run()
 
 
 class _Unparseable:

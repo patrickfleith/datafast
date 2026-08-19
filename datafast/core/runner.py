@@ -491,22 +491,15 @@ class Runner:
             grouped_indexes[call.model_id].append(index)
 
         for model_id, indexes in grouped_indexes.items():
-            group_calls = [batch[index] for index in indexes]
-            model = models_map[model_id]
-            try:
-                group_results = self._generate_llm_group(
-                    step=step,
-                    step_name=step_name,
-                    model=model,
-                    group_calls=group_calls,
-                )
-            except Exception as e:
-                errors += len(group_calls)
-                self._log_llm_failures(group_calls, e)
-                continue
-
+            group_results = self._generate_llm_group(
+                step=step,
+                step_name=step_name,
+                model=models_map[model_id],
+                group_calls=[batch[index] for index in indexes],
+            )
             for result_index, result in zip(indexes, group_results):
                 batch_results[result_index] = result
+            errors += sum(1 for result in group_results if result is None)
 
         return batch_results, errors
 
@@ -517,25 +510,48 @@ class Runner:
         step_name: str,
         model: object,
         group_calls: list[LLMCall],
-    ) -> list[object]:
+    ) -> list[object | None]:
+        """Results in call order, with `None` where a call failed.
+
+        A batch is all-or-nothing at the provider, so one failure used to drop every
+        call in the group — including calls never sent. Retrying the group one call at
+        a time confines the loss to the calls that actually failed.
+        """
         group_metadata = [
             self._build_llm_call_metadata(step, step_name, call, model)
             for call in group_calls
         ]
-        if hasattr(model, "generate_batch"):
-            return list(
-                model.generate_batch(  # type: ignore[attr-defined]
-                    [call.messages for call in group_calls],
-                    metadata=group_metadata,
+        if hasattr(model, "generate_batch") and len(group_calls) > 1:
+            try:
+                return list(
+                    model.generate_batch(  # type: ignore[attr-defined]
+                        [call.messages for call in group_calls],
+                        metadata=group_metadata,
+                    )
                 )
-            )
-        return [
-            model.generate(  # type: ignore[attr-defined]
-                messages=call.messages,
-                metadata=metadata,
-            )
-            for call, metadata in zip(group_calls, group_metadata)
-        ]
+            except Exception as e:
+                logger.warning(
+                    f"Batch of {len(group_calls)} failed, retrying one at a time | "
+                    f"Error: {e}"
+                )
+
+        results: list[object | None] = []
+        for call, metadata in zip(group_calls, group_metadata):
+            try:
+                results.append(
+                    model.generate(  # type: ignore[attr-defined]
+                        messages=call.messages,
+                        metadata=metadata,
+                    )
+                )
+            except Exception as e:
+                self._log_llm_failures([call], e)
+                # `process()` has always re-raised here; the runner swallowing it is
+                # what made on_parse_error mean something different under run().
+                if self._raises_on_failure(step):
+                    raise
+                results.append(None)
+        return results
 
     def _apply_llm_batch_results(
         self,
@@ -562,11 +578,13 @@ class Runner:
 
                 if self._checkpoint_mgr:
                     self._checkpoint_mgr.append_record(
-                        step_index, step_name, output_record
+                        step_index, step_name, output_record, call.call_id
                     )
             except Exception as e:
                 stats.errors += 1
                 self._log_llm_failures([call], e)
+                if self._raises_on_failure(step):
+                    raise
 
         return stats
 
@@ -590,6 +608,12 @@ class Runner:
             language_code=call.language_code or None,
             call_id=call.call_id,
         )
+
+    @staticmethod
+    def _raises_on_failure(step: "Step") -> bool:
+        """LLMStep and the five specialized steps each store `on_parse_error`
+        privately, with no shared base to read it from — hence `getattr`."""
+        return getattr(step, "_on_parse_error", "skip") == "raise"
 
     @staticmethod
     def _log_llm_failures(calls: list[LLMCall], error: Exception) -> None:

@@ -240,10 +240,9 @@ Do not write your own — you would get both. This is a *prompted* schema, not a
 one: nothing stops the model returning prose, and if it does, parsing fails. See
 [Structured output & parse modes](../guides/structured_output.md).
 
-Both steps set `on_parse_error="raise"`. Be aware of what that does and does not do:
-under `Pipeline.run()` the runner catches the error itself, logs `LLM call failed` and
-carries on, so a bad reply **drops the record either way**. Ten rows in, nine rows out is
-the symptom. Count the output.
+Both steps set `on_parse_error="raise"`, so a reply the parser cannot read stops the
+run rather than quietly shortening the dataset. Leave it at the default `"skip"` and a
+bad reply drops that record instead — ten rows in, nine rows out.
 
 ## The output
 

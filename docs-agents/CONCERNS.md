@@ -14,12 +14,6 @@ bottom rather than deleted.
   step", which is false and renders on the generated API page. Either wire them up or
   remove them and the docstring. The ROADMAP repeated this claim and has been corrected.
 
-- **`on_parse_error="raise"` is ignored under `Pipeline.run()`.** `LLMStep.process()`
-  honours it, but the runner catches the exception in `_apply_llm_batch_results`, logs
-  it and continues, so a run finishes with fewer records instead of raising. The default
-  `"skip"` also swallows *every* exception, not only parse failures — a provider timeout
-  silently drops a record.
-
 - **A mistyped prompt file path becomes the prompt.** `_load_prompt_if_file` returns
   `str(prompt)` when the path is not a file, so `prompt=Path("prompts/typo.txt")` sends
   the literal string `prompts/typo.txt` to the model. No error, real spend.
@@ -35,23 +29,6 @@ bottom rather than deleted.
 
 - **`JoinBranches(how="outer")` does not fill with `None`** as its docstring promises —
   `_merge_group` skips a `None` record, so the missing path contributes no keys at all.
-
-- **One failing LLM call abandons its whole batch group.** `_collect_llm_batch_results`
-  wraps a whole per-model group in one `try`, and `_generate_llm_group` loops `generate`
-  inside it, so the first exception aborts the rest of the group. Every record in it is
-  logged as `LLM call failed` with that same error and dropped — including the calls
-  never attempted. Measured on eight records with one failure on call 2:
-  `batch_size=1` keeps 7, `batch_size=4` (the default) keeps 4, `batch_size=8` keeps 0.
-  One transient 429 can cost a whole batch, and the log makes it look like every record
-  failed. Catching per call inside the loop would confine the loss to the one that failed.
-
-- **Resume duplicates the records completed since the last progress save.** Output records
-  are appended one at a time by `append_record`, but the `completed_call_ids` list is only
-  rewritten every `checkpoint_every` calls. Anything finished after the last save is in the
-  step's JSONL without being marked done, so resume re-runs those calls and appends the
-  records a second time. Reproduced: 8 source records, crash on call 6 with
-  `checkpoint_every=2` → 9 output records, one input duplicated. The two files need to be
-  written together, or the ids need appending as the records are.
 
 ## Risks
 
@@ -110,13 +87,6 @@ bottom rather than deleted.
   configuration doing something ordinary, which trains users to ignore the warning that
   matters — the `prompted_json` one on the same channel. Worth demoting to a log line, or
   emitting once per served model.
-
-- **A crash before the first progress save recovers nothing.** `checkpoint_every`
-  defaults to 100, so an LLM step that dies at call 60 has no progress file at all and
-  resume re-runs every call. Measured: crash on call 6 of 8 with the default → 8 calls
-  paid again. The default is tuned for cheap steps; the expensive ones are exactly where
-  it costs most. A time-based save, or a smaller default, would fit the failure it exists
-  for.
 
 - **`SeedDimension` is public, constructible and undocumented.** It is in
   `datafast.__all__`, and cookbook script 45 builds one directly to keep `label` and
@@ -192,5 +162,13 @@ Cleared on 2026-08-18, each with a test that fails if the behaviour comes back.
 - `Concat`'s docstring contradicted its code.
 - Cookbook script 43's `take_first_100` step took ten records; renamed `take_first_10`.
 - No CI workflow ran the test suite, so a broken merge was released (2026-08-19).
+- One failing LLM call abandoned its whole batch group; the group is now retried one
+  call at a time, so only the failing call is lost (2026-08-19).
+- Resume duplicated the records finished since the last progress save; each call id is
+  now written immediately after its record (2026-08-19).
+- `on_parse_error="raise"` was ignored under `run()`; it now stops the run, as it always
+  did under `process()` (2026-08-19).
+- A crash before the first progress save recovered nothing; `checkpoint_every` no longer
+  affects what resume knows (2026-08-19).
 - The `uv.lock` finding was wrong: the file is gitignored, so no clone has one and
   nothing ships it. The contributing page's warning about it is gone (2026-08-19).

@@ -376,11 +376,12 @@ def test_every_parsed_column_is_a_string():
     assert records[0]["text"] == "['a', 'b']"
 
 
-def test_on_parse_error_raise_still_drops_the_record_under_run(script):
-    """Set by the script; the page tells readers to count the output instead."""
+def test_on_parse_error_raise_stops_the_run(script):
+    """Set by the script, and now honoured under `run()` as well as `process()`."""
     llm_step = script.build_pipeline().steps[1]
     assert llm_step._on_parse_error == "raise"
-    assert _run(_Reply("not json at all"), on_parse_error="raise") == []
+    with pytest.raises(Exception, match="(?i)json"):
+        _run(_Reply("not json at all"), on_parse_error="raise")
 
 
 def test_a_placeholder_outside_input_columns_raises_before_any_call():
