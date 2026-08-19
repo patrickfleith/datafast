@@ -148,13 +148,6 @@ bottom rather than deleted.
 Found while writing `docs/contributing.md` (2026-08-19) — these are about the repository
 rather than the library, and every one of them costs a new contributor time.
 
-- **`uv.lock` is stale and installs a different package.** It pins `datafast 0.0.35`
-  with `anthropic`, `openai`, `google-generativeai`, `instructor`, `gradio` and
-  `botocore` — the six dependencies retired from `pyproject.toml` — and a `docs` extra
-  of `mkdocs` + `mkdocs-material` rather than `zensical`. `uv sync` therefore
-  contradicts `pyproject.toml` in both directions. Regenerate it or delete it; the
-  contributing page currently has to warn people off it.
-
 - **`[tool.pytest.ini_options]` in `pyproject.toml` is dead.** `pytest.ini` exists, and
   it wins, so pytest prints `configfile: pytest.ini (WARNING: ignoring pytest config in
   pyproject.toml!)` on every single run. The ignored block sets `addopts = "-ra -q"`,
@@ -199,3 +192,5 @@ Cleared on 2026-08-18, each with a test that fails if the behaviour comes back.
 - `Concat`'s docstring contradicted its code.
 - Cookbook script 43's `take_first_100` step took ten records; renamed `take_first_10`.
 - No CI workflow ran the test suite, so a broken merge was released (2026-08-19).
+- The `uv.lock` finding was wrong: the file is gitignored, so no clone has one and
+  nothing ships it. The contributing page's warning about it is gone (2026-08-19).

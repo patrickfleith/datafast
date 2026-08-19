@@ -403,18 +403,6 @@ def test_pytest_really_ignores_the_pyproject_block_as_the_page_says():
     assert quoted in _page(), "the page quotes the warning; the wording drifted"
 
 
-def test_the_lockfile_is_as_stale_as_the_page_warns():
-    """Drop the warning from the page once this fails — do not delete the test."""
-    lock = (ROOT / "uv.lock").read_text()
-    entry = lock.split('name = "datafast"', 1)[1].split("[package.metadata]", 1)[0]
-    assert 'version = "0.0.35"' in entry
-    declared = " ".join(_project()["dependencies"])
-    for name in ("anthropic", "openai", "google-generativeai", "instructor", "gradio", "botocore"):
-        assert f'name = "{name}"' in entry, f"{name} is no longer in uv.lock"
-        assert name not in declared, f"{name} is back in pyproject.toml"
-        assert name in _page()
-
-
 # --- the page-test convention -----------------------------------------------------
 
 
@@ -727,8 +715,16 @@ def test_the_page_is_valid_python_where_it_claims_to_be():
         ast.parse(block)
 
 
-def test_nothing_on_the_page_tells_anyone_to_run_uv_sync():
-    assert "uv sync" not in _page().replace("Do not use", "")
+def test_the_repository_tracks_no_lockfile_for_the_page_to_describe():
+    """The page called `uv.lock` a stale lockfile "in the repository". It is gitignored,
+    so a fresh clone has none and the warning described a file nobody would ever see.
+    Commit one and this fails — then the page has to document it."""
+    tracked = subprocess.run(
+        ["git", "ls-files", "uv.lock"], cwd=ROOT, capture_output=True, text=True
+    ).stdout
+    assert not tracked.strip(), "uv.lock is tracked now — the page must describe it"
+    assert "uv.lock" not in _page()
+    assert "uv sync" not in _page()
 
 
 def test_the_page_never_suggests_a_bare_pytest_that_could_reach_a_provider():

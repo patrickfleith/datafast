@@ -19,7 +19,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
-      - run: pip install -e ".[dev]"
+      # `docs` too: the theme tests importorskip on zensical, so without it they
+      # skip silently and CI looks greener than it is.
+      - run: pip install -e ".[dev,docs]"
 
       # `not live` deselects the tests that call a real provider, so this job
       # needs no API key.

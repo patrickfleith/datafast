@@ -19,13 +19,6 @@ pip install -e ".[dev,docs]"
 `dev` brings `pytest`, `ruff`, and the `parquet` and `hub` extras, so the whole test
 suite can run. `docs` brings the site generator. Datafast needs Python 3.10 or newer.
 
-!!! warning "Do not use `uv.lock`"
-    The lockfile in the repository is stale. It pins version `0.0.35` and six
-    dependencies the package no longer imports — `anthropic`, `openai`,
-    `google-generativeai`, `instructor`, `gradio` and `botocore`. Installing from it
-    gives you a different package than `pyproject.toml` describes. Install with `pip`
-    until the lockfile is regenerated.
-
 ### Keys
 
 Provider API keys are read from the environment, and datafast loads a `.env` file in the
