@@ -85,7 +85,7 @@ def build_pipeline():
     # "document" before add_word_count.
     >> Map(add_word_count).as_step("add_word_count")
     >> Filter(fn=lambda r: 300 <= r["word_count"] <= 500).as_step("filter_word_count")
-    >> Sample(n=10, strategy="first").as_step("take_first_100")
+    >> Sample(n=10, strategy="first").as_step("take_first_10")
     >> Map(assign_life_stage).as_step("assign_life_stage")
     >> LLMStep(
         prompt=Sample(TEXT_TO_PERSONA_PROMPTS, n=1),

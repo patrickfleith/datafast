@@ -141,7 +141,7 @@ def test_every_step_name_the_script_sets_is_on_the_page(script):
         "HuggingFaceSource",
         "add_word_count",
         "filter_word_count",
-        "take_first_100",
+        "take_first_10",
         "assign_life_stage",
         "text_to_persona",
         "assign_related_life_stage",
@@ -272,14 +272,14 @@ def test_the_word_count_filter_keeps_only_the_documented_window(script):
     assert "300" in _page() and "500" in _page()
 
 
-def test_the_sample_step_takes_the_number_the_page_says_despite_its_name(script):
-    """The page's note: the step is called take_first_100 and takes ten."""
+def test_the_sample_step_takes_the_number_its_name_claims(script):
+    """The step name is the checkpoint file name, so it has to tell the truth."""
     steps = {s.name: s for s in script.build_pipeline().steps}
-    sample = steps["take_first_100"]
+    sample = steps["take_first_10"]
     assert isinstance(sample, Sample)
     kept = list(sample.process(iter([{"i": i} for i in range(30)])))
     assert kept == [{"i": i} for i in range(10)], "first ten, in order"
-    assert "named `take_first_100` but takes ten" in _page()
+    assert "step_003_take_first_10.jsonl" in _page()
 
 
 # --- the claims that would burn a reader -----------------------------------------

@@ -37,7 +37,7 @@ pipeline = (
     Source.huggingface("xsum", split="validation", columns=["id", "document", "summary"])
     >> Map(add_word_count).as_step("add_word_count")
     >> Filter(fn=lambda r: 300 <= r["word_count"] <= 500).as_step("filter_word_count")
-    >> Sample(n=10, strategy="first").as_step("take_first_100")
+    >> Sample(n=10, strategy="first").as_step("take_first_10")
     >> Map(assign_life_stage).as_step("assign_life_stage")
     >> LLMStep(
         prompt=Sample(TEXT_TO_PERSONA_PROMPTS, n=1),
@@ -70,7 +70,7 @@ what it is given:
 |---|---|
 | `add_word_count` | unchanged — adds `word_count` |
 | `filter_word_count` | drops articles outside 300–500 words |
-| `take_first_100` | cuts to `n=10` |
+| `take_first_10` | cuts to `n=10` |
 | `assign_life_stage` | unchanged — adds `life_stage` |
 | `text_to_persona` | unchanged — one call per record |
 | `assign_related_life_stage` | unchanged — adds `related_life_stage` |
@@ -116,11 +116,9 @@ every article becomes prompt tokens.
 `"first"` is not random: the same ten articles come out on every run, which makes prompt
 changes comparable. Raise `n` once the output looks right.
 
-!!! note
-
-    The step is named `take_first_100` but takes ten. The name is left over from a larger
-    default; `n=10` is what runs, and the checkpoint file is
-    `step_003_take_first_100.jsonl` regardless.
+A step's name is not a label. It becomes the checkpoint file name and the value
+`resume_from` takes, so `take_first_10` is what you will see on disk as
+`step_003_take_first_10.jsonl`. Keep the name and the number it claims in step.
 
 Filtering before sampling is the cheap order. Ten articles chosen first, then filtered,
 could leave you with three.
@@ -346,7 +344,7 @@ Named steps become the checkpoint file names, which is what makes a partial reru
 possible:
 
 ```text
-step_003_take_first_100.jsonl
+step_003_take_first_10.jsonl
 step_005_text_to_persona.jsonl
 step_007_persona_to_persona.jsonl
 ```
