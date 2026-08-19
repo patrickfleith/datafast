@@ -68,6 +68,11 @@ langfuse = [
 [tool.setuptools.packages.find]
 include = ["datafast*"]
 
+# PEP 561: without this marker in the wheel, a type checker ignores every
+# annotation in the package.
+[tool.setuptools.package-data]
+datafast = ["py.typed"]
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra -q"
