@@ -15,10 +15,25 @@ theme:
     - navigation.tabs
     - search.highlight
     - toc.follow
+  # Two entries make the palette a toggle rather than a fixed scheme. Each `media`
+  # picks the entry that matches the reader's OS setting on first visit; the toggle
+  # then overrides it and the choice is remembered. `primary` and `accent` are the
+  # same in both so only the background and text invert.
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: black
       accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 markdown_extensions:
   - admonition
