@@ -1,3 +1,4 @@
+import datafast
 from datafast import (
     AddUUID,
     Branch,
@@ -92,3 +93,24 @@ def test_factory_exports_are_available(monkeypatch):
     assert configure_langfuse_tracing is not None
     assert isinstance(get_version(), str)
     assert is_langfuse_tracing_enabled() is False
+
+
+def test_both_pipeline_exceptions_are_on_the_top_level_package():
+    """compile() raises the more common of the two; it must not need a private path."""
+    from datafast import PipelineChangedError, PipelineValidationError
+    from datafast.core.validation import PipelineValidationError as internal
+
+    assert PipelineValidationError is internal
+    for name in ("PipelineChangedError", "PipelineValidationError"):
+        assert name in datafast.__all__
+
+
+def test_seed_dimension_annotations_resolve_for_a_type_checker():
+    """`any` is the builtin function; the annotation has to be typing.Any."""
+    from typing import Any, get_type_hints
+
+    from datafast import SeedDimension
+
+    hints = get_type_hints(SeedDimension)
+    assert hints["columns"] == list[str]
+    assert hints["values"] == list[dict[str, Any]]

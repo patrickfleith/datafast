@@ -99,6 +99,8 @@ class Runner:
         if resume_from is not None and not self._checkpoint_mgr:
             raise ValueError("resume_from requires checkpoint_dir to be set.")
 
+        self._validate_stop_after(step_names)
+
         if self._checkpoint_mgr:
             if resume_from is not None and not self._checkpoint_mgr.has_checkpoint():
                 raise ValueError(
@@ -187,6 +189,26 @@ class Runner:
                     break
 
         return records
+
+    def _validate_stop_after(self, step_names: list[str]) -> None:
+        """Fail on a stop_after that names no step, as resume_from does."""
+        stop_after = self.config.stop_after
+        if stop_after is None:
+            return
+
+        if isinstance(stop_after, int):
+            if not 0 <= stop_after < len(step_names):
+                raise ValueError(
+                    f"stop_after step {stop_after} is out of range. "
+                    f"The pipeline has {len(step_names)} steps."
+                )
+            return
+
+        if stop_after not in step_names:
+            names = ", ".join(step_names)
+            raise ValueError(
+                f"stop_after step '{stop_after}' not found. Steps: {names}"
+            )
 
     def _setup_checkpoint(
         self, step_names: list[str], step_types: list[str]
@@ -642,7 +664,8 @@ def run_pipeline(
         resume_from: Re-run from this step name, discarding it and later steps
             (reuses completed upstream steps; requires an existing checkpoint).
         limit: Process only first N source records.
-        stop_after: Stop after step (index or name).
+        stop_after: Stop after step (index or name). Raises ValueError if it
+            names no step in the pipeline.
         **kwargs: Additional RunConfig parameters.
 
     Returns:

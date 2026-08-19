@@ -102,6 +102,11 @@ class Pipeline(Step):
 
         Returns:
             List of output records.
+
+        Raises:
+            PipelineValidationError: If the pipeline is built wrong.
+            ValueError: If resume_from or stop_after names no step in the
+                pipeline, or stop_after is an out-of-range index.
         """
         self.compile()
 

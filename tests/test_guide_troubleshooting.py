@@ -100,11 +100,10 @@ def test_every_exception_the_package_defines_is_documented():
 
 
 def test_the_page_shows_where_each_exception_is_imported_from():
-    """They live in different places and only one is on the top-level package."""
-    assert not hasattr(datafast, "PipelineValidationError")
+    """Both are on the top-level package, which is what the page tells readers to use."""
+    assert hasattr(datafast, "PipelineValidationError")
     assert hasattr(datafast, "PipelineChangedError")
-    assert "from datafast import PipelineChangedError" in _page()
-    assert "from datafast.core.validation import PipelineValidationError" in _page()
+    assert "from datafast import PipelineChangedError, PipelineValidationError" in _page()
 
 
 def test_every_on_parse_error_value_is_documented():
@@ -654,11 +653,23 @@ def test_a_mistyped_prompt_file_path_becomes_the_prompt(tmp_path, monkeypatch):
     assert seen == ["prompts/typo.txt"], "the path itself was sent to the model"
 
 
-def test_stop_after_with_an_unknown_name_runs_the_whole_pipeline():
-    results = (Source.list([{"a": 1}]) >> Map(lambda r: {**r, "b": 2}) >> ListSink()).run(
-        stop_after="does-not-exist"
-    )
-    assert results == [{"a": 1, "b": 2}], "the page says the name is not checked"
+STOP_AFTER_CASES = [
+    ("stop_after step 'does-not-exist' not found. Steps:", "does-not-exist"),
+    ("stop_after step 9 is out of range. The pipeline has", 9),
+]
+
+
+@pytest.mark.parametrize(
+    "fragment,value", STOP_AFTER_CASES, ids=["unknown name", "index out of range"]
+)
+def test_every_documented_stop_after_error_is_real(fragment, value):
+    """The page tables these next to the resume_from ones; both must be raised."""
+    with pytest.raises(ValueError) as caught:
+        _pipeline().run(stop_after=value)
+    assert fragment in str(caught.value)
+    documented = fragment.split(".")[0].replace("'does-not-exist'", "'X'")
+    documented = documented.replace("stop_after step 9", "stop_after step N")
+    assert documented in _page(), f"the page does not carry the real message {fragment!r}"
 
 
 def test_temperature_and_max_tokens_on_a_step_never_reach_the_model():

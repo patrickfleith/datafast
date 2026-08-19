@@ -6,6 +6,7 @@ from datafast.core.checkpoint import CheckpointManager, PipelineChangedError
 from datafast.core.config import RunConfig, LLMExecutionStrategy
 from datafast.core.runner import Runner, run_pipeline
 from datafast.core.step import Pipeline, Step
+from datafast.core.validation import PipelineValidationError
 from datafast.core.types import Record
 from datafast.llm.served_model import (
     ServedModel,
@@ -54,6 +55,7 @@ __all__ = [
     "run_pipeline",
     "CheckpointManager",
     "PipelineChangedError",
+    "PipelineValidationError",
     "Source",
     "HuggingFaceSource",
     "Seed",

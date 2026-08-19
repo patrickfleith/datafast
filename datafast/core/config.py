@@ -33,7 +33,8 @@ class RunConfig:
     Reuses completed upstream steps (requires an existing checkpoint)."""
 
     stop_after: int | str | None = None
-    """Stop after this step (index or name)."""
+    """Stop after this step (index or name). Must name a step in the pipeline;
+    an unknown name or an out-of-range index raises ValueError."""
 
     limit: int | None = None
     """Process only first N records from source."""

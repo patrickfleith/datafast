@@ -23,6 +23,7 @@ and are documented under [Served models](llms.md).
 ::: datafast.run_pipeline
 ::: datafast.CheckpointManager
 ::: datafast.PipelineChangedError
+::: datafast.PipelineValidationError
 
 ## Sources and seeds
 

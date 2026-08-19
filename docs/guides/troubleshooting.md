@@ -23,11 +23,10 @@ have to go looking for.
 Everything else you will see is a plain `ValueError`, `RuntimeError`, `KeyError` or
 `ImportError`.
 
-The two are imported from different places, and only one is on the top-level package:
+Both are on the top-level package:
 
 ```python
-from datafast import PipelineChangedError
-from datafast.core.validation import PipelineValidationError
+from datafast import PipelineChangedError, PipelineValidationError
 ```
 
 ## Before the run: `compile()`
@@ -208,7 +207,7 @@ served model, or rewrite the function inside a `Map`, and the fingerprint is ide
 Resume will continue as if nothing changed and mix old records with new ones. Point a
 changed pipeline at a fresh `checkpoint_dir`.
 
-### `resume_from` errors
+### `resume_from` and `stop_after` errors
 
 `resume_from` re-runs one step and everything after it. All three of its failure modes
 are `ValueError`, raised before anything executes:
@@ -219,8 +218,15 @@ are `ValueError`, raised before anything executes:
 | `resume_from='X' requires an existing checkpoint in ...` | the directory has no checkpoint |
 | `resume_from step 'X' not found. Steps: ...` | the name is not a step; the message lists the real ones |
 
+`stop_after` takes the same kind of value and fails the same way:
+
+| Message | Cause |
+|---|---|
+| `stop_after step 'X' not found. Steps: ...` | the name is not a step |
+| `stop_after step N is out of range. The pipeline has M steps.` | the index is not a step position |
+
 The names are step class names — `ListSource`, `LLMStep`, `JSONLSink` — not variable
-names.
+names, unless you set one with `as_step`.
 
 ### What actually survives a crash
 
@@ -289,8 +295,6 @@ The list worth re-reading when a run finishes and the output looks wrong.
 - **A mistyped prompt file path becomes the prompt.** `prompt=Path("prompts/typo.txt")`
   sends the literal text `prompts/typo.txt` to the model when the file does not exist. No
   error, real spend. Check the file exists before the run.
-- **`stop_after` with a name that is not a step does nothing.** The whole pipeline runs.
-  Unlike `resume_from`, the name is not checked.
 - **The checkpoint fingerprint ignores prompts and served models.** Only step names and
   classes are hashed.
 - **Resume can duplicate records** completed since the last progress save.

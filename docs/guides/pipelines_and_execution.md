@@ -147,6 +147,9 @@ pipeline.run(stop_after=1)          # after the step at index 1
 pipeline.run(stop_after="clean_text")  # after the step named clean_text
 ```
 
+A name that matches no step, or an index outside the pipeline, raises `ValueError` before
+the first step runs — the same treatment `resume_from` gives a name it cannot find.
+
 ### `RunConfig` and `run_pipeline`
 
 `run()` is a thin wrapper. It packs its arguments into a `RunConfig` and hands it to the

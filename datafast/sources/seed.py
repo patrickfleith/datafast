@@ -3,6 +3,7 @@
 from collections.abc import Iterable
 from dataclasses import dataclass
 from itertools import product as itertools_product
+from typing import Any
 
 from loguru import logger
 
@@ -15,7 +16,7 @@ class SeedDimension:
     """A single dimension of variation for seed generation."""
 
     columns: list[str]
-    values: list[dict[str, any]]
+    values: list[dict[str, Any]]
 
     def __len__(self) -> int:
         return len(self.values)

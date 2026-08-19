@@ -236,3 +236,20 @@ def test_run_config_exposes_only_fields_the_runner_reads():
         "llm_strategy",
         "checkpoint_every",
     }
+
+
+def test_stop_after_rejects_a_name_that_is_not_a_step():
+    """resume_from has always raised on a name it cannot find; stop_after now agrees."""
+    pipeline = Source.list([{"a": 1}]) >> Map(lambda r: {**r, "b": 2}).as_step("add_b")
+
+    with pytest.raises(ValueError, match="stop_after step 'add_c' not found"):
+        pipeline.run(stop_after="add_c")
+
+    assert pipeline.run(stop_after="add_b") == [{"a": 1, "b": 2}]
+
+
+def test_stop_after_rejects_an_index_outside_the_pipeline():
+    pipeline = Source.list([{"a": 1}]) >> Map(lambda r: {**r, "b": 2})
+
+    with pytest.raises(ValueError, match="stop_after step 5 is out of range"):
+        pipeline.run(stop_after=5)
