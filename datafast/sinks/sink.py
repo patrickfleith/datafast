@@ -76,7 +76,7 @@ class Sink(Step):
 
     @staticmethod
     def list() -> "ListSink":
-        """Create a list sink that collects records in memory."""
+        """Create a list sink that collects one run's records in memory."""
         return ListSink()
 
 
@@ -132,14 +132,19 @@ class CSVSink(Step):
 
 
 class ListSink(Step):
-    """Collect records into a list (for testing)."""
+    """Collect records into a list (for testing).
+
+    `records` holds one run: a second run on the same sink replaces the list
+    rather than appending to it.
+    """
 
     def __init__(self) -> None:
         super().__init__()
         self.records: list[Record] = []
 
     def process(self, records: Iterable[Record]) -> Iterable[Record]:
-        """Collect records and pass them through."""
+        """Collect records and pass them through, discarding any earlier run."""
+        self.records = []
         for record in records:
             self.records.append(record)
             yield record
@@ -221,7 +226,7 @@ class HubSink(Step):
         return os.getenv("HF_TOKEN")
 
     def _ensure_readme(self, token: str | None) -> None:
-        """Create README.md with datafast-dataset tag if not already present."""
+        """Create README.md with the datafast tag if not already present."""
         try:
             from huggingface_hub import HfApi
         except ImportError:
@@ -241,7 +246,7 @@ class HubSink(Step):
             )
             with open(existing, "r", encoding="utf-8") as f:
                 content = f.read()
-            if "datafast-dataset" in content:
+            if _DATAFAST_README_TEMPLATE.strip() in content:
                 return
             updated = _DATAFAST_README_TEMPLATE + content
         except Exception:
@@ -253,7 +258,7 @@ class HubSink(Step):
             repo_id=self._repo_id,
             repo_type="dataset",
             token=token,
-            commit_message="Add datafast-dataset tag",
+            commit_message="Add datafast tag",
         )
 
     def process(self, records: Iterable[Record]) -> Iterable[Record]:

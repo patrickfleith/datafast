@@ -119,7 +119,8 @@ every run.
 
 After the push, datafast prepends a `datafast` tag to the dataset's `README.md` in a
 second commit, so datasets made with the library are findable on the Hub. Any README text
-already there is kept below the tag block.
+already there is kept below the tag block, and a later push that finds the tag leaves the
+file alone.
 
 Requires `pip install "datafast[hub]"`. Without it the step raises an `ImportError`
 naming the extra.
@@ -140,8 +141,8 @@ collected = Sink.list()
 print(collected.records)
 ```
 
-`records` is never cleared. Running the same pipeline twice leaves both runs' records in
-the list.
+`records` holds one run. A second `run()` on the same pipeline replaces the list rather
+than appending to it, so what you read is always the last run.
 
 ## Things worth knowing
 

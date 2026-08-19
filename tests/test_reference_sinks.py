@@ -175,12 +175,12 @@ def test_an_empty_run_writes_an_empty_jsonl_and_no_csv_or_parquet(tmp_path):
     assert not csv.exists() and not parquet.exists()
 
 
-def test_the_list_sink_collects_and_never_clears(tmp_path):
+def test_the_list_sink_holds_one_run(tmp_path):
     collected = Sink.list()
     pipeline = Source.list([{"a": 1}]) >> collected
     pipeline.run()
     pipeline.run()
-    assert collected.records == [{"a": 1}, {"a": 1}], "the page says records is never cleared"
+    assert collected.records == [{"a": 1}], "the page says a second run replaces the list"
 
 
 # --- HubSink: exercised with the network replaced -------------------------------
@@ -346,3 +346,54 @@ def test_every_page_linked_to_exists():
     assert links, "no links found — check the test, not the page"
     missing = sorted(link for link in links if not (PAGE.parent / link).resolve().exists())
     assert not missing, f"links to pages that do not exist: {missing}"
+
+
+def test_the_datafast_tag_is_written_once_not_stacked_on_every_push(
+    hub, monkeypatch, tmp_path
+):
+    """The guard used to look for a tag the template never writes."""
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+    from datafast.sinks.sink import _DATAFAST_README_TEMPLATE
+
+    readme = tmp_path / "README.md"
+    readme.write_text(_DATAFAST_README_TEMPLATE + "\nHand-written notes.\n")
+
+    class ApiWithReadme:
+        def __init__(self, token=None):
+            pass
+
+        def hf_hub_download(self, **kwargs):
+            return str(readme)
+
+        def upload_file(self, **kwargs):
+            hub["uploads"].append(kwargs)
+
+    monkeypatch.setattr(huggingface_hub, "HfApi", ApiWithReadme)
+    list(Sink.hub("me/ds").process(iter([{"i": 1}])))
+    assert hub["uploads"] == [], "a README already carrying the tag was rewritten"
+
+
+def test_a_readme_without_the_tag_keeps_its_text_below_the_tag_block(
+    hub, monkeypatch, tmp_path
+):
+    huggingface_hub = pytest.importorskip("huggingface_hub")
+    from datafast.sinks.sink import _DATAFAST_README_TEMPLATE
+
+    readme = tmp_path / "README.md"
+    readme.write_text("Hand-written notes.\n")
+
+    class ApiWithReadme:
+        def __init__(self, token=None):
+            pass
+
+        def hf_hub_download(self, **kwargs):
+            return str(readme)
+
+        def upload_file(self, **kwargs):
+            hub["uploads"].append(kwargs)
+
+    monkeypatch.setattr(huggingface_hub, "HfApi", ApiWithReadme)
+    list(Sink.hub("me/ds").process(iter([{"i": 1}])))
+    assert len(hub["uploads"]) == 1
+    written = hub["uploads"][0]["path_or_fileobj"].decode("utf-8")
+    assert written == _DATAFAST_README_TEMPLATE + "Hand-written notes.\n"
