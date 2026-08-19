@@ -712,8 +712,9 @@ class Pair(Step):
 class Concat(Step):
     """Stack multiple data sources/pipelines vertically.
 
-    Executes each source pipeline and yields all their records sequentially,
-    followed by any records received from upstream.
+    Executes each source pipeline and yields all their records sequentially.
+    Records arriving from upstream are discarded: a Concat replaces its input
+    rather than adding to it.
 
     Examples:
         >>> # Combine results from different sources
