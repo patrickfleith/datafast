@@ -165,6 +165,8 @@ class Sample(Step):
 
     def _sample_last(self, items: list, n: int) -> list:
         """Take last N items."""
+        if n <= 0:
+            return []
         return items[-n:] if n <= len(items) else items
 
     def _sample_systematic(self, items: list, n: int) -> list:

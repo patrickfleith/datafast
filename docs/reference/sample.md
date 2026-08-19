@@ -80,7 +80,8 @@ best = list(Sample(n=3, strategy="top", by="score").process(iter(records)))
 `frac=0.01` of 10 keeps 1.
 
 Asking for more records than exist gives you all of them, not an error — unless
-`replace=True`, which repeats records to reach `n`.
+`replace=True`, which repeats records to reach `n`. `n=0` keeps nothing, whatever the
+strategy.
 
 ### Repeating a run: `seed`
 

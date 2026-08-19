@@ -337,3 +337,15 @@ def test_every_page_linked_to_exists():
     assert links, "no relative links found — the test would pass vacuously"
     missing = sorted(link for link in links if not (PAGE.parent / link).resolve().exists())
     assert not missing, f"links to pages that do not exist: {missing}"
+
+
+def test_n_zero_keeps_nothing_whatever_the_strategy():
+    """`items[-0:]` is every record; the page says n=0 keeps none."""
+    records = [{"score": i} for i in range(5)]
+    for strategy in ("first", "last", "uniform"):
+        kept = list(Sample(n=0, strategy=strategy).process(iter(records)))
+        assert kept == [], f"{strategy} kept {len(kept)} records for n=0"
+    assert list(Sample(n=0, strategy="systematic", step=2).process(iter(records))) == []
+    assert "`n=0` keeps nothing" in (
+        Path(__file__).parent.parent / "docs" / "reference" / "sample.md"
+    ).read_text()
