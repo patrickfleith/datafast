@@ -56,6 +56,7 @@ nav:
       - Quickstart: quickstart.md
       - Concepts: concepts.md
       - Glossary: glossary.md
+      - What's in v1: whats_in_v1.md
   - Guides:
       - guides/index.md
       - Pipelines & execution: guides/pipelines_and_execution.md
