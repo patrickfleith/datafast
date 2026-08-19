@@ -361,13 +361,31 @@ them in any order — they touch different files on purpose.
   Not linked from anywhere yet: the nav restructure task owns mkdocs.yml and already
   lists Contributing in its target IA. -->
 
-- [ ] **"What's in v1" release notes** → `docs/whats_in_v1.md`
+- [X] **"What's in v1" release notes** → `docs/whats_in_v1.md`
   <!-- Read docs-agents/CHANGELOG.md, which is already populated for 1.0.0. Turn it into a
   reader-facing page: what datafast does at v1, what shipped, what is deliberately not
   there. NO migration guide — everything before v1 is experimental and unsupported, so v1
   is the starting point, not a transition. Write this LAST: it summarises the other pages
   and should link to them. Test: tests/test_whats_in_v1.py — assert the version it names
   matches pyproject.toml, and that every page it links to exists. -->
+
+  <!-- Done (146 lines) + tests/test_whats_in_v1.py (23 tests, offline). Four sections:
+  what datafast does, what shipped, what is deliberately not here, and the known rough
+  edges. No migration guide, as specified.
+  Patrick's instruction shaped the rough-edges section: list only what could affect a
+  user, at a high level, with no code detail. So CONCERNS.md was translated rather than
+  copied — thirteen defects and risks became fourteen plain bullets grouped by what the
+  reader is doing (LLM steps, resume, scoring and filtering, branching, data ops and
+  sinks, models). No file paths, no function names, no line numbers; each says what the
+  user sees and what to do about it ("count your output records", "check for
+  duplicates", "look at the spread before you filter on it").
+  Four omissions are stated as deliberate and each is pinned by a test that fails if it
+  stops being true: no async API (a test greps the package for `async def`), no progress
+  bar, no nested branching, no provider-enforced JSON. The version is read from
+  pyproject.toml, every relative link is resolved, and the example's keyword arguments
+  are checked against the real `LLMStep.__init__` signature — a release page showing a
+  parameter that does not exist would be worse than no page. Added to the nav under
+  Get started. -->
 
 ### Infrastructure (not pages — do these after the pages exist)
 
@@ -403,10 +421,35 @@ them in any order — they touch different files on purpose.
   every .md on disk against every .md in the nav is empty in both directions, and the
   full suite still passes — the page tests' "every relative link resolves" assertions are
   what would have caught a bad rewrite. -->
-- [ ] **Ship `py.typed`** — the file does not exist; the package is fully annotated and
+- [X] **Ship `py.typed`** — the file does not exist; the package is fully annotated and
   advertises none of it. Add it plus the `package-data` entry in `pyproject.toml`.
-- [ ] **Retire `SOFTWARE_DESCRIPTION.md`** — fold into the docs above, generate
+
+  <!-- Done: `datafast/py.typed` plus `[tool.setuptools.package-data]` in pyproject.toml
+  (setuptools drops any undeclared non-.py file). Verified rather than assumed — built a
+  wheel with `uv build` and confirmed `datafast/py.typed` is inside it.
+  tests/test_py_typed.py (74 tests) guards both, and then guards what the marker exposes:
+  once a type checker reads our annotations, a wrong one becomes a user-visible error. So
+  every exported class has its hints resolved, with an explicit check that no field is
+  annotated with the builtin `any` — the bug just fixed on SeedDimension, which py.typed
+  would have pushed onto users.
+  One test had to be narrowed. `Runner.__init__` annotates `pipeline: "Pipeline"` under
+  TYPE_CHECKING because Pipeline imports Runner back; a static checker resolves that,
+  `get_type_hints` cannot. That is the correct pattern, not a defect, so the test now
+  asserts the deferred name is a real datafast export rather than that it resolves. -->
+- [~] **Retire `SOFTWARE_DESCRIPTION.md`** — fold into the docs above, generate
   `docs-agents/SUM.md` with the `write-manual` skill, then delete it.
+
+  <!-- Deleted, with the fold verified first: every one of its four sections is covered
+  elsewhere — overview by docs/index.md and concepts.md, package surface by the generated
+  docs/api.md (checked programmatically: not one name in `datafast.__all__` is missing
+  from it), execution model by concepts.md and the pipelines guide, examples by the new
+  cookbook/examples.md. Nothing was lost.
+  Two live references cleaned up: the `paths-ignore` list in publish.yml, and the
+  sentence in PUBLISHING.md that quotes that list. The mentions left in CHANGELOG and
+  ROADMAP are historical records of past work and stay as written.
+  STILL OPEN: `docs-agents/SUM.md` was NOT generated. The `write-manual` skill is marked
+  disable-model-invocation, so an agent cannot call it and must not reproduce its
+  workflow by hand. Patrick has to run `/write-manual` himself. -->
 
 
 ## Done

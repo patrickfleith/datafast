@@ -9,6 +9,20 @@
   calls the same job and will not release unless it passes — until now every merge to
   `main` went to PyPI untested.
 
+- **`py.typed`.** The package is fully annotated and advertised none of it, so type
+  checkers ignored every annotation in it. The PEP 561 marker now ships in the wheel.
+
+- **A "What's in v1" page.** `docs/whats_in_v1.md` says what datafast does, what
+  shipped, what is deliberately absent, and the rough edges worth knowing before a long
+  run — written for a reader, not as a defect list.
+
+### Removed
+
+- **`SOFTWARE_DESCRIPTION.md`.** Every section it carried is now covered by the docs
+  site: the overview by the home and Concepts pages, the export list by the generated
+  API page, the execution model by the pipelines guide, and the examples by the new
+  cookbook index.
+
 ### Changed
 
 - **The docs nav carries every page.** Nine finished pages were published but
