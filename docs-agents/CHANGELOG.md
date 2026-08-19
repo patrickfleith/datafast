@@ -2,30 +2,19 @@
 
 ## [Unreleased]
 
-### Added
-
-- CI runs `pytest -m "not live"` on every pull request and before publishing, so a failing suite now blocks the release.
-- `py.typed` ships in the wheel, so type checkers finally read the annotations the package already carried.
-- `docs/whats_in_v1.md` — what datafast does, what shipped, what is deliberately absent, and the rough edges worth knowing.
-
-### Changed
-
-- The docs nav carries every page. Nine finished pages were published but unreachable, and three superseded guides were deleted.
-
-### Removed
-
-- `SOFTWARE_DESCRIPTION.md` — every section it carried is now covered by the published docs site.
-
-## [1.0.0] — 2026-08-18
+## [1.0.0] — 2026-08-19
 
 First stable release.
 
 ### Added
 
+- CI runs `pytest -m "not live"` on every pull request and before publishing, so a failing suite blocks the release.
+- `py.typed` ships in the wheel, so type checkers read the annotations the package already carried.
 - Reference pages for sources, seeds and served models, each pinned by a test that fails when the code grows an undocumented parameter.
 - A published glossary of 29 terms, and a Concepts page rebuilt on record → step → pipeline → runner.
 - An installation reference covering every extra and environment variable, guarded by a test that scans the package for lookups.
 - A quickstart taking a reader from `pip install` to a stored dataset, its code block executed by the test suite.
+- "What's in v1" release notes: what datafast does, what shipped, what is deliberately absent, and the rough edges.
 - A pipeline may end in several sinks. The rule changed from "a sink must be last" to "nothing may follow the sinks".
 - Docstrings for the six provider factories, which had none at all and rendered as bare signatures on the API page.
 - The full `Filter` operator reference: the docstring named 6 of 23, and the other 17 were tested nowhere.
@@ -36,6 +25,7 @@ First stable release.
 
 ### Changed
 
+- The docs nav carries every page, grouped as Home, Get started, Guides, Reference, Cookbook and Contributing.
 - The README and docs home page open on what datafast is, not on the removal of a pre-1.0 API no v1 reader used.
 - The docs site builds with Zensical instead of MkDocs + Material, which goes end-of-life on 2026-11-05.
 - `docs/api.md` is generated from docstrings, replacing a hand-maintained list that had drifted to 34 of 48 names.
@@ -43,6 +33,7 @@ First stable release.
 
 ### Removed
 
+- `SOFTWARE_DESCRIPTION.md` and three superseded guides — every section they carried is covered by the docs site.
 - **Breaking:** six unused runtime dependencies. A base install now resolves to 50 packages instead of 107.
 - **Breaking:** `datasets` moved to the `hub` extra, so it no longer pulls pyarrow, pandas and the Hub stack into every install.
 - **Breaking:** `RunConfig.show_progress` and `log_level`, both declared and read nowhere. Use `configure_logger(level=...)` instead.
