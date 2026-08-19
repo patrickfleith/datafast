@@ -480,19 +480,17 @@ first rearranges every page, the second summarises them.
   from `examples/scripts/`: `42_pipeline_preference_with_scoring.py` (Branch + Score,
   the most architecture per line), `38_pipeline_qa_generation.py`, and
   `40_pipeline_classification_dataset.py`. Add the 01–45 examples index as a table.
-- **`docs/PUBLISHING.md`** sits in `docs/` but is absent from the nav — it is a
-  maintainer runbook, not user documentation. Move it out of the published tree or add
-  it under Contributing.
+- ~~**`docs/PUBLISHING.md`** sits in `docs/` but is absent from the nav.~~ Done: moved
+  to `docs-agents/PUBLISHING.md`, beside the other internal docs.
 
 #### Build & infrastructure
 
-- **Nav restructure.** The target IA is roughly: Home · Get started (install,
-  quickstart, concepts, glossary) · Guides (pipelines, execution & checkpointing,
-  structured output, multimodal, tracing, troubleshooting) · Reference (sources & seed,
-  data ops, sample, LLM steps, branching, sinks, providers ×7, API) · Cookbook
-  (recipes + examples index) · Contributing. `installation.md` and `quickstart.md` are
-  in the nav in the right order but still flat under Home — the grouping waits until
-  there are pages to group, so this is the last item, not the next one.
+- ~~**Nav restructure.**~~ Done: the nav is now Home · Get started · Guides ·
+  Reference · Cookbook · Contributing, and carries every page on disk. Nine finished
+  pages had been published but unreachable. `models.md` was kept rather than folded —
+  all seven provider pages link to it for their default model id and none states its
+  own. The three superseded guides (`building_pipelines`, `llm_steps`, `checkpointing`)
+  were deleted and their 31 inbound links rewritten.
 - **Ship `py.typed`.** The file does not exist; the package is fully annotated and
   advertises none of it. Add it and the `package-data` entry in `pyproject.toml`.
 - **Retire `SOFTWARE_DESCRIPTION.md`.** Fold into the docs above, generate

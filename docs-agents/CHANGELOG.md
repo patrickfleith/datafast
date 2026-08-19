@@ -9,6 +9,15 @@
   calls the same job and will not release unless it passes — until now every merge to
   `main` went to PyPI untested.
 
+### Changed
+
+- **The docs nav carries every page.** Nine finished pages were published but
+  unreachable from the menu — all five new guides, both new cookbook pages,
+  `contributing.md` and `PUBLISHING.md`. The nav is now Home · Get started · Guides ·
+  Reference · Cookbook · Contributing. `docs/PUBLISHING.md` moved to `docs-agents/`, and
+  the three superseded guides (`building_pipelines`, `llm_steps`, `checkpointing`) were
+  deleted with all 31 inbound links rewritten to the pages that replaced them.
+
 ## [1.0.0] — 2026-08-18
 
 First stable release.

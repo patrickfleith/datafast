@@ -371,12 +371,38 @@ them in any order — they touch different files on purpose.
 
 ### Infrastructure (not pages — do these after the pages exist)
 
-- [ ] **Nav restructure** — target IA: Home · Get started (install, quickstart, concepts,
+- [X] **Nav restructure** — target IA: Home · Get started (install, quickstart, concepts,
   glossary) · Guides · Reference · Cookbook · Contributing. Fold
   `docs/guides/checkpointing.md` into the pipeline & execution guide and delete it; fold or
   delete `docs/models.md`, now redundant against the seven provider pages; move
   `docs/PUBLISHING.md` out of the published tree (it is a maintainer runbook, absent from
   the nav). This task owns `mkdocs.yml` — no other task may touch it.
+
+  <!-- Done. The nav now carries every page on disk except `cookbook/assets/index.md`,
+  which is a holder for the prompt `.txt` files the cookbook pages link to and stays out
+  deliberately. Before this, NINE finished pages were published but unreachable from the
+  menu — all five new guides (pipelines_and_execution, structured_output,
+  multimodal_input, calling_a_served_model, troubleshooting), both new cookbook pages,
+  contributing.md, and PUBLISHING.md. The site was still showing the four short old
+  guides instead, so ~2,000 lines of v1 documentation had no way in.
+  Three decisions were Patrick's, and one of them overturned this task's premise.
+  (1) `models.md` KEPT as its own page, under Reference as "Model defaults". The task
+  called it redundant against the seven provider pages; it is the opposite — all seven
+  provider pages LINK to it as the one place listing every default model id, and not one
+  of them states its own default. Deleting it would have broken seven links and lost the
+  only copy of six model ids.
+  (2) `docs/PUBLISHING.md` → `docs-agents/PUBLISHING.md`, beside the other internal docs.
+  (3) All three superseded guides deleted, not just checkpointing.md:
+  `building_pipelines.md` (59 lines), `llm_steps.md` (49) and `checkpointing.md` (33).
+  That cost 31 link rewrites across 16 pages — every one had its target AND its label
+  changed, so no link now says "Checkpointing" and lands somewhere else. Targets:
+  checkpointing → guides/pipelines_and_execution.md, building_pipelines →
+  reference/data_ops.md or sources_and_seed.md by context, llm_steps →
+  reference/llm_step.md. `guides/index.md` was rewritten around the six surviving guides.
+  Verified rather than assumed: `zensical build --strict` clean, a set-difference of
+  every .md on disk against every .md in the nav is empty in both directions, and the
+  full suite still passes — the page tests' "every relative link resolves" assertions are
+  what would have caught a bad rewrite. -->
 - [ ] **Ship `py.typed`** — the file does not exist; the package is fully annotated and
   advertises none of it. Add it plus the `package-data` entry in `pyproject.toml`.
 - [ ] **Retire `SOFTWARE_DESCRIPTION.md`** — fold into the docs above, generate
