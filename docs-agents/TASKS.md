@@ -245,14 +245,35 @@ them in any order — they touch different files on purpose.
   one model in each half, but datasets' train_test_split shuffles by default, so shuffle
   =True is a shuffle before the split, not what prevents a contiguous one. -->
 
-- [ ] **New cookbook: preference data with scoring** → `docs/cookbook/preference_with_scoring.md`
+- [X] **New cookbook: preference data with scoring** → `docs/cookbook/preference_with_scoring.md`
   <!-- From examples/scripts/42_pipeline_preference_with_scoring.py — the roadmap's top
   candidate, the most architecture per line: Branch plus Score. This is the recipe that
   shows why branching exists. Read docs/reference/branching.md first and link to it rather
   than re-explaining. Cover the whole run end to end as above. Test:
   tests/test_cookbook_preference_with_scoring.py. -->
 
-- [ ] **Examples index** → `docs/cookbook/examples.md`
+  <!-- Done (322 lines) + tests/test_cookbook_preference_with_scoring.py (35 tests,
+  offline). This script has no main() or build_pipeline() — it runs at import, so the test
+  execs it with datafast.openrouter stubbed inside a tmp dir and snapshots the stub's calls
+  before the page examples re-run the pipeline. Measured: 3 seeds → 3 rows, 15 calls (five
+  per row), the branch doubling 3 → 6 and the join halving 6 → 3 read off the manifest, and
+  the checkpoint list including one file per branch path
+  (step_002_branch_responses.chosen.jsonl). branching.md is linked, not re-explained.
+  Two traps went on the page, both measured. (1) `_model` after the join: it exists before
+  the branch and both paths rewrite it, so JoinBranches copies it unsuffixed from the FIRST
+  path — with different models per path the row silently names only the chosen one, and the
+  two Score steps then overwrite it again, so the file ends up with the scorer's id. This is
+  the CONCERNS "branch path that rewrites an existing column" defect, in the recipe where a
+  reader would actually hit it. (2) Score never fails loudly: 99 → 10, "high" → 1, a reply
+  with no score key → 1; only non-JSON drops the record. Since the whole dataset is filtered
+  on the margin between two scores, a model that ignored the instruction moves rows in or
+  out for no reason. Tabled on the page with a histogram check, and the existing CONCERNS
+  Score entry was rewritten around the measurements (including that the column mixes 7.0
+  floats with clamped ints). Also documented: the script writes checkpoints it never reads
+  — resume defaults to False — so a second run repays all fifteen calls. Added the page to
+  docs/cookbook/index.md, which was the only way to reach it. -->
+
+- [X] **Examples index** → `docs/cookbook/examples.md`
   <!-- A table mapping all 45 scripts in examples/scripts/ to what each one demonstrates.
   Read every script's header. Group them so the table is scannable (sources/seeds, data
   ops, LLM steps, branching, full cookbooks). This is mechanical but high value — the site
@@ -260,9 +281,45 @@ them in any order — they touch different files on purpose.
   assert every .py file in examples/scripts/ appears in the table, and every script the
   table names exists. This one guard is the whole point of the page. -->
 
+  <!-- Done (137 lines) + tests/test_examples_index.py (57 tests). Both guards are there:
+  every .py in examples/scripts/ has a table row, and every script named exists. Eight
+  groups — seeds/sources, data ops, LLM steps, specialized steps, branching, execution
+  controls, full pipelines, cookbooks — with a one-line description per script written from
+  its header. The organizing fact came out of a scan rather than the headers: scripts 01–14
+  call no provider factory at all, so they run with no API key, and 15–45 all reach
+  OpenRouter; a test walks every script and fails if one crosses that line, so the page's
+  "no API key" claim cannot rot. Also pinned: 27 of the 31 LLM scripts carry a commented-out
+  ollama line (the page says "most", the test asserts more than half), the three Hub scripts
+  are exactly 43/44/45, each cookbook row links to a walkthrough page that exists, and every
+  script appears in exactly one table except the capstone 42, which is deliberately both a
+  full pipeline and a cookbook. Added the page to docs/cookbook/index.md; before this the
+  site never linked to examples/scripts/ at all. -->
+
+- [X] Implement a dark mode for documentation site if possible
+  <!-- Done in mkdocs.yml's theme.palette + tests/test_docs_site_theme.py (19 tests).
+  The single-entry palette became two — `default`/`slate`, each with a
+  `(prefers-color-scheme: ...)` media query and a toggle — so the first visit follows
+  the reader's OS setting and the header button overrides it from there. No CSS was
+  needed and none was written: the site has no extra_css, no images and no mermaid, and
+  Zensical's slate scheme redefines all thirteen `--md-code-hl-*` variables, so code
+  blocks re-colour themselves. Verified in the build rather than assumed: all 43 pages
+  carry both palette inputs, both toggle icons inline as SVG, and the palette stylesheet
+  is linked.
+  The one real risk was links: `--md-typeset-a-color` follows the primary colour, which
+  here is near-black, but Material special-cases exactly `slate` + `black`/`grey`/
+  `blue-grey`/`white` and forces `#5e8bde`. A test pins that rule, because losing it
+  would mean black links on a black page.
+  Found on the way and logged in CONCERNS: `primary: black` does nothing — the site
+  loads Zensical's `modern` stylesheet, which defines no `black` primary (the `classic`
+  one does), so the header is the default indigo and always has been. Left as-is; the
+  header colour is Patrick's call, and a test documents the gap.
+  NOTE: this edits mkdocs.yml, which the nav restructure task claims sole ownership of.
+  Only the `theme.palette` block was touched — `nav` is untouched — and the test file
+  exists so the restructure cannot drop dark mode silently. -->
+
 ### Release and contribution
 
-- [ ] **Contributing & development guide** → `docs/contributing.md`
+- [X] **Contributing & development guide** → `docs/contributing.md`
   <!-- Read: AGENTS.md, pytest.ini, tests/conftest.py, tests/live/conftest.py. Cover:
   project layout; the two test layers (tests/ mocked, tests/live/<provider>/ gated); the
   real commands — .venv/bin/pytest -m "not live" by default, --run-live to opt in, live
@@ -271,6 +328,38 @@ them in any order — they touch different files on purpose.
   the code. Test: tests/test_contributing_page.py — assert every command the page gives
   actually works (run the -m "not live" collection, not the full suite), and that every
   marker it names is registered in pytest.ini. -->
+
+  <!-- Done (286 lines) + tests/test_contributing_page.py (109 tests, offline, ~30s).
+  Every shell command on the page is executed by the test: the pytest ones as
+  collections, the zensical ones against `zensical --help`, the install command against
+  pyproject's extras, the clone URL against `git remote`. The gate is proved against a
+  real pytest session rather than described — a throwaway project in tmp using this
+  repo's actual tests/conftest.py, run three ways, which is the page's table: a plain
+  run *skips* the live tests, -m "not live" *deselects* them, --run-live runs them.
+  Both self-skip guards are called directly (with load_dotenv stripped, or the repo's
+  own .env masks the very thing under test).
+  Six repository-level concerns logged, all measured. The two that would cost a
+  contributor the most: **uv.lock is stale** — it pins 0.0.35 with the six retired
+  dependencies and the old mkdocs docs extra, so `uv sync` installs a different package
+  than pyproject describes, and the page has to warn people off it; and **no workflow
+  runs the test suite** — CI publishes to PyPI on every merge to main and deploys the
+  docs, and never runs pytest, so the page tells contributors plainly that nothing
+  downstream catches what they miss. Also logged: the dead [tool.pytest.ini_options]
+  block (pytest.ini wins and pytest warns about it on every run — quoted on the page so
+  nobody thinks they broke it), ruff configured but unenforced with 62 findings (the
+  page says so rather than pretending it is a gate), and the stray root-level
+  test_qa_pipeline.py.
+  One finding came out of the test failing on itself: **the live gate matches on pytest
+  keywords, which include parametrize ids**, so a mocked test parametrized with the
+  string "live" is skipped by the gate. This file's own marker ids had to be prefixed to
+  escape it. On the page as a warning, pinned by a test, and in CONCERNS.
+  The "add a step" section is measured too: a bare Step subclass gets >>, checkpointing
+  under its class name (step_001_Shout.jsonl), and renaming via as_step for free, but
+  _input_columns is what makes compile() check it — and a step the validator does not
+  recognise makes the schema unknown from that point on, turning off column checks for
+  every step after it. Both directions are asserted.
+  Not linked from anywhere yet: the nav restructure task owns mkdocs.yml and already
+  lists Contributing in its target IA. -->
 
 - [ ] **"What's in v1" release notes** → `docs/whats_in_v1.md`
   <!-- Read docs-agents/CHANGELOG.md, which is already populated for 1.0.0. Turn it into a

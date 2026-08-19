@@ -3,7 +3,8 @@
 Risks and defects to investigate. Found while writing the v1 reference pages
 (2026-08-18): twelve pages were written by reading the source and proving each claim
 with a test, which surfaced behaviour the docstrings describe wrongly or not at all.
-None of these were fixed — the pages document what the code does today.
+The pages document what the code does today. What has since been fixed is listed at the
+bottom rather than deleted.
 
 ## Defects
 
@@ -23,12 +24,6 @@ None of these were fixed — the pages document what the code does today.
   `str(prompt)` when the path is not a file, so `prompt=Path("prompts/typo.txt")` sends
   the literal string `prompts/typo.txt` to the model. No error, real spend.
 
-- **`HubSink` stacks duplicate README front-matter on every push.** `_ensure_readme`
-  skips only `if "datafast-dataset" in content`, but the template it writes tags the
-  dataset `datafast`. The guard can never match what it wrote, so the block is
-  re-prepended each push. The commit message says "Add datafast-dataset tag" while the
-  tag is `datafast`.
-
 - **`Filter`'s `$or` / `$and` ignore sibling keys.** They return immediately, so
   `{"$or": [...], "score": {"$gt": 100}}` silently drops the `score` condition and keeps
   a record scoring 0.
@@ -40,15 +35,6 @@ None of these were fixed — the pages document what the code does today.
 
 - **`JoinBranches(how="outer")` does not fill with `None`** as its docstring promises —
   `_merge_group` skips a `None` record, so the missing path contributes no keys at all.
-
-- **`Sample(n=0, strategy="last")` returns every record** (`items[-0:]`), while
-  `strategy="first"` correctly returns none.
-
-- **`ListSink.records` is never cleared**, so re-running one pipeline object accumulates
-  both runs' records.
-
-- **`Concat`'s docstring contradicts its code.** It claims upstream records are yielded
-  first; `process` never reads its input and discards them.
 
 - **One failing LLM call abandons its whole batch group.** `_collect_llm_batch_results`
   wraps a whole per-model group in one `try`, and `_generate_llm_group` loops `generate`
@@ -91,8 +77,14 @@ None of these were fixed — the pages document what the code does today.
   `CSVSink` raise and `ParquetSink` silently drop the column. Same input, one loud
   failure and one quiet data loss.
 
-- **`Score` clamps instead of rejecting.** A model answering `99` on a `(1, 5)` scale is
-  stored as `5` — an out-of-range answer becomes a perfect score.
+- **`Score` turns every bad answer into a confident number.** `_parse_llm_result` clamps
+  to the range and falls back to its bottom, so on `score_range=(1, 10)`: `99` is stored as
+  `10`, `"high"` as `1`, and a reply with no `score` key at all as `1`. Only a reply that is
+  not JSON is treated as a failure. A model that ignored the instruction lands in the
+  dataset as a perfect or a worst score, which then drives any downstream filter — cookbook
+  42 filters on the margin between two of them. The clamp also mixes types in one column:
+  an in-range answer is stored as a float (`7.0`) and a clamped one as the range bound
+  itself (`10`, an int), because `max`/`min` return whichever operand won.
 
 - **No step ever uses provider-side structured output.** `response_format` appears
   nowhere in `datafast/transforms/`: `LLMStep` appends JSON instructions to the prompt
@@ -126,34 +118,12 @@ None of these were fixed — the pages document what the code does today.
   it costs most. A time-based save, or a smaller default, would fit the failure it exists
   for.
 
-- **`stop_after` silently ignores an unknown step name.** The runner compares it to each
-  index and name as it goes and just never matches, so `stop_after="typo"` runs the whole
-  pipeline. `resume_from` validates its name and raises with the real list; these two
-  arguments take the same kind of value and disagree about what a wrong one means.
-
-- **`PipelineValidationError` is not exported from the top-level package.** `datafast`
-  exports `PipelineChangedError` but not the exception `compile()` raises, so catching the
-  more common of the two means importing from `datafast.core.validation` — a private-looking
-  path for the error users will hit first.
-
 - **`SeedDimension` is public, constructible and undocumented.** It is in
   `datafast.__all__`, and cookbook script 45 builds one directly to keep `label` and
   `label_description` in a single dimension. `sources_and_seed.md` names it only as a type
   in two parameter tables, so the reference page has no way to build a dimension of more
   than two columns — `Seed.expand` is parent/child only. Either document the constructor or
   give `Seed` a factory for the n-column case.
-
-- **`SeedDimension.values` is annotated `list[dict[str, any]]`.** That is the builtin
-  `any` function, not `typing.Any`. Harmless today because dataclasses do not evaluate
-  annotations, but it is wrong and a type checker rejects it — which starts mattering the
-  moment the pending `py.typed` task ships and users' checkers read this file.
-
-- **Cookbook script 43's sampling step is named for a count it does not take.**
-  `Sample(n=10, strategy="first").as_step("take_first_100")` — the name is left from a
-  larger default. It is not cosmetic: step names become checkpoint file names and the
-  `resume_from` argument, so the artefact on disk is `step_003_take_first_100.jsonl`
-  holding ten records. The published page had copied the name's claim and documented 100
-  rows; it now documents ten. Rename the step or restore `n=100`.
 
 - **A partial JSON reply is a silent success.** `JSONParser.parse` fills any
   `output_columns` entry the reply omits with `""`, logs a warning and returns normally, so
@@ -174,3 +144,59 @@ None of these were fixed — the pages document what the code does today.
 - **`fn` mode is inconsistent.** In `Classify`, `Score` and `Compare` it ignores
   `forward_columns` / `exclude_columns` and adds no `_model`; in `Extract` those
   arguments work. Undiscoverable from the docstrings.
+
+Found while writing `docs/contributing.md` (2026-08-19) — these are about the repository
+rather than the library, and every one of them costs a new contributor time.
+
+- **`uv.lock` is stale and installs a different package.** It pins `datafast 0.0.35`
+  with `anthropic`, `openai`, `google-generativeai`, `instructor`, `gradio` and
+  `botocore` — the six dependencies retired from `pyproject.toml` — and a `docs` extra
+  of `mkdocs` + `mkdocs-material` rather than `zensical`. `uv sync` therefore
+  contradicts `pyproject.toml` in both directions. Regenerate it or delete it; the
+  contributing page currently has to warn people off it.
+
+- **`[tool.pytest.ini_options]` in `pyproject.toml` is dead.** `pytest.ini` exists, and
+  it wins, so pytest prints `configfile: pytest.ini (WARNING: ignoring pytest config in
+  pyproject.toml!)` on every single run. The ignored block sets `addopts = "-ra -q"`,
+  which nobody is getting. Delete the block or merge it into `pytest.ini`.
+
+- **`ruff` is configured but unenforced, and the tree does not pass.** `ruff check .`
+  reports 62 findings (35 `W293`, 10 `C901`, 8 `F401`), and `ruff format --check` would
+  reformat 110 of 221 files. Either fix the tree and gate it in CI, or drop the tool
+  from the `dev` extra — as it stands the config implies a standard nothing upholds.
+
+- **The live gate matches on parametrize ids, not just markers.**
+  `pytest_collection_modifyitems` tests `"live" in item.keywords`, and keywords include
+  parametrize ids, so an unmarked mocked test parametrized with the string `"live"` is
+  silently skipped. Measured: a two-case parametrization over `["live", "local"]`
+  reports `1 passed, 1 skipped`. Checking `item.get_closest_marker("live")` instead
+  would be exact.
+
+- **`theme.palette.primary: black` has no effect.** Zensical ships a `classic` and a
+  `modern` build of the Material stylesheets and the site loads `modern`, which defines
+  `--md-primary-fg-color` for nineteen colours — `black` and `white` are not among them,
+  though `classic` defines both. So the header renders in the theme's default indigo
+  (`#4051b5`), not black, and has done since before dark mode. Pick a colour `modern`
+  supports (`grey`, `blue-grey`) or drop the line. Links are unaffected: the dark scheme
+  keys its `--md-typeset-a-color` override on the *attribute*, which is still `black`.
+  Pinned by `test_the_configured_primary_is_ignored_by_this_stylesheet`.
+
+- **`test_qa_pipeline.py` sits in the repository root.** It is tracked, named like a
+  test, and is not one — it is a scratch OpenRouter pipeline script. `testpaths = tests`
+  keeps it out of collection, so `pytest` never sees it, but `pytest test_qa_pipeline.py`
+  would. Move it to `examples/scripts/` or delete it.
+
+## Fixed
+
+Cleared on 2026-08-18, each with a test that fails if the behaviour comes back. See the
+CHANGELOG's *Fixed* section for what changed.
+
+- `Sample(n=0, strategy="last")` returned every record.
+- `ListSink.records` accumulated across runs.
+- `HubSink` re-prepended its README front-matter on every push.
+- `stop_after` ignored a name that matched no step.
+- `PipelineValidationError` was not exported from the top-level package.
+- `SeedDimension.values` was annotated with the builtin `any`.
+- `Concat`'s docstring contradicted its code.
+- Cookbook script 43's `take_first_100` step took ten records; renamed `take_first_10`.
+- No CI workflow ran the test suite, so a broken merge was released (2026-08-19).

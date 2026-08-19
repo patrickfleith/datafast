@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- **CI runs the test suite.** `.github/workflows/tests.yml` runs `pytest -m "not live"`
+  on every pull request, on Python 3.10 and 3.13, and needs no API key. `publish.yml`
+  calls the same job and will not release unless it passes — until now every merge to
+  `main` went to PyPI untested.
+
 ## [1.0.0] — 2026-08-18
 
 First stable release.
@@ -149,6 +156,31 @@ First stable release.
   `run_pipeline()` or `RunConfig(...)` now get a `TypeError`; drop the argument.
 
 ### Fixed
+
+- **`Sample(n=0, strategy="last")` returned every record.** `items[-0:]` is the whole
+  list; `n=0` now keeps nothing on every strategy, as `strategy="first"` always did.
+
+- **`ListSink.records` was never cleared**, so re-running one pipeline object left both
+  runs' records in the list. A run now replaces what the sink holds.
+
+- **`HubSink` re-prepended its README front-matter on every push.** The guard looked for
+  a `datafast-dataset` tag while the template writes `datafast`, so it could never match
+  what it had written. It now checks for the block it writes, and the second commit's
+  message names the tag it actually adds.
+
+- **`stop_after` silently ignored a name that matched no step**, running the whole
+  pipeline, where `resume_from` raises. Both now raise `ValueError` before the first
+  step, and an out-of-range index is rejected too.
+
+- **`PipelineValidationError` was missing from the top-level package.** Catching the
+  error `compile()` raises meant importing from `datafast.core.validation`. It is now
+  exported alongside `PipelineChangedError`.
+
+- **`SeedDimension.values` was annotated with the builtin `any`**, not `typing.Any`, so
+  a type checker rejected the annotation.
+
+- **`Concat`'s docstring claimed upstream records are yielded after its sources.** They
+  are discarded — the docstring now says so, and `compile()` already enforced it.
 
 - **Broken references to a deleted design document.** `README.md` and
   `SOFTWARE_DESCRIPTION.md` both pointed at `datafast_new_design_document.md`, which
