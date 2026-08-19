@@ -1,0 +1,26 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:  # publish.yml runs this before it releases
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The ends of the range pyproject.toml claims to support.
+        python-version: ['3.10', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - run: pip install -e ".[dev]"
+
+      # `not live` deselects the tests that call a real provider, so this job
+      # needs no API key.
+      - run: pytest -m "not live"

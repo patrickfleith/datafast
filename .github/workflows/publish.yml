@@ -21,7 +21,12 @@ permissions:
   contents: write # Needed to push version bump commit and tags
 
 jobs:
+  # Nothing is published unless the mocked suite passes first.
+  test:
+    uses: ./.github/workflows/tests.yml
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
