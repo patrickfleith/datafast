@@ -499,6 +499,17 @@ first rearranges every page, the second summarises them.
 
 ## Later / long term
 
+- **Nested `Branch` inside a branch path.** `compile()` rejects the shape today, and
+  deliberately: path tagging is a single `_branch_id` per record, so an inner branch
+  overwrites the outer one's tag and `JoinBranches` then merges the wrong groups —
+  silently, with every record dropped. Supporting it means turning that tag into a
+  stack, which touches path tagging, the cartesian join, the dotted-path checkpoint
+  file names and the pipeline fingerprint at once. Deferred on 2026-08-19: nothing in
+  the v1 documentation, cookbook or example scripts needs it, `Branch` at one level
+  already covers the recipes that motivated branching, and the runner's reliability
+  defects are the better use of the same effort. The rejection is validated and
+  tested, so the shape fails loudly rather than corrupting a run.
+
 - **vLLM support.** Delta live tests + example suite (needs a running server).
 - **llama.cpp support.** Delta live tests + example suite (needs a running server).
 - **Caching.** Full caching design from requirements: provider-native prompt caching, router/gateway caching, local prefix/KV reuse, optional client-side result cache; capability-aware cache keys/hints; cache tests (H01–H07). Only `cache_mode` metadata exists today.
