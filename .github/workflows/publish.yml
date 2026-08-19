@@ -13,7 +13,6 @@ on:
       - 'docs-agents/**'
       - 'AGENTS.md'
       - 'CLAUDE.md'
-      - 'SOFTWARE_DESCRIPTION.md'
   workflow_dispatch:  # Allows manual triggering — bypasses paths-ignore
 
 # Required permissions for the workflow to function properly

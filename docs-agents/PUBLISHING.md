@@ -17,7 +17,7 @@ This process is triggered whenever:
 
 Because every merge to `main` cuts a release, the workflow ignores pushes that
 touch only paths which cannot reach the built package: `docs/**`, `docs-agents/**`,
-`AGENTS.md`, `CLAUDE.md` and `SOFTWARE_DESCRIPTION.md`. A merge confined to those
+`AGENTS.md` and `CLAUDE.md`. A merge confined to those
 publishes nothing, since the resulting distribution would be identical to the one
 before it. `README.md` is not in that list — it becomes the PyPI project
 description, so editing it does change what is published.
