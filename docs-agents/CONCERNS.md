@@ -8,20 +8,6 @@ bottom rather than deleted.
 
 ## Defects
 
-- **`LLMStep(temperature=..., max_tokens=...)` does nothing.** Both are stored at
-  `datafast/transforms/llm_step.py:123-124` and never read; `ServedModel.generate()`
-  takes no such arguments. The docstring says "Override model temperature for this
-  step", which is false and renders on the generated API page. Either wire them up or
-  remove them and the docstring. The ROADMAP repeated this claim and has been corrected.
-
-- **A mistyped prompt file path becomes the prompt.** `_load_prompt_if_file` returns
-  `str(prompt)` when the path is not a file, so `prompt=Path("prompts/typo.txt")` sends
-  the literal string `prompts/typo.txt` to the model. No error, real spend.
-
-- **`Filter`'s `$or` / `$and` ignore sibling keys.** They return immediately, so
-  `{"$or": [...], "score": {"$gt": 100}}` silently drops the `score` condition and keeps
-  a record scoring 0.
-
 - **A branch path that rewrites an existing column loses the change.** `JoinBranches`
   copies pre-branch columns unsuffixed from the first path that produced a record and
   suffixes only *new* columns, so if two paths both rewrite `text`, the second is
@@ -45,10 +31,6 @@ bottom rather than deleted.
   nothing at all — exactly the silent reasoning-and-billing bug already fixed twice
   (gemini-3, sonnet-5). Any future reasoning model on those three reintroduces it until
   someone adds a catalog entry.
-
-- **`Pair(strategy="random")` with no `max_pairs` yields 100,000 tuples per group.**
-  Three input records produced exactly 100,000 outputs, duplicates allowed. The next LLM
-  step pays for all of them.
 
 - **Ragged records fail asymmetrically.** A later record with an extra column makes
   `CSVSink` raise and `ParquetSink` silently drop the column. Same input, one loud
@@ -118,23 +100,6 @@ bottom rather than deleted.
 Found while writing `docs/contributing.md` (2026-08-19) — these are about the repository
 rather than the library, and every one of them costs a new contributor time.
 
-- **`[tool.pytest.ini_options]` in `pyproject.toml` is dead.** `pytest.ini` exists, and
-  it wins, so pytest prints `configfile: pytest.ini (WARNING: ignoring pytest config in
-  pyproject.toml!)` on every single run. The ignored block sets `addopts = "-ra -q"`,
-  which nobody is getting. Delete the block or merge it into `pytest.ini`.
-
-- **`ruff` is configured but unenforced, and the tree does not pass.** `ruff check .`
-  reports 62 findings (35 `W293`, 10 `C901`, 8 `F401`), and `ruff format --check` would
-  reformat 110 of 221 files. Either fix the tree and gate it in CI, or drop the tool
-  from the `dev` extra — as it stands the config implies a standard nothing upholds.
-
-- **The live gate matches on parametrize ids, not just markers.**
-  `pytest_collection_modifyitems` tests `"live" in item.keywords`, and keywords include
-  parametrize ids, so an unmarked mocked test parametrized with the string `"live"` is
-  silently skipped. Measured: a two-case parametrization over `["live", "local"]`
-  reports `1 passed, 1 skipped`. Checking `item.get_closest_marker("live")` instead
-  would be exact.
-
 - **`theme.palette.primary: black` has no effect.** Zensical ships a `classic` and a
   `modern` build of the Material stylesheets and the site loads `modern`, which defines
   `--md-primary-fg-color` for nineteen colours — `black` and `white` are not among them,
@@ -143,11 +108,6 @@ rather than the library, and every one of them costs a new contributor time.
   supports (`grey`, `blue-grey`) or drop the line. Links are unaffected: the dark scheme
   keys its `--md-typeset-a-color` override on the *attribute*, which is still `black`.
   Pinned by `test_the_configured_primary_is_ignored_by_this_stylesheet`.
-
-- **`test_qa_pipeline.py` sits in the repository root.** It is tracked, named like a
-  test, and is not one — it is a scratch OpenRouter pipeline script. `testpaths = tests`
-  keeps it out of collection, so `pytest` never sees it, but `pytest test_qa_pipeline.py`
-  would. Move it to `examples/scripts/` or delete it.
 
 ## Fixed
 
@@ -170,5 +130,29 @@ Cleared on 2026-08-18, each with a test that fails if the behaviour comes back.
   did under `process()` (2026-08-19).
 - A crash before the first progress save recovered nothing; `checkpoint_every` no longer
   affects what resume knows (2026-08-19).
+- `LLMStep(temperature=..., max_tokens=...)` did nothing. Both parameters are gone, since
+  temperature is resolved from the served model's config through the capability gate and a
+  per-step override would be a feature, not a fix (2026-08-20).
+- A mistyped prompt file path became the prompt and was sent to the model. A missing file
+  now raises `FileNotFoundError` before the first call, for any `Path` and for a string
+  that reads as a path to a prompt file (2026-08-20).
+- `Filter`'s `$or` / `$and` returned early and dropped sibling keys. Every key in a
+  `where` dict now has to hold, so a logical operator narrows its siblings rather than
+  replacing them (2026-08-20).
+- `Pair(strategy="random")` with no `max_pairs` yielded 100,000 tuples per group. The cap
+  is now required for that strategy — and so for a bare `Pair()`, since random is the
+  default — raising `ValueError` when the step is built (2026-08-20).
+- The dead `[tool.pytest.ini_options]` block is gone from `pyproject.toml`, so pytest no
+  longer warns on every run. `minversion` moved to `pytest.ini`; `addopts = "-ra -q"` was
+  dropped rather than adopted, since nobody had been getting it (2026-08-20).
+- `ruff check .` passes and CI gates on it. The lint selection is now `E`, `F`, `C4`, `W`:
+  `C90` complexity was dropped on purpose, since ten core functions sit above any
+  threshold worth setting and splitting them is a refactor, not a lint fix. `ruff format`
+  is still not adopted — it would rewrite 110 of 221 files (2026-08-20).
+- The live gate reads `item.get_closest_marker("live")` instead of `item.keywords`, so a
+  mocked test parametrized with the string "live" is no longer skipped (2026-08-20).
+- `test_qa_pipeline.py` is deleted. It was a scratch script duplicating
+  `examples/scripts/38_pipeline_qa_generation.py`, which does the same pipeline properly
+  (2026-08-20).
 - The `uv.lock` finding was wrong: the file is gitignored, so no clone has one and
   nothing ships it. The contributing page's warning about it is gone (2026-08-19).

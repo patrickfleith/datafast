@@ -4,7 +4,6 @@
 
 ## To do
 
-- [ ] Generate `docs-agents/SUM.md` — needs `/write-manual`, which only Patrick can invoke; an agent may not reproduce it
 - [ ] <task> <!-- optional (context) -->
 
 ## Conventions for documentation pages
@@ -21,7 +20,7 @@ Kept from the v1 launch, because every future page follows them.
 
 ## Done
 
-- [X] Retire `SOFTWARE_DESCRIPTION.md` — deleted after verifying every section is covered elsewhere; `SUM.md` remains open above
+- [X] Retire `SOFTWARE_DESCRIPTION.md` — deleted after verifying every section is covered elsewhere
 - [X] Ship `py.typed` — plus the package-data entry, verified inside a built wheel, with 74 tests guarding the annotations it exposes
 - [X] Nav restructure — nine finished pages had been unreachable; three superseded guides deleted and their 31 inbound links rewritten
 - [X] "What's in v1" release notes — 146 lines, 23 tests; the rough edges are user-facing, with no code detail

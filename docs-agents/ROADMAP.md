@@ -29,10 +29,12 @@
 ### Packaging and CI
 
 - Dependency surface trimmed to the five packages actually imported. A base install resolves to 50 packages against the old 107.
+- `litellm` floored at `>=1.83,<2`: 1.82.7 and 1.82.8 were published with malware, and the v1 dependency trim had dropped main's `==1.82.6` pin.
 - Release metadata set for v1: version `1.0.0`, Production/Stable classifier, and the documentation URL pointing at the docs site.
 - `py.typed` shipped and verified inside a built wheel, so type checkers read the annotations the package already carried.
 - CI runs the test suite on every pull request and gates the PyPI release on it.
 - Docs CI installs the `docs` extra and builds with `--strict`, so CI and a local build cannot drift apart.
+- Repository hygiene before v1: pytest configured in one file, `ruff check .` clean and gated in CI, the live gate reading markers rather than parametrize ids, and the scratch script out of the repository root.
 
 ### Testing
 
@@ -65,13 +67,9 @@ Nothing in flight — the next item is picked from Next up.
 
 ## Next up
 
-- **Generate `docs-agents/SUM.md`** with the `write-manual` skill, which only Patrick can invoke.
-- **Repository hygiene from `CONCERNS.md`.** Five small items, each costing a new contributor time.
-  - `uv.lock` is stale and installs a different package than `pyproject.toml` describes.
-  - The `[tool.pytest.ini_options]` block is dead; `pytest.ini` wins and pytest warns every run.
-  - `ruff` is configured but unenforced, and the tree does not pass it.
-  - The live gate matches parametrize ids, so an unmarked test named "live" is skipped.
-  - `test_qa_pipeline.py` sits in the repository root and is not a test.
+- **`theme.palette.primary: black` has no effect.** The `modern` Material stylesheet the
+  site loads does not define that colour, so the header renders in the default indigo.
+  Pick a colour it supports or drop the line.
 
 ## Later / long term
 
