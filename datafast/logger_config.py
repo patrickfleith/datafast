@@ -16,7 +16,7 @@ def configure_logger(
     serialize: bool = False,
 ) -> None:
     """Configure the global logger for datafast.
-    
+
     Args:
         level: Minimum log level (DEBUG, INFO, SUCCESS, WARNING, ERROR)
         log_file: Optional path to log file. If provided, logs will be written to both
@@ -24,23 +24,23 @@ def configure_logger(
         format_string: Custom format string (uses default if None)
         colorize: Enable colored output for console
         serialize: Output logs as JSON (useful for production monitoring)
-    
+
     Examples:
         >>> # Default: INFO level, console only
         >>> configure_logger()
-        
+
         >>> # With file logging
         >>> configure_logger(level="INFO", log_file="datafast.log")
-        
+
         >>> # Debug mode with file
         >>> configure_logger(level="DEBUG", log_file="debug.log")
-        
+
         >>> # Production: JSON format
         >>> configure_logger(level="WARNING", serialize=True, log_file="prod.log")
     """
     # Remove default handler
     logger.remove()
-    
+
     if format_string is None:
         if serialize:
             # JSON format for production - add to both console and file
@@ -62,7 +62,7 @@ def configure_logger(
                 "<cyan>{name}</cyan>:<cyan>{function}</cyan> - "
                 "<level>{message}</level>"
             )
-            
+
             # Console handler (colorized)
             logger.add(
                 sys.stderr,
@@ -70,7 +70,7 @@ def configure_logger(
                 level=level,
                 colorize=colorize,
             )
-            
+
             # File handler (no colors, with rotation)
             if log_file:
                 logger.add(

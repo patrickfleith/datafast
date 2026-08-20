@@ -7,13 +7,13 @@ from typing import Any
 
 class LLMExecutionStrategy(Enum):
     """Strategy for ordering LLM calls during execution."""
-    
+
     BY_MODEL = "by_model"
     """Execute all calls for model A first, then model B, etc."""
-    
+
     ROUND_ROBIN = "round_robin"
     """Interleave models: A₁, B₁, A₂, B₂, ..."""
-    
+
     BY_RECORD = "by_record"
     """Process each record completely before moving to next (default LLMStep behavior)."""
 
@@ -21,13 +21,13 @@ class LLMExecutionStrategy(Enum):
 @dataclass
 class RunConfig:
     """Configuration for pipeline execution."""
-    
+
     checkpoint_dir: str | None = None
     """Directory for checkpoint files. None disables checkpointing."""
-    
+
     resume: bool = False
     """Whether to resume from existing checkpoint."""
-    
+
     resume_from: str | None = None
     """Re-run from this step name, discarding it and all later steps.
     Reuses completed upstream steps (requires an existing checkpoint)."""
@@ -56,34 +56,34 @@ class RunConfig:
 @dataclass
 class LLMCall:
     """Represents a single LLM call to be executed."""
-    
+
     call_id: str
     """Unique identifier for this call."""
-    
+
     record: dict[str, Any]
     """Source record this call is derived from."""
-    
+
     record_index: int
     """Index of the source record."""
-    
+
     prompt_template: str
     """Original prompt template."""
-    
+
     prompt_index: int
     """Index of prompt in prompt list."""
-    
+
     model_id: str
     """Model identifier."""
-    
+
     language_code: str
     """Language code (empty string if no language)."""
-    
+
     language_name: str
     """Language name (empty string if no language)."""
-    
+
     messages: list[dict[str, str]]
     """Pre-built messages for LLM API."""
-    
+
     output_index: int
     """Index for num_outputs (0 to num_outputs-1)."""
 
@@ -91,19 +91,19 @@ class LLMCall:
 @dataclass
 class StepStatus:
     """Status of a single step in checkpoint manifest."""
-    
+
     index: int
     """Step index in pipeline."""
-    
+
     name: str
     """Step name."""
-    
+
     status: str
     """Status: 'pending', 'in_progress', 'complete'."""
-    
+
     records_in: int | None = None
     """Number of input records."""
-    
+
     records_out: int | None = None
     """Number of output records."""
 
@@ -111,24 +111,24 @@ class StepStatus:
 @dataclass
 class LLMStepProgress:
     """Progress tracking within an LLM step."""
-    
+
     step_index: int
     """Index of the LLM step."""
-    
+
     step_name: str
     """Name of the LLM step."""
-    
+
     total_calls: int
     """Total number of LLM calls."""
-    
+
     completed_call_ids: list[str] = field(default_factory=list)
     """IDs of completed calls."""
-    
+
     @property
     def completed_calls(self) -> int:
         """Number of completed calls."""
         return len(self.completed_call_ids)
-    
+
     @property
     def progress_fraction(self) -> float:
         """Fraction of calls completed (0.0 to 1.0)."""

@@ -2,12 +2,9 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from datafast.core.types import Record
-
-if TYPE_CHECKING:
-    from datafast.core.config import RunConfig
 
 
 class Step(ABC):

@@ -97,7 +97,7 @@ def test_factory_exports_are_available(monkeypatch):
 
 def test_both_pipeline_exceptions_are_on_the_top_level_package():
     """compile() raises the more common of the two; it must not need a private path."""
-    from datafast import PipelineChangedError, PipelineValidationError
+    from datafast import PipelineValidationError
     from datafast.core.validation import PipelineValidationError as internal
 
     assert PipelineValidationError is internal

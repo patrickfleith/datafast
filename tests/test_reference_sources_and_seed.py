@@ -17,7 +17,6 @@ from pathlib import Path
 import pytest
 
 from datafast import Seed, Source
-from datafast.sources.source import FileSource
 
 ROOT = Path(__file__).parent.parent
 PAGE = ROOT / "docs" / "reference" / "sources_and_seed.md"

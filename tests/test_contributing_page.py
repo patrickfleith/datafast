@@ -246,9 +246,7 @@ def test_the_page_quotes_each_markers_registered_description(marker):
 
 def test_every_live_module_carries_the_gate_marker_and_a_provider_marker():
     """The page's `pytestmark = [pytest.mark.live, pytest.mark.anthropic]` shape."""
-    modules = [
-        p for p in (ROOT / "tests" / "live").rglob("test_*.py")
-    ]
+    modules = list((ROOT / "tests" / "live").rglob("test_*.py"))
     assert modules
     providers = set(_markers_in_ini()) - {"live", "multimodal"}
     for module in modules:
@@ -413,7 +411,7 @@ def test_most_pages_carry_a_test_that_names_them():
         pinned.update(
             re.findall(r'"docs"((?: / "[\w.]+")+)', test.read_text())
         )
-    pages = {p for p in (ROOT / "docs").rglob("*.md")}
+    pages = set((ROOT / "docs").rglob("*.md"))
     assert len(pinned) >= len(pages) * 0.7, "the page-test convention has decayed"
 
 

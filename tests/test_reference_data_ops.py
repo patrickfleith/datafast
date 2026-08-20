@@ -384,7 +384,9 @@ def test_a_group_smaller_than_n_produces_nothing():
 
 def test_max_pairs_caps_the_total_and_seed_makes_random_repeatable():
     assert len(list(Pair(strategy="all", max_pairs=2).process(iter(PAIRABLE)))) == 2
-    run = lambda: list(Pair(seed=7, max_pairs=5).process(iter(PAIRABLE)))
+    def run():
+        return list(Pair(seed=7, max_pairs=5).process(iter(PAIRABLE)))
+
     assert run() == run()
     assert run() != list(Pair(seed=8, max_pairs=5).process(iter(PAIRABLE)))
 

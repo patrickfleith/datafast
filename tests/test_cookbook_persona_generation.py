@@ -29,7 +29,7 @@ from datafast import Sample, Source
 from datafast.core.step import Pipeline
 from datafast.sinks.sink import HubSink, JSONLSink
 from datafast.sources.source import HuggingFaceSource
-from datafast.transforms.data_ops import AddUUID, Filter, Map
+from datafast.transforms.data_ops import Filter
 from datafast.transforms.llm_step import LLMStep
 
 ROOT = Path(__file__).parent.parent

@@ -30,7 +30,7 @@ def run_case(policy: str) -> None:
         try:
             response = model.generate(prompt=PROMPT, previous_response_id="resp_demo")
         except ValueError as exc:
-            print(f"status: error")
+            print("status: error")
             print(f"detail: {exc}")
         else:
             print("status: ok")

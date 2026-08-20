@@ -60,7 +60,7 @@ class StubModel:
         self.prompts.append(prompt if prompt is not None else messages[-1]["content"])
         if response_format is not None:
             return response_format(
-                **{name: "stub" for name in response_format.model_fields}
+                **dict.fromkeys(response_format.model_fields, "stub")
             )
         return '{"question": "Q?", "answer": "A."}'
 

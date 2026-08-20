@@ -26,7 +26,7 @@ import datafast
 from datafast import Seed, SeedDimension
 from datafast.sinks.sink import HubSink, JSONLSink
 from datafast.sources.seed import SeedSource
-from datafast.transforms.data_ops import AddUUID, Map
+from datafast.transforms.data_ops import AddUUID
 from datafast.transforms.llm_step import LLMStep
 
 ROOT = Path(__file__).parent.parent
@@ -258,7 +258,7 @@ def test_both_languages_and_both_models_appear_in_the_output(completed_run, scri
 def test_every_label_gets_the_same_number_of_rows(completed_run, script):
     """The page's claim that the product balances the classes by construction."""
     records, _ = completed_run
-    counts = {label: 0 for label in (e["label"] for e in script.LABELS)}
+    counts = dict.fromkeys((e["label"] for e in script.LABELS), 0)
     for record in records:
         counts[record["label"]] += 1
     assert len(set(counts.values())) == 1, f"the classes are not balanced: {counts}"
