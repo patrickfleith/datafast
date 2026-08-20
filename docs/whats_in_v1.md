@@ -90,15 +90,11 @@ documented in more detail on the page that covers it.
 
 ### LLM steps
 
-- `temperature` and `max_tokens` passed to a step do nothing. Set them on the served
-  model instead.
 - When a call fails, that record is dropped and the run continues, so **count your
   output records** against what you expected. Set `on_parse_error="raise"` on the step
   to stop on the first failure instead.
 - If a model returns only some of the columns you asked for, the missing ones arrive
   empty rather than raising. An empty column is not reported as an error.
-- A prompt file path that does not exist is sent to the model as literal text. No error,
-  real spend — check the file is there before a long run.
 
 ### Resume and checkpoints
 
@@ -106,12 +102,11 @@ documented in more detail on the page that covers it.
   checkpoint. Resume will continue as if nothing changed. Point a changed pipeline at a
   fresh checkpoint directory.
 
-### Scoring and filtering
+### Scoring
 
 - `Score` always returns a number inside the range you gave it. A model that ignores the
   instruction still produces a score, usually the lowest one. Look at the spread before
   you filter on it.
-- In `Filter`, `$or` and `$and` ignore any other condition written beside them.
 
 ### Branching
 
@@ -120,8 +115,6 @@ documented in more detail on the page that covers it.
 
 ### Data ops and sinks
 
-- `Pair(strategy="random")` without `max_pairs` produces 100,000 pairs per group. The
-  next LLM step pays for every one.
 - If your records do not all carry the same columns, CSV raises and Parquet quietly
   drops the extra column.
 
