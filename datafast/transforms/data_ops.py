@@ -211,16 +211,20 @@ class Filter(Step):
         return self._evaluate_where(record, self._where)
 
     def _evaluate_where(self, record: Record, condition: dict) -> bool:
-        """Evaluate a declarative where condition."""
-        if "$or" in condition:
-            return any(
-                self._evaluate_where(record, sub) for sub in condition["$or"]
-            )
+        """Evaluate a declarative where condition.
 
-        if "$and" in condition:
-            return all(
-                self._evaluate_where(record, sub) for sub in condition["$and"]
-            )
+        Every key must hold, so a logical operator alongside column conditions
+        narrows them rather than replacing them.
+        """
+        if "$or" in condition and not any(
+            self._evaluate_where(record, sub) for sub in condition["$or"]
+        ):
+            return False
+
+        if "$and" in condition and not all(
+            self._evaluate_where(record, sub) for sub in condition["$and"]
+        ):
+            return False
 
         for key, value in condition.items():
             if key.startswith("$"):

@@ -315,8 +315,8 @@ several times on both sides yields one record per combination.
   reach the output record.
 - **`Pair(strategy="random")` without `max_pairs` will make up to 100,000 tuples.** Set
   the cap, and set `seed` if you want the same dataset twice.
-- **`$or` and `$and` win their whole dict.** In `{"$or": [...], "score": {"$gt": 5}}` the
-  `score` condition is silently ignored. Put it inside the `$or` list, or use `$and`.
+- **`$or` and `$and` narrow their siblings.** In `{"$or": [...], "score": {"$gt": 5}}` a
+  record must match the `$or` *and* score above 5. Every key in a `where` dict must hold.
 - **A missing column is not an error in `Filter`.** It reads as `None`, so it fails most
   conditions but satisfies `$ne`, `$nin` and `$exists: False`.
 - **`Concat` discards upstream records** and must be the first step.

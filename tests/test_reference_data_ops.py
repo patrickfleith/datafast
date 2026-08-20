@@ -222,10 +222,17 @@ def test_and_keeps_a_record_matching_all_conditions():
     assert list(step.process(iter([{"a": 1, "b": 2}, {"a": 1, "b": 3}]))) == [{"a": 1, "b": 2}]
 
 
-def test_a_logical_operator_silently_ignores_its_siblings():
-    """The page's sharpest Filter trap: the score condition below does nothing."""
+def test_a_logical_operator_narrows_its_siblings_rather_than_replacing_them():
+    """Every key in a where dict must hold, `$or` and `$and` included."""
     step = Filter(where={"$or": [{"a": 1}], "score": {"$gt": 100}})
-    assert list(step.process(iter([{"a": 1, "score": 0}]))) == [{"a": 1, "score": 0}]
+    records = [{"a": 1, "score": 0}, {"a": 1, "score": 200}, {"a": 2, "score": 200}]
+    assert list(step.process(iter(records))) == [{"a": 1, "score": 200}]
+
+
+def test_or_and_and_can_be_combined_in_one_where():
+    step = Filter(where={"$or": [{"a": 1}, {"a": 2}], "$and": [{"b": {"$gt": 5}}]})
+    records = [{"a": 1, "b": 9}, {"a": 1, "b": 1}, {"a": 3, "b": 9}]
+    assert list(step.process(iter(records))) == [{"a": 1, "b": 9}]
 
 
 def test_keep_false_inverts_the_condition():
