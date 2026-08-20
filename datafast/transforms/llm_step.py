@@ -15,6 +15,20 @@ from datafast.tracing import build_trace_metadata
 from datafast.transforms.sample import Sample
 
 
+# Suffixes that mark a string as a path to a prompt file rather than a prompt.
+_PROMPT_FILE_SUFFIXES = frozenset(
+    {".txt", ".md", ".jinja", ".jinja2", ".j2", ".prompt", ".tmpl"}
+)
+
+
+def _looks_like_a_prompt_file(prompt: str) -> bool:
+    """True for a string meant as a path to a prompt file, not as a prompt."""
+    return (
+        not any(char.isspace() for char in prompt)
+        and Path(prompt).suffix.lower() in _PROMPT_FILE_SUFFIXES
+    )
+
+
 class LLMStep(Step):
     """
     Core step for free-form LLM generation.
@@ -132,6 +146,11 @@ class LLMStep(Step):
         """Load prompt content if the value is a file path."""
         path = Path(prompt)
         if not path.is_file():
+            if isinstance(prompt, Path) or _looks_like_a_prompt_file(prompt):
+                raise FileNotFoundError(
+                    f"Prompt file not found: {path}. Pass the prompt text itself, "
+                    f"or a path to a file that exists."
+                )
             return str(prompt)
 
         cache_key = str(path)

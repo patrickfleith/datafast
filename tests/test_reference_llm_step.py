@@ -295,12 +295,29 @@ def test_a_prompt_that_is_an_existing_file_is_read(tmp_path):
     assert model.calls[0][0]["content"] == "Summarize: a doc"
 
 
-def test_a_missing_prompt_path_becomes_the_prompt_text(tmp_path, monkeypatch):
-    """The page's sharpest trap: no file, no error, the path is sent as the prompt."""
+@pytest.mark.parametrize("prompt", [Path("prompts/summarize.txt"), "prompts/summarize.txt"])
+def test_a_missing_prompt_file_raises_before_any_call(tmp_path, monkeypatch, prompt):
+    """The page promises FileNotFoundError, for a Path and for a path-like string."""
     monkeypatch.chdir(tmp_path)
     model = StubModel()
     step = LLMStep(
-        prompt=Path("prompts/summarize.txt"),
+        prompt=prompt,
+        input_columns=[],
+        model=model,
+        output_column="out",
+    )
+
+    with pytest.raises(FileNotFoundError, match="prompts/summarize.txt"):
+        list(step.process(iter([{}])))
+
+    assert model.calls == [], "the model was called despite the missing file"
+
+
+def test_a_prompt_that_does_not_read_as_a_path_is_still_a_prompt():
+    """Only the suffixes the page lists, with no whitespace, are treated as paths."""
+    model = StubModel()
+    step = LLMStep(
+        prompt="Summarize this in one sentence.",
         input_columns=[],
         model=model,
         output_column="out",
@@ -308,7 +325,7 @@ def test_a_missing_prompt_path_becomes_the_prompt_text(tmp_path, monkeypatch):
 
     list(step.process(iter([{}])))
 
-    assert model.calls[0][0]["content"] == "prompts/summarize.txt"
+    assert model.calls[0][0]["content"] == "Summarize this in one sentence."
 
 
 def test_a_placeholder_outside_input_columns_raises():

@@ -63,9 +63,10 @@ step = LLMStep(
 )
 ```
 
-The path is only treated as a file **if that file exists**. If it does not, the value is
-used as the prompt text itself, so a mistyped path becomes a prompt that reads
-`prompts/summarize.txt`. Check the path before you run.
+A missing file raises `FileNotFoundError` at the first record, before any call is made.
+That covers every `Path`, and any string that reads as a path to a prompt file — no
+whitespace, and one of the suffixes `.txt`, `.md`, `.jinja`, `.jinja2`, `.j2`,
+`.prompt`, `.tmpl`. Any other string is the prompt itself.
 
 ## The output
 
@@ -245,8 +246,7 @@ the run stops on the first failure.
 
 - **Count the calls before you run.** Records × prompts × served models × languages ×
   `num_outputs`. Three small choices multiply into a large bill.
-- **A mistyped prompt path becomes the prompt.** No file, no error — the string is used
-  as-is.
+- **A mistyped prompt path raises.** `FileNotFoundError`, before the first call.
 - **`json` and `xml` add format instructions** to the end of your prompt. Do not write
   your own on top of them.
 - **A missing key or tag is an empty string**, not a failure. The record is still yielded.

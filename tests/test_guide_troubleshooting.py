@@ -630,8 +630,8 @@ def test_only_the_five_documented_error_types_are_retried():
 # --- the silent failures ---------------------------------------------------------
 
 
-def test_a_mistyped_prompt_file_path_becomes_the_prompt(tmp_path, monkeypatch):
-    """One of the page's silent failures, with real spend behind it."""
+def test_a_mistyped_prompt_file_path_raises_before_any_call(tmp_path, monkeypatch):
+    """The page promises this fails loudly, before anything is spent."""
     monkeypatch.chdir(tmp_path)
     seen: list[str] = []
 
@@ -646,8 +646,9 @@ def test_a_mistyped_prompt_file_path_becomes_the_prompt(tmp_path, monkeypatch):
         output_column="out",
         model=Recorder(),
     )
-    (Source.list([{"text": "a"}]) >> step >> ListSink()).run()
-    assert seen == ["prompts/typo.txt"], "the path itself was sent to the model"
+    with pytest.raises(FileNotFoundError, match="prompts/typo.txt"):
+        (Source.list([{"text": "a"}]) >> step >> ListSink()).run()
+    assert seen == [], "a call was made despite the missing file"
 
 
 STOP_AFTER_CASES = [

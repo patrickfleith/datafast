@@ -273,9 +273,8 @@ The list worth re-reading when a run finishes and the output looks wrong.
 - **Dropped records.** The default `on_parse_error="skip"` swallows every exception, not
   just parse failures. Compare the output count with the input count, or set
   `on_parse_error="raise"` to stop on the first one.
-- **A mistyped prompt file path becomes the prompt.** `prompt=Path("prompts/typo.txt")`
-  sends the literal text `prompts/typo.txt` to the model when the file does not exist. No
-  error, real spend. Check the file exists before the run.
+- **A mistyped prompt file path raises.** `prompt=Path("prompts/typo.txt")` raises
+  `FileNotFoundError` at the first record when the file does not exist, before any call.
 - **The checkpoint fingerprint ignores prompts and served models.** Only step names and
   classes are hashed.
 - **A parse mode never fails loudly in XML.** A missing tag gives an empty string.
