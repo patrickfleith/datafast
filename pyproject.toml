@@ -77,10 +77,6 @@ include = ["datafast*"]
 [tool.setuptools.package-data]
 datafast = ["py.typed"]
 
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra -q"
-
 [tool.ruff]
 # Basic Ruff configuration
 exclude = ["venv", ".venv", "build", "dist", "__pycache__"]

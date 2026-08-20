@@ -388,17 +388,18 @@ def test_both_guards_live_in_the_shared_conftest_the_page_names():
 # --- the two config files ---------------------------------------------------------
 
 
-def test_pytest_really_ignores_the_pyproject_block_as_the_page_says():
-    assert "[tool.pytest.ini_options]" in PYPROJECT.read_text()
+def test_pytest_is_configured_in_one_file_and_says_so_without_warning():
+    """Two config files made pytest warn on every run; the page says there is one."""
+    assert "[tool.pytest.ini_options]" not in PYPROJECT.read_text()
     header = subprocess.run(
         [str(VENV_PYTEST), "--collect-only", "tests/test_public_api.py"],
         cwd=ROOT,
         capture_output=True,
         text=True,
     ).stdout
-    quoted = "configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)"
-    assert quoted in header
-    assert quoted in _page(), "the page quotes the warning; the wording drifted"
+    assert "configfile: pytest.ini" in header
+    assert "WARNING: ignoring pytest config" not in header
+    assert "`pytest.ini`" in _page()
 
 
 # --- the page-test convention -----------------------------------------------------

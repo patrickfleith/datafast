@@ -122,16 +122,11 @@ Both fixtures live in `tests/live/conftest.py`. `require_ollama` is there rather
 `tests/live/ollama/` because the root-level pipeline test needs the same guard, and two
 copies could disagree about which host to check.
 
-### One warning you can ignore
+### Where pytest is configured
 
-Every run prints this:
-
-```
-configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)
-```
-
-`pytest.ini` wins over `pyproject.toml` when both exist. The `[tool.pytest.ini_options]`
-block in `pyproject.toml` has no effect. Nothing you did causes this message.
+`pytest.ini`, and nowhere else. `pyproject.toml` carries no `[tool.pytest.ini_options]`
+block: `pytest.ini` would win over it anyway, and pytest warns on every run when both
+exist.
 
 ## Documentation
 
