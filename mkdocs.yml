@@ -23,17 +23,21 @@ theme:
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: black
-      accent: teal
+      accent: yellow
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: black
-      accent: teal
+      accent: yellow
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+
+# TEMPORARY palette preview — see docs/stylesheets/palette-preview.css
+extra_css:
+  - stylesheets/palette-preview.css
 
 markdown_extensions:
   - admonition
