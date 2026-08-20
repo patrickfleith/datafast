@@ -16,5 +16,7 @@ def pytest_collection_modifyitems(config, items):
 
     skip_live = pytest.mark.skip(reason="requires --run-live")
     for item in items:
-        if "live" in item.keywords:
+        # The marker, not `item.keywords`: keywords also hold parametrize ids,
+        # so a mocked test with an id of "live" would be skipped too.
+        if item.get_closest_marker("live"):
             item.add_marker(skip_live)

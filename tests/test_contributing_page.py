@@ -74,11 +74,7 @@ def _markers_in_ini() -> list[str]:
 
 
 def _marker_id(marker: str) -> str:
-    """Parametrize ids become pytest keywords, and the live gate matches on those.
-
-    An id of exactly "live" would make the gate skip this file's own tests. See
-    `test_the_gate_also_catches_a_parametrize_id_named_live`.
-    """
+    """Readable ids for the marker parametrizations below."""
     return f"marker-{marker}"
 
 
@@ -303,12 +299,11 @@ def test_run_live_lets_the_live_test_through(gate_session):
     assert "2 passed" in gate_session("--run-live")
 
 
-def test_the_gate_also_catches_a_parametrize_id_named_live(gate_session, tmp_path):
-    """The trap the page warns about, and the reason this file's ids are prefixed.
+def test_the_gate_ignores_a_parametrize_id_named_live(gate_session, tmp_path):
+    """The gate reads the marker, so an id of "live" on a mocked test is not the gate's.
 
-    `pytest_collection_modifyitems` matches on `item.keywords`, which holds parametrize
-    ids as well as markers — so an unmarked test parametrized with the string "live" is
-    skipped by the gate too, wherever it lives.
+    `item.keywords` holds parametrize ids as well as markers, which is why
+    `pytest_collection_modifyitems` asks for the marker instead.
     """
     module = tmp_path / "tests" / "test_ids.py"
     module.parent.mkdir(parents=True, exist_ok=True)
@@ -326,7 +321,7 @@ def test_the_gate_also_catches_a_parametrize_id_named_live(gate_session, tmp_pat
         capture_output=True,
         text=True,
     ).stdout
-    assert "1 passed, 1 skipped" in result, result[-800:]
+    assert "2 passed" in result, result[-800:]
 
 
 def test_the_gate_is_the_only_thing_standing_between_a_default_run_and_a_provider():

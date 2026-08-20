@@ -104,9 +104,8 @@ them from the run entirely instead of reporting a wall of skips.
 A live module carries two: `pytestmark = [pytest.mark.live, pytest.mark.anthropic]`. The
 first one arms the gate, the second lets you run one provider at a time.
 
-The gate matches on pytest's keywords, and keywords include parametrize ids. A test
-parametrized with the string `"live"` is skipped by the gate as well, even in the mocked
-suite. Name that parameter something else.
+The gate matches on the marker alone, so a mocked test parametrized with the string
+`"live"` runs normally. Only `pytest.mark.live` arms it.
 
 ### Live tests skip themselves
 
