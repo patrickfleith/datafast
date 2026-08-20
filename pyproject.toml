@@ -27,7 +27,11 @@ classifiers = [
 # openai) are not imported here — LiteLLM reaches those providers over its own
 # HTTP transport. Optional file formats and Hub I/O live in the extras.
 dependencies = [
-    "litellm",
+    # Floor, not a pin: litellm 1.82.7 and 1.82.8 were published with malware,
+    # so 1.83 is the oldest release that is known good. Do not lower it. The
+    # upper bound is there because the provider adapters track litellm's API
+    # closely enough that a 2.0 could break them on a fresh install.
+    "litellm>=1.83,<2",
     "loguru",
     "pydantic",
     "httpx",
