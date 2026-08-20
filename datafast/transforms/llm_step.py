@@ -66,8 +66,6 @@ class LLMStep(Step):
         output_columns: list[str] | None = None,
         output_column: str = "generated",
         parse_mode: str = "text",
-        temperature: float | None = None,
-        max_tokens: int | None = None,
         num_outputs: int = 1,
         forward_columns: list[str] | None = None,
         exclude_columns: list[str] | None = None,
@@ -87,8 +85,6 @@ class LLMStep(Step):
             output_columns: Output column names (for json/xml modes).
             output_column: Single output column name (for text mode).
             parse_mode: Output parsing mode: "text", "json", or "xml".
-            temperature: Override model temperature for this step.
-            max_tokens: Override model max_tokens for this step.
             num_outputs: Number of outputs per prompt×model×language combo.
             forward_columns: Columns to keep from input record.
             exclude_columns: Columns to drop from input record.
@@ -121,8 +117,6 @@ class LLMStep(Step):
         self._output_columns = output_columns or [output_column]
         self._output_column = output_column
         self._parse_mode = parse_mode
-        self._temperature = temperature
-        self._max_tokens = max_tokens
         self._num_outputs = num_outputs
         self._forward_columns = forward_columns
         self._exclude_columns = exclude_columns

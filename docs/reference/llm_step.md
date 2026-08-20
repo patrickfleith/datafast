@@ -22,8 +22,6 @@ the one where you write it yourself.
 | `exclude_columns` | `list[str] \| None` | `None` | drop these input columns |
 | `skip_if` | `Callable[[Record], bool] \| None` | `None` | return `True` to skip a record |
 | `system_prompt` | `str \| None` | `None` | system message put before the prompt |
-| `temperature` | `float \| None` | `None` | accepted, but not applied — see below |
-| `max_tokens` | `int \| None` | `None` | accepted, but not applied — see below |
 | `on_parse_error` | `str` | `"skip"` | `"skip"` or `"raise"` when parsing fails |
 
 Everything after `model` is keyword-only.
@@ -229,15 +227,9 @@ own data.
 
 ## Temperature and max tokens
 
-| Parameter | Type | Default | Meaning |
-|---|---|---|---|
-| `temperature` | `float \| None` | `None` | stored on the step, never sent |
-| `max_tokens` | `int \| None` | `None` | stored on the step, never sent |
-
-These two are accepted by the constructor but **not applied**. The step calls
-`ServedModel.generate()`, which takes no such arguments, so the served model's own
-settings decide temperature and length. Set them where the served model is built — see
-[Served models](served_models.md).
+The step takes neither. It calls `ServedModel.generate()`, which takes no such
+arguments, so the served model's own settings decide temperature and length. Set them
+where the served model is built — see [Served models](served_models.md).
 
 ## Errors
 
@@ -262,7 +254,6 @@ the run stops on the first failure.
 - **`skip_if` drops records** rather than letting them pass.
 - **`_prompt_index` is conditional.** With one prompt it never appears; with a `Sample`
   of prompts it appears on some records and not others. Pass a list for a stable schema.
-- **`temperature` and `max_tokens` do nothing here.** Configure the served model.
 
 ## Where to go next
 

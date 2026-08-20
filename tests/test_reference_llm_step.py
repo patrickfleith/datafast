@@ -72,8 +72,6 @@ def test_the_documented_defaults_are_the_real_defaults():
         "num_outputs": 1,
         "on_parse_error": "skip",
         "output_columns": None,
-        "temperature": None,
-        "max_tokens": None,
         "forward_columns": None,
         "exclude_columns": None,
         "language": None,
@@ -451,16 +449,15 @@ def test_the_system_prompt_is_sent_as_a_message_before_the_prompt():
 # --- temperature, max_tokens, errors ----------------------------------------
 
 
-def test_temperature_and_max_tokens_are_stored_but_never_sent():
-    """The page states these do nothing; this fails the day someone wires them up."""
+def test_the_step_takes_neither_temperature_nor_max_tokens():
+    """The page sends both to the served model; the step must not accept them."""
+    assert not {"temperature", "max_tokens"} & set(
+        inspect.signature(LLMStep).parameters
+    ), "the step takes them again — the page must say what they do"
+
     assert not {"temperature", "max_tokens"} & set(
         inspect.signature(ServedModel.generate).parameters
-    ), "generate() now takes them — the page must stop saying they are ignored"
-
-    source = (ROOT / "datafast" / "transforms" / "llm_step.py").read_text()
-    for name in ("_temperature", "_max_tokens"):
-        uses = [line for line in source.splitlines() if name in line]
-        assert uses == [f"        self.{name} = {name[1:]}"], f"{name} is used now"
+    ), "generate() takes them now — the page must stop pointing at the served model"
 
 
 def test_on_parse_error_rejects_anything_but_skip_and_raise():

@@ -278,8 +278,6 @@ The list worth re-reading when a run finishes and the output looks wrong.
   error, real spend. Check the file exists before the run.
 - **The checkpoint fingerprint ignores prompts and served models.** Only step names and
   classes are hashed.
-- **`temperature` and `max_tokens` on an LLM step are ignored.** Set them on the served
-  model instead.
 - **A parse mode never fails loudly in XML.** A missing tag gives an empty string.
 
 ## Reading the log

@@ -669,19 +669,6 @@ def test_every_documented_stop_after_error_is_real(fragment, value):
     assert documented in _page(), f"the page does not carry the real message {fragment!r}"
 
 
-def test_temperature_and_max_tokens_on_a_step_never_reach_the_model():
-    seen: list[dict] = []
-
-    class Recorder(StubModel):
-        def generate(self, messages=None, metadata=None, **kwargs):
-            seen.append(kwargs)
-            return "answer"
-
-    step = _step(Recorder(), temperature=0.1, max_tokens=7)
-    (Source.list([{"text": "a"}]) >> step >> ListSink()).run()
-    assert seen == [{}], "the page says both are ignored"
-
-
 # --- links -----------------------------------------------------------------------
 
 
