@@ -614,14 +614,23 @@ def test_ruff_is_configured_with_the_line_length_the_page_names():
     assert "88" in _page()
 
 
-def test_the_tree_still_fails_ruff_as_the_page_admits():
-    """Fix the tree and this fails — then correct the page, do not delete the test."""
+def test_the_tree_passes_ruff_as_the_page_claims():
+    """The page tells you to run this before pushing, and CI gates on it."""
     if not VENV_RUFF.exists():
         pytest.skip("ruff is not installed")
     result = subprocess.run(
         [str(VENV_RUFF), "check", "."], cwd=ROOT, capture_output=True, text=True
     )
-    assert result.returncode != 0, "the tree is ruff-clean now — update the page"
+    assert result.returncode == 0, result.stdout
+
+
+def test_the_selected_ruff_rules_are_the_ones_the_page_names():
+    """C90 is left out on purpose; the page says so and this pins it."""
+    lint = tomllib.loads(PYPROJECT.read_text())["tool"]["ruff"]["lint"]
+    assert lint["select"] == ["E", "F", "C4", "W"]
+    assert "C90" not in lint["select"], "complexity is not enforced — see the page"
+    for rule in lint["select"]:
+        assert f"`{rule}`" in _page(), f"{rule} is enforced but unmentioned"
 
 
 def test_ci_runs_the_suite_the_page_tells_you_to_run():

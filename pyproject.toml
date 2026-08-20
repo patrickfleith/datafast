@@ -83,7 +83,11 @@ exclude = ["venv", ".venv", "build", "dist", "__pycache__"]
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "W"]
+# C4 (comprehensions), not the whole C family: C90 is mccabe complexity, and ten
+# functions in the runner, the branch merge, the filter operators and the samplers
+# sit above any threshold worth setting. Splitting them is a refactor with its own
+# review, not a lint rule.
+select = ["E", "F", "C4", "W"]
 ignore = ["E501"]
 
 

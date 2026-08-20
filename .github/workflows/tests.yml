@@ -26,3 +26,5 @@ jobs:
       # `not live` deselects the tests that call a real provider, so this job
       # needs no API key.
       - run: pytest -m "not live"
+
+      - run: ruff check .

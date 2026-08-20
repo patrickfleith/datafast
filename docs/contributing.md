@@ -253,12 +253,22 @@ If your step is close to an existing one, prefer configuring that one. `Map` and
 Match the code around you. That rule outranks any linter here.
 
 `ruff` ships in the `dev` extra and `pyproject.toml` configures it with an 88-character
-line length. It is not a gate: the tree does not pass `ruff check` today, and no
-workflow runs it. Do not reformat files you are not otherwise changing — a formatting
-sweep buries the change you actually made.
+line length. The tree passes `ruff check .` and CI gates on it, so run it before you
+push:
 
-`.github/workflows/tests.yml` runs `pytest -m "not live"` on every pull request, on
-Python 3.10 and 3.13. `publish.yml` calls the same job and releases nothing unless it
+```bash
+.venv/bin/ruff check .
+```
+
+The rules are `E`, `F`, `C4` and `W`, minus `E501`. Complexity (`C90`) is deliberately
+not among them — several core functions sit above any threshold worth setting, and
+splitting them is a refactor with its own review.
+
+`ruff format` is not part of the gate. Do not reformat files you are not otherwise
+changing — a formatting sweep buries the change you actually made.
+
+`.github/workflows/tests.yml` runs `pytest -m "not live"` and `ruff check .` on every
+pull request, on Python 3.10 and 3.13. `publish.yml` calls the same job and releases nothing unless it
 passes. Run the suite locally anyway — a red pull request is a slower way to learn the
 same thing.
 
