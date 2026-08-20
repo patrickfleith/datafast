@@ -518,21 +518,22 @@ class Pair(Step):
             output_format: Output format.
                 - "columns": chunk_1_*, chunk_2_* prefixed columns
                 - "list": chunks list and {col}_list for each column
-            max_pairs: Maximum number of pairs to generate.
+            max_pairs: Maximum number of tuples to generate in total. Required
+                with strategy="random", optional for the other strategies.
             seed: Random seed for reproducibility (only for random strategy).
 
         Examples:
             >>> # Random pairs from same document
-            >>> Pair(n=2, within="document_id")
+            >>> Pair(n=2, within="document_id", max_pairs=100)
 
             >>> # Sliding window triplets
             >>> Pair(n=3, strategy="sliding")
 
             >>> # Pairs with different categories
-            >>> Pair(n=2, within="topic", across="author")
+            >>> Pair(n=2, within="topic", across="author", max_pairs=100)
 
             >>> # List output format
-            >>> Pair(n=2, output_format="list")
+            >>> Pair(n=2, output_format="list", max_pairs=100)
         """
         super().__init__()
 
@@ -549,6 +550,12 @@ class Pair(Step):
             raise ValueError(
                 f"Invalid output_format '{output_format}'. "
                 f"Valid formats: {sorted(self.VALID_OUTPUT_FORMATS)}"
+            )
+
+        if strategy == "random" and max_pairs is None:
+            raise ValueError(
+                "max_pairs is required with strategy='random'. Random draws have "
+                "no natural end, so the cap is how many tuples you want."
             )
 
         self._n = n
@@ -606,11 +613,11 @@ class Pair(Step):
         indices = list(range(len(records)))
         generated = 0
 
-        max_attempts = (self._max_pairs or 10000) * 10
+        max_attempts = self._max_pairs * 10
         attempts = 0
 
         while attempts < max_attempts:
-            if self._max_pairs and generated >= self._max_pairs:
+            if generated >= self._max_pairs:
                 break
 
             selected_indices = rng.sample(indices, self._n)

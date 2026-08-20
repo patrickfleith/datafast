@@ -15,7 +15,7 @@ starts one.
 | `AddUUID()` | add a unique id column |
 | `Filter(...)` | keep or drop records by condition |
 | `Group(by=...)` | collapse records that share a key into one record |
-| `Pair(n=2)` | combine records into pairs or larger tuples |
+| `Pair(n=2, ...)` | combine records into pairs or larger tuples |
 | `Concat(*sources)` | stack several pipelines end to end |
 | `Join(right, on=...)` | merge two pipelines side by side on a key |
 
@@ -219,7 +219,7 @@ multi-chunk questions.
 | `within` | `str \| list[str] \| None` | `None` | records must share these columns to be combined |
 | `across` | `str \| list[str] \| None` | `None` | records must differ on these columns to be combined |
 | `output_format` | `str` | `"columns"` | `"columns"` or `"list"` |
-| `max_pairs` | `int \| None` | `None` | stop after this many tuples in total |
+| `max_pairs` | `int \| None` | `None` | stop after this many tuples in total; **required** with `"random"` |
 | `seed` | `int \| None` | `None` | random seed; only used by `"random"` |
 
 | Strategy | Tuples |
@@ -247,9 +247,11 @@ one `{column}_list` per column.
 A group holding fewer than `n` records produces nothing. An invalid `strategy`,
 `output_format`, or an `n` below 2 raises `ValueError` when you build the step.
 
-**Always set `max_pairs` with `"random"`.** The random strategy has no natural end: left
-alone it draws until it has made up to 100,000 tuples, per group, and the same tuple can
-come out twice.
+**`"random"` requires `max_pairs`.** Random draws have no natural end, so the cap is how
+many tuples you want; without it the step raises `ValueError` when you build it. Since
+`"random"` is the default strategy, a bare `Pair()` raises too. Draws are made with
+replacement, so the same tuple can come out twice — set `seed` if you want the same
+dataset again.
 
 ## `Concat(*sources)`
 
@@ -313,8 +315,8 @@ several times on both sides yields one record per combination.
 
 - **`Group` throws away the columns you did not name.** Only `by`, `collect` and `agg`
   reach the output record.
-- **`Pair(strategy="random")` without `max_pairs` will make up to 100,000 tuples.** Set
-  the cap, and set `seed` if you want the same dataset twice.
+- **`Pair(strategy="random")` needs `max_pairs`**, and so does a bare `Pair()`. Set
+  `seed` too if you want the same dataset twice.
 - **`$or` and `$and` narrow their siblings.** In `{"$or": [...], "score": {"$gt": 5}}` a
   record must match the `$or` *and* score above 5. Every key in a `where` dict must hold.
 - **A missing column is not an error in `Filter`.** It reads as `None`, so it fails most

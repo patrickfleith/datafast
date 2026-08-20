@@ -389,9 +389,16 @@ def test_max_pairs_caps_the_total_and_seed_makes_random_repeatable():
     assert run() != list(Pair(seed=8, max_pairs=5).process(iter(PAIRABLE)))
 
 
-def test_random_without_max_pairs_makes_a_hundred_thousand_tuples():
-    """The number the page warns about, measured rather than guessed."""
-    assert len(list(Pair(seed=0).process(iter(PAIRABLE)))) == 100_000
+def test_random_without_max_pairs_is_refused_when_the_step_is_built():
+    """The random strategy has no natural end, so the page requires the cap."""
+    with pytest.raises(ValueError, match="max_pairs is required"):
+        Pair(strategy="random")
+    with pytest.raises(ValueError, match="max_pairs is required"):
+        Pair()
+
+    assert list(Pair(strategy="sliding").process(iter(PAIRABLE))), (
+        "only random needs the cap"
+    )
 
 
 def test_pair_rejects_bad_arguments_when_the_step_is_built():
@@ -481,7 +488,7 @@ def test_join_accepts_several_key_columns_and_rejects_an_unknown_how():
 def test_compile_checks_the_columns_these_steps_name():
     for pipeline in (
         Source.list([{"a": 1}]) >> Group(by="missing"),
-        Source.list([{"a": 1}]) >> Pair(within="missing"),
+        Source.list([{"a": 1}]) >> Pair(within="missing", max_pairs=1),
         Source.list([{"a": 1}]) >> Join(Source.list([{"missing": 1}]), on="missing"),
     ):
         with pytest.raises(PipelineValidationError, match="missing"):
