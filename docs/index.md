@@ -1,20 +1,32 @@
 # Datafast
+Generate high-quality and diverse synthetic data for your project with LLMs.
 
-Datafast is a Python library for generating synthetic datasets with
-LLMs.
+In datafast, you assemble building blocks of dataset engineering operations would otherwise do manually. It designed to be flexible and modular, so you get a custom pipeline that generates a dataset matching your actual project needs. It works with open-weights and proprietary models.
 
-You describe what your dataset should cover, compose synthetic data generation steps,
-and run the pipeline. What you get back is a dataset carrying full traceability from
-seeds to metadata and models' outputs.
+### Intended Use Cases
+
+- Get initial evaluation text data instead of starting your LLM project blind.
+- Increase diversity and coverage of another dataset by generating additional data.
+- Experiment and test quickly LLM-based applications, and before shipping to production.
+- Make your own datasets to fine-tune and evaluate LLMs and agents.
+- Model distillation
+
+🌟 Star this repo if you find this useful!
+
+### Example Pipeline
+
+The simple pipeline below combines seeds topics and difficulty levels to generate questiosn and answers, written directly to a JSONL file.
 
 ```python
 from datafast import LLMStep, Seed, Sink, openai
 
 pipeline = (
+    # Create two columns combining topic x level (the 'seeds')
     Seed.product(
-        Seed.values("topic", ["photosynthesis", "plate tectonics", "vaccines"]),
+        Seed.values("topic", ["photosynthesis", "plate tectonics", "virus"]),
         Seed.values("level", ["beginner", "advanced"]),
     )
+    # Use seeds in LLM prompt to generate structured outputs of Q&As.
     >> LLMStep(
         prompt="Write one {level} exam question about {topic}, with its answer. "
                "Return JSON with fields question and answer.",
@@ -23,33 +35,21 @@ pipeline = (
         parse_mode="json",
         model=openai(),
     )
+    # Save locally to a file
     >> Sink.jsonl("questions.jsonl")
 )
 
+# Run the pipeline
 pipeline.run()
 ```
 
-Three topics and two levels produce six rows — the seed expands the combinations, the
-LLM step fills each one in, and the sink writes the result.
-
 ## Why pipelines
 
-A synthetic dataset is rarely one prompt. It is a set of axes you want covered, a
-generation step, usually a filter or a scoring pass, and somewhere to put the output.
-Datafast makes each of those a step, composed with `>>`:
+AI projects all needs something special in their datasets. Wether this is for training, fine tuning, evaluation, or just to test the application coverage in realistic conditions. So we need something highly flexible and modular: Like assembling LEGOs, datafast provides building blocks so you can build your synthetic data generation pipleine that matches your need.
 
-- **Coverage is declarative.** `Seed.product` expands the combinations instead of you
-  writing nested loops.
-- **Runs are resumable.** LLM calls are checkpointed per call, so an interrupted run
-  resumes instead of being paid for twice.
-- **Providers are interchangeable.** One configuration surface covers OpenAI,
-  Anthropic, Gemini, Mistral, OpenRouter, Ollama and any OpenAI-compatible server.
-- **Mistakes surface before the spend.** `Pipeline.compile()` validates structure and
-  column references before a single call is made.
+## Where to start?
 
-## Start here
-
-- Follow the [Quickstart](quickstart.md) — install to first dataset, one page.
+- Follow the [Quickstart](quickstart.md) - from install to your first dataset.
 - Read [Concepts](concepts.md) for the execution model.
 - Read [Sources & seed](reference/sources_and_seed.md) and [Data
   ops](reference/data_ops.md) for sources, transforms and sinks.
@@ -60,3 +60,9 @@ Datafast makes each of those a step, composed with `>>`:
   input.
 - Browse the [Cookbook](cookbook/index.md) for complete recipes.
 - Look up anything in the [API reference](api.md).
+
+### Coming soon
+
+- An `llms.txt` so you can ask questions about of docs to your favorite AI.
+- A `datafast` SKILL so your coding agent can build the pipeline the right way under your supervision.
+- Integration with llama.cpp, vLLM
