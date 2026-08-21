@@ -6,6 +6,17 @@
 
 - [ ] <task> <!-- optional (context) -->
 
+## Documentation improvements
+
+- [ ] Split `docs/reference/sources_and_seed.md` into separate Source and Seed reference pages <!-- two nav entries; `tests/test_reference_sources_and_seed.py` splits with it -->
+- [ ] Reorganize 'Key Concepts' pedagogically: Record → Step → Source → Seed (its own section) → served model → LLM step → Sample → Sink → Data operations <!-- Data operations reuses the `docs/reference/data_ops.md` 'At a glance' table, but each row gets a concrete, evocative example -->
+- [ ] Retitle `docs/guides/index.md` from 'Guides' to 'How To Guides' — the page's `# ` heading only, leaving the nav item as 'Guides'
+- [ ] Polish 'What's in v1'
+- [ ] Move the Glossary out of 'Get started' — retitle it 'Full Glossary' and put it under Reference <!-- it is lookup material, not an onboarding step; reached via search and in-page links -->
+- [ ] Polish the Quickstart
+- [ ] Rename 'Concepts' to 'Key Concepts' and widen it to cover every key concept, absorbing what the glossary defines — pitched higher: not just what a term means, but how it works and where it fits in datafast <!-- glossary stays the precise lookup, incl. its Avoid lines -->
+- [ ] Add an example datasets showcase to the docs — a grid graphic (e.g. 2x4 of labelled squares, one dataset type per square) linking each type to its cookbook or example script
+
 ## Conventions for documentation pages
 
 Kept from the v1 launch, because every future page follows them.
