@@ -12,8 +12,7 @@ CHAT_MODEL_ID = "gpt-4o-mini"
 def served_model(require_api_key):
     """Factory for a live OpenAI served model; overrides merge over the defaults.
 
-    No temperature default, unlike the Anthropic fixture: RESPONSES_PARAMS omits
-    temperature, so setting one would warn on every single call.
+    No temperature default: RESPONSES_PARAMS omits temperature, so setting one would warn on every single call.
     """
     require_api_key("OPENAI_API_KEY")
 

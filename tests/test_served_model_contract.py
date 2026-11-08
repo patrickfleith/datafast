@@ -550,6 +550,136 @@ def test_sonnet_5_rejects_an_effort_that_reads_as_off():
             model.generate(prompt="ping")
 
 
+@pytest.mark.parametrize(
+    "model_id, off_value",
+    [
+        ("claude-haiku-5-5", {"type": "disabled"}),
+        ("claude-sonnet-5-5", {"type": "between_tools"}),
+    ],
+)
+def test_claude_5_5_thinking_false_sends_the_value_the_model_accepts(
+    monkeypatch, model_id, off_value
+):
+    """Sonnet 5.5 rejects 'disabled' and LiteLLM drops it, so it needs its own value."""
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["thinking"] == off_value
+    assert "reasoning_effort" not in captured
+
+
+@pytest.mark.parametrize("model_id", ["claude-opus-5-5", "claude-fable-5-1"])
+def test_always_thinking_claude_refuses_thinking_false(model_id):
+    """No off switch exists, and LiteLLM would drop one silently, so raise."""
+    model = anthropic(model_id=model_id, api_key="test-key", thinking=False)
+
+    with pytest.raises(ValueError, match="always reasons"):
+        model.generate(prompt="ping")
+
+
+@pytest.mark.parametrize(
+    "model_id, effort",
+    [("claude-haiku-5-5", "high"), ("claude-opus-5-5", "medium")],
+)
+def test_recommended_claude_setups_send_their_effort(monkeypatch, model_id, effort):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key", reasoning_effort=effort)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == effort
+    assert "thinking" not in captured
+
+
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        ({}, "high"),
+        ({"reasoning_effort": "low"}, "low"),
+        ({"thinking": True}, "high"),
+    ],
+)
+def test_bare_haiku_5_5_runs_at_high_effort(monkeypatch, config, expected):
+    """Only an unset effort takes the default. A caller's choice still wins."""
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(api_key="test-key", **config)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == expected
+
+
+def test_haiku_5_5_thinking_false_sends_no_default_effort(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert "reasoning_effort" not in captured
+
+
+@pytest.mark.parametrize("model_id", ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"])
+def test_other_claude_5_5_models_keep_their_own_default_effort(monkeypatch, model_id):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key")
+
+    assert model.generate(prompt="ping") == "ok"
+    assert "reasoning_effort" not in captured
+
+
+@pytest.mark.parametrize(
+    "model_id",
+    ["claude-haiku-5-5", "claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"],
+)
+def test_claude_5_5_drops_a_caller_temperature(monkeypatch, model_id):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key", temperature=0.0)
+
+    with pytest.warns(UserWarning, match="temperature"):
+        assert model.generate(prompt="ping") == "ok"
+    assert "temperature" not in captured
+
+
 def test_sonnet_4_6_keeps_the_older_profile():
     """The new profile is per-model, not per-provider: 4.6 still takes a
     temperature while thinking is off, and still has no explicit disable."""

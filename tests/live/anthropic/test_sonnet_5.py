@@ -1,9 +1,8 @@
 """Live reasoning controls for the adaptive-thinking Anthropic line.
 
-The rest of this suite runs on claude-haiku-4-5, which reasons only when asked.
-claude-sonnet-5 is the opposite — it reasons unless told not to — and the two
-tests here are the pair that proves it, since either one alone would pass on a
-model that never reasons at all.
+claude-sonnet-5 reasons unless told not to, and the first two tests here are the
+pair that proves it, since either one alone would pass on a model that never
+reasons at all.
 
 The prompt is deliberately hard: thinking is adaptive, so the model declines to
 reason on anything easy and a simple prompt would prove nothing.
@@ -42,10 +41,8 @@ def sonnet(require_api_key):
 
 
 def test_thinking_true_returns_a_reasoning_trace(sonnet):
-    """The trace arrives as thinking blocks and nothing else: their text is
-    empty and so is reasoning_content, because Anthropic omits the written
-    summary by default and Datafast exposes no control to ask for one. Only the
-    blocks' presence is worth asserting — the answer may not fit the budget."""
+    """Only the blocks' presence is worth asserting — the answer may not fit the
+    budget."""
     response = sonnet(thinking=True).generate_response(prompt=PROMPT)
 
     assert response.thinking_blocks

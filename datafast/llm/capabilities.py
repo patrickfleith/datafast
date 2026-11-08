@@ -226,15 +226,57 @@ ANTHROPIC_ADAPTIVE_CHAT = replace(
         "temperature is rejected at any value but 1, whether or not reasoning "
         "is on, so it is unsupported here rather than merely locked while "
         "thinking. top_p never applied to Anthropic in Datafast.",
-        "The trace is real but unreadable: thinking_blocks come back with "
-        "empty text and reasoning_content is empty too, because Anthropic "
-        "omits the written summary by default and Datafast has no control to "
-        "ask for one.",
+        "With no effort set the trace is real but unreadable: thinking_blocks "
+        "come back with empty text and reasoning_content is empty too, because "
+        "Anthropic omits the written summary by default. Setting "
+        "reasoning_effort or thinking=True makes LiteLLM request the summary.",
         "Thinking is billed out of the same budget as the answer and can "
         "consume all of it — a hard prompt capped at 10000 tokens sometimes "
         "returns no answer at all — so raise max_completion_tokens when "
         "reasoning is on.",
     ),
+)
+
+
+# Claude Haiku 5.5 defaults to effort 'medium'. Datafast recommends 'high', so
+# that is what a caller gets without choosing an effort.
+ANTHROPIC_HIGH_EFFORT_CHAT = replace(
+    ANTHROPIC_ADAPTIVE_CHAT,
+    reasoning_effort_on="high",
+    reasoning_effort_default="high",
+    notes=(
+        "Datafast sends reasoning_effort='high' for thinking=True and when the "
+        "caller sets neither reasoning_effort nor thinking.",
+    )
+    + ANTHROPIC_ADAPTIVE_CHAT.notes,
+)
+
+
+# Claude Sonnet 5.5 rejects thinking={'type': 'disabled'} and LiteLLM drops that
+# value before the request, so the model would keep reasoning.
+ANTHROPIC_BETWEEN_TOOLS_CHAT = replace(
+    ANTHROPIC_ADAPTIVE_CHAT,
+    reasoning_off_param=("thinking", {"type": "between_tools"}),
+    notes=(
+        "The off switch is thinking={'type': 'between_tools'}. "
+        "thinking={'type': 'disabled'} returns a 400 on this model.",
+    )
+    + ANTHROPIC_ADAPTIVE_CHAT.notes[2:],
+)
+
+
+# Claude Opus 5.5 and Claude Fable 5.1 have no off switch. Anthropic returns a
+# 400 for thinking={'type': 'disabled'} and LiteLLM drops it first, so
+# thinking=False has to raise.
+ANTHROPIC_ALWAYS_THINKING_CHAT = replace(
+    ANTHROPIC_ADAPTIVE_CHAT,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    notes=(
+        "These models always reason, so thinking=False raises. Lower "
+        "reasoning_effort to reduce reasoning.",
+    )
+    + ANTHROPIC_ADAPTIVE_CHAT.notes[2:],
 )
 
 
@@ -372,6 +414,10 @@ _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("openai", "gpt-5.4"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-mini"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-nano"): OPENAI_RESPONSES,
+    ("anthropic", "claude-fable-5-1"): ANTHROPIC_ALWAYS_THINKING_CHAT,
+    ("anthropic", "claude-opus-5-5"): ANTHROPIC_ALWAYS_THINKING_CHAT,
+    ("anthropic", "claude-sonnet-5-5"): ANTHROPIC_BETWEEN_TOOLS_CHAT,
+    ("anthropic", "claude-haiku-5-5"): ANTHROPIC_HIGH_EFFORT_CHAT,
     ("anthropic", "claude-sonnet-5"): ANTHROPIC_ADAPTIVE_CHAT,
     ("anthropic", "claude-sonnet-4-6"): ANTHROPIC_CHAT,
     ("anthropic", "claude-haiku-4-5"): ANTHROPIC_CHAT,
@@ -510,7 +556,10 @@ def _unknown_capabilities() -> ServedModelCapabilities:
 
 __all__ = [
     "ANTHROPIC_ADAPTIVE_CHAT",
+    "ANTHROPIC_ALWAYS_THINKING_CHAT",
+    "ANTHROPIC_BETWEEN_TOOLS_CHAT",
     "ANTHROPIC_CHAT",
+    "ANTHROPIC_HIGH_EFFORT_CHAT",
     "GEMINI_CHAT",
     "HOSTED_CHAT",
     "LLAMACPP_CHAT",

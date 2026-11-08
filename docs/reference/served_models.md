@@ -16,7 +16,7 @@ one — `ServedModel` is exported for type annotations, not for instantiation.
 | Factory | Default model | API key |
 |---|---|---|
 | `openai()` | `gpt-5.5` | `OPENAI_API_KEY` |
-| `anthropic()` | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` |
+| `anthropic()` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
 | `gemini()` | `gemini-3.5-flash-lite` | `GEMINI_API_KEY` |
 | `mistral()` | `mistral-small-2603` | `MISTRAL_API_KEY` |
 | `openrouter()` | `openai/gpt-5.4-mini` | `OPENROUTER_API_KEY` |
@@ -59,7 +59,7 @@ Every field below is a keyword argument on every factory.
 | `frequency_penalty` | `float \| None` | `None` | repetition control |
 | `max_completion_tokens` | `int \| None` | `None` | output cap; `max_tokens=` is accepted as an alias |
 | `thinking` | `bool \| None` | `None` | reasoning on or off, resolved per served model |
-| `reasoning_effort` | `str \| None` | `None` | explicit effort, where the model accepts one |
+| `reasoning_effort` | `str \| None` | `None` | explicit effort, where the model accepts one; `None` sends nothing, except `high` on `claude-haiku-5-5` |
 | `reasoning_summary` | `str \| None` | `None` | ask for a written summary of the reasoning |
 
 `thinking=True` and `thinking=False` are the portable controls: each served model knows

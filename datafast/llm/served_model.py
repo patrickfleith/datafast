@@ -672,9 +672,13 @@ class ServedModel:
         """
         effort = self.config.reasoning_effort
         if effort is None:
-            if self.config.thinking is not True:
+            effort = (
+                self.capabilities.reasoning_effort_on
+                if self.config.thinking is True
+                else self.capabilities.reasoning_effort_default
+            )
+            if effort is None:
                 return None
-            effort = self.capabilities.reasoning_effort_on
 
         supported = self.capabilities.reasoning_efforts
         if supported is not None and effort not in supported:
@@ -1124,7 +1128,7 @@ class _OpenAIServedModel(ServedModel):
 
 
 class _AnthropicServedModel(ServedModel):
-    def __init__(self, model_id: str = "claude-haiku-4-5", **kwargs: Any) -> None:
+    def __init__(self, model_id: str = "claude-haiku-5-5", **kwargs: Any) -> None:
         super().__init__(
             "anthropic",
             model_id,
@@ -1317,7 +1321,7 @@ def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> ServedModel:
     return _OpenAIServedModel(model_id=model_id, **kwargs)
 
 
-def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> ServedModel:
+def anthropic(model_id: str = "claude-haiku-5-5", **kwargs: Any) -> ServedModel:
     """Build a served model on Anthropic.
 
     Reads `ANTHROPIC_API_KEY` unless `api_key=` is passed. Requests go through
