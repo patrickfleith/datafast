@@ -1,6 +1,6 @@
 """Live multimodal input against Anthropic.
 
-`ANTHROPIC_CHAT` declares `Modality.IMAGE` and `Modality.FILE`. Mocked tests
+Every Anthropic profile declares `Modality.IMAGE` and `Modality.FILE`. Mocked tests
 only prove datafast builds a content part; the shape it builds — a base64
 `data:` URI for images, `file.file_data` for documents — is something only the
 real API can accept or reject. The `image_asset` / `document_asset` fixtures

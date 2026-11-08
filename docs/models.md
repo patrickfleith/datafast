@@ -9,7 +9,12 @@ don't pass one.
 
 ## Anthropic
 
-- `claude-haiku-4-5`
+- `claude-haiku-5-5`
+
+datafast runs it at `reasoning_effort="high"` unless you choose another effort. For
+tasks that need maximum intelligence, use `claude-opus-5-5` with
+`reasoning_effort="medium"`. See
+[Which model to use](reference/providers/anthropic.md#which-model-to-use).
 
 ## Gemini
 

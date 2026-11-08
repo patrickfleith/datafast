@@ -20,7 +20,7 @@ from datafast import LLMStep, ListSink, Source, anthropic, mistral, ollama, open
 def _anthropic(require_api_key, require_ollama):
     require_api_key("ANTHROPIC_API_KEY")
     return anthropic(
-        model_id="claude-haiku-4-5", temperature=0.0, max_completion_tokens=50
+        model_id="claude-haiku-5-5", max_completion_tokens=50, thinking=False
     )
 
 
