@@ -1,29 +1,29 @@
 # Space engineering text generation
 
-Generate a domain text corpus — titles and body text about spacecraft engineering — from
-nothing but three lists of words.
+Generate a text corpus about spacecraft engineering, with titles and body text. The only
+inputs that you write are 3 lists of words.
 
-Unlabelled text is what you need before you need anything else: to continue pre-training a
-model on a domain, to build a retrieval corpus, or to have something to label later. Real
-technical text about space engineering exists, but it is scattered, differently licensed,
-and mostly written for one kind of reader. This recipe generates it instead, and makes the
-axes you care about — the document type, the subject, the reader — explicit up front, so
-the corpus is spread evenly across them by construction.
+For many tasks, text without labels is the first data that is necessary. You can use it to
+continue the pre-training of a model on a domain, to make a retrieval corpus, or to add
+labels later. Real technical text about space engineering exists. But it is in many
+locations, it has different licences, and it is mostly for 1 type of reader. This
+procedure generates the text. You specify the dimensions first: the document type, the
+subject and the reader. Thus the seed divides the corpus equally across them.
 
-There are no labels here. That is the difference from
-[text classification](text_classification.md): the same shape of pipeline, but the seed
-columns describe *how* the text should be written rather than what it is an example of.
+This dataset has no labels. This is the difference from
+[text classification](text_classification.md). The pipeline has the same shape, but the
+seed columns tell the model *how* to write the text. They do not give a class.
 
 - **Script:** `examples/scripts/44_cookbook_space_text_generation.py`
-- **Prompt:** [`space_text_generation.txt`](assets/space_text_generation.txt), at
+- **Prompt template:** [`space_text_generation.txt`](assets/space_text_generation.txt), at
   `docs/cookbook/assets/space_text_generation.txt`
 - **Output:** `examples/outputs/44_space_text_generation_cookbook.jsonl`
 - **Checkpoints:** `examples/checkpoints/44_space_text_generation_cookbook`
-- **144 rows** by default, one LLM call each
+- **144 records** by default, with 1 LLM call for each record
 
 ## The pipeline
 
-Five steps, four of them named:
+The pipeline has 5 steps. Four steps have a name:
 
 ```python
 from datafast import AddUUID, LLMStep, Map, Seed, Sink
@@ -50,44 +50,44 @@ pipeline = (
 )
 ```
 
-Record counts along the way:
+The record count after each step:
 
 | Step | In | Out | Why |
 |---|---|---|---|
 | `seed_space_text_grid` | 0 | 72 | 3 document types × 8 topics × 3 expertise levels |
 | `generate_space_text` | 72 | 144 | × 2 languages × 1 model × `num_outputs` of 1 |
-| `finalize_record` | 144 | 144 | drops the internal columns, renames two |
+| `finalize_record` | 144 | 144 | removes the internal columns and changes 2 names |
 | `add_uuid` | 144 | 144 | adds `id` |
-| `JSONLSink` | 144 | 144 | writes the file, passes records through |
+| `JSONLSink` | 144 | 144 | writes the file and sends the records through |
 
-## Designing the seed
+## Design the seed
 
-The seed is where the corpus is designed. Every axis you want the text to cover is
-declared here, and `Seed.product` crosses them — every document type against every topic
-against every expertise level.
+You design the corpus in the seed. You specify each dimension that the text must have.
+`Seed.product` then makes all the combinations: each document type with each topic and
+each expertise level.
 
-**`DOCUMENT_TYPES` — the register.** A textbook, a design justification document, a
-personal blog. This is the axis most corpora are missing. Text about the same subject
-written for a textbook and written for a blog share vocabulary and share almost nothing
-else, and a model trained on one register only writes that register.
+**`DOCUMENT_TYPES`: the register.** The types are a textbook, a design justification
+document and a personal blog. Most corpora do not have this dimension. A textbook and a
+blog about the same subject use the same words, but they are different in all other
+ways. A model that you train on 1 register can write only that register.
 
-**`TOPICS` — the subject matter.** Eight space environment effects: microgravity, vacuum,
-heavy ions, thermal extremes, atomic oxygen, debris impact, electrostatic charging,
-propellant boil-off. Naming them individually, rather than asking for "space engineering
-text" eight times, is what stops the model from writing about its favourite topic every
-time.
+**`TOPICS`: the subject.** There are 8 effects of the space environment: microgravity,
+vacuum, heavy ions, thermal extremes, atomic oxygen, debris impact, electrostatic
+charging and propellant boil-off. Each topic has a name in the list. If you ask 8 times
+for "space engineering text", the model writes about the same topic each time.
 
-**`EXPERTISE_LEVELS` — the reader.** Executives, senior engineers, PhD candidates. The
-same fact stated for three audiences differs in depth, in how much is assumed, and in
-sentence length.
+**`EXPERTISE_LEVELS`: the reader.** The readers are executives, senior engineers and PhD
+candidates. For 3 different readers, the same fact has a different depth, different
+assumptions and different sentence lengths.
 
-Nothing here co-varies, so three plain `Seed.values` dimensions are right. When two
-columns *must* move together — a label and its definition — they belong in one dimension
-instead; see [text classification](text_classification.md) for that case.
+These 3 dimensions do not change together, so 3 usual `Seed.values` dimensions are
+correct. Some columns *must* change together, for example a label and its description.
+Put these columns in 1 dimension. Refer to [text classification](text_classification.md)
+for an example.
 
-### Counting before spending
+### Count the records before you make LLM calls
 
-The script computes its own row count and prints it before the run starts:
+The script calculates its record count and shows it before the run starts:
 
 ```python
 DOCUMENT_TYPES, TOPICS, EXPERTISE_LEVELS = range(3), range(8), range(3)
@@ -108,46 +108,48 @@ assert expected_row_count() == 144
 assert expected_row_count(3) == 432   # what three models would cost
 ```
 
-Every one of those rows is one LLM call. Passing a model count lets you price a change
-before making it: adding two models to `MODEL_IDS` is 432 calls, not 146.
+Each record is 1 LLM call. Give a number of models to the function to calculate the
+effect of a change before you make it. If you add 2 models to `MODEL_IDS`, you get 432
+calls, not 146.
 
-## The prompt
+## The prompt template
 
-One line, in a file:
+The prompt template is 1 line in a file:
 
 ```text
 Write one {document_type} excerpt about {topic} for {expertise_level} in {language_name}.
 ```
 
-Compare this with the [text-classification prompt](assets/text_classification_generation.txt),
-which is a page of constraints. The difference is what the two datasets are for. A
-classification dataset needs the text to *stay inside its label*, so the prompt fences the
-model in. A raw corpus wants range, so the prompt says as little as possible and lets the
-seed columns do the varying.
+The [text classification prompt template](assets/text_classification_generation.txt) is
+a full page of limits. The 2 datasets have different purposes. In a classification
+dataset, the text must *agree with its label*, so the prompt template gives the model
+many limits. A corpus without labels must have a large range. Thus the prompt template
+is as short as possible, and the seed columns supply the differences.
 
-Three of the four placeholders are seed columns, listed in `input_columns`.
-`{language_name}` is not — it comes from `language=LANGUAGES`, which adds two placeholders
-to every prompt:
+Three of the 4 placeholders are seed columns, and `input_columns` contains them.
+`{language_name}` is not a seed column. It comes from `language=LANGUAGES`, which adds 2
+placeholders to each prompt:
 
 | Placeholder | Value | Use |
 |---|---|---|
-| `{language}` | `en` | the code, which lands in the `_language` column |
-| `{language_name}` | `English` | what you ask the model to write in |
+| `{language}` | `en` | the code, which the step writes in the `_language` column |
+| `{language_name}` | `English` | the language for the model to write in |
 
-Use the name in the prompt. Models follow "in English" far more reliably than "in en".
+Use the name in the prompt template. Models obey "in English" better than "in en".
 
-`prompt` takes the path, not the text. Even a one-line prompt is worth keeping in a file:
-it can be edited, diffed and reviewed without touching the pipeline, and swapping
-`PROMPT_PATH` is how you try a different one.
+`prompt` takes the path, not the text. Keep a prompt template in a file, also if it is 1
+line. You can then edit it, compare versions and review it without a change to the
+pipeline. To try a different prompt template, change `PROMPT_PATH`.
 
-**`input_columns` is a whitelist.** Only the columns named there reach the prompt. A
-placeholder for a column that exists in the record but was left out of `input_columns`
-raises `KeyError` — before any call is made, which is the good outcome.
+**Only the columns in `input_columns` go to the prompt template.** A record can contain a
+column that is not in `input_columns`. If the prompt template has a placeholder for that
+column, the step raises `KeyError`. This occurs before the first LLM call, so the result
+is good.
 
 ### The model
 
-`model=make_models()` takes a list of served models, and every seed record is generated
-once by each. The script builds one:
+`model=make_models()` takes a list of served models. Each served model generates each
+seed record 1 time. The script makes 1 served model:
 
 ```python
 from datafast import openrouter
@@ -158,60 +160,61 @@ def make_models():
     return [openrouter(model_id, temperature=0.7) for model_id in MODEL_IDS]
 ```
 
-One model is a deliberate starting point for a corpus this size, not a recommendation.
-Add ids to `MODEL_IDS` and the list grows itself — a second one doubles the corpus and
-doubles the cost, and the model that wrote each row is recorded in `_model` so you can
-compare them or drop one later.
+One model is a start for a corpus of this size. It is not a recommendation. Add IDs to
+`MODEL_IDS`, and the list becomes longer. A second model gives 2 times the records and 2
+times the calls. The `_model` column records the model of each record. Thus you can
+compare the models, or remove the records of 1 model later.
 
-`temperature=0.7` is set on the served model, never on the step: sampling settings belong
-to the thing being called. Both models are reached through
-[OpenRouter](../reference/providers/openrouter.md) on one API key.
+Set `temperature=0.7` on the served model. Do not set it on the step: sampling settings
+are part of the served model. One API key gives access to all the models through
+[OpenRouter](../reference/providers/openrouter.md).
 
-## Two columns out of one call
+## Two columns from 1 call
 
-`parse_mode="json"` with `output_columns=["title", "text"]` gets two columns from one
-response. The step asks for JSON by appending an instruction to the prompt it just
-formatted:
+`parse_mode="json"` with `output_columns=["title", "text"]` gets 2 columns from 1 answer.
+The step adds a JSON instruction at the end of the prompt:
 
 ```text
 Respond with valid JSON containing these fields: {"title": "<title value>", "text": "<text value>"}
 Return only the JSON object, no additional text or markdown code fences.
 ```
 
-That text is not in the prompt file. It is generated from `output_columns`, so the file
-and the columns can never disagree. Three things worth knowing about what comes back:
+The prompt file does not contain this text. The step makes it from `output_columns`, so
+the file and the columns always agree. Know these 3 facts about the answer:
 
-- **Code fences are stripped.** A reply wrapped in ` ```json ` parses fine, despite the
-  instruction asking for none.
-- **Every parsed column is a string.** A model that answers `"text": ["a", "b"]` gives you
-  the string `['a', 'b']`.
-- **A missing field becomes an empty string, silently.** If the reply carries `title` but
-  no `text`, the row is kept with `text` set to `""`. It is logged as a warning, and it is
-  not a parse error — so `on_parse_error` never sees it.
+- **The step removes code fences.** If the answer is in a ` ```json ` fence, the parse is
+  correct. The instruction tells the model not to use fences, but the step accepts them.
+- **Each parsed column is a string.** If a model answers `"text": ["a", "b"]`, you get the
+  string `['a', 'b']`.
+- **A missing field becomes an empty string, without an error.** If the answer contains
+  `title` but not `text`, the step keeps the record with `text` set to `""`. The step
+  writes a warning to the log. This is not a parse error, so `on_parse_error` does not
+  see it.
 
-That last one is the failure mode to watch on this recipe. The whole point of the dataset
-is the `text` column, and an empty one costs a call and looks like a row. Grep the output
-for `"text": ""` before publishing.
+The last fact is the most important for this dataset. The `text` column is the purpose of
+the dataset. An empty `text` column uses 1 call and looks like a correct record. Before
+you publish, find `"text": ""` in the output.
 
-`on_parse_error="raise"` is set on the step, and under `Pipeline.run()` it does not raise
-— the runner logs the failure and drops the record. A reply that is not JSON at all costs
-you a row from the 144, not a traceback. Count what you got. See
-[Error handling & troubleshooting](../guides/troubleshooting.md).
+The step sets `on_parse_error="raise"`. But in `Pipeline.run()`, the error does not stop
+the run. The runner writes the error to the log and removes the record. If an answer is
+not JSON, you get 1 record less than 144, not a traceback. Count the records that you
+get. Refer to [Error handling & troubleshooting](../guides/troubleshooting.md).
 
 ### `num_outputs`
 
-`num_outputs` asks for *n* separate calls per prompt, model and language combination, and
-yields *n* rows. It is the knob for "same instruction, more text", and it is set to 1 here
-because this seed already has 72 combinations.
+`num_outputs` makes *n* different calls for each combination of prompt, model and
+language. It gives *n* records. Use it to get more text from the same instruction. Here
+it is 1, because this seed already has 72 combinations.
 
-Raise it and note what you get: the extra rows carry no column saying which output they
-were. Two rows from the same seed differ only in their generated text and their `id`, so
-if you need to trace a row back to its sibling, add that column yourself in the `Map`.
+If you increase it, know this: the extra records have no column that identifies the
+output number. Two records from the same seed are different only in their generated text
+and their `id`. If you must find the related records of a record, add that column in the
+`Map`.
 
-## Shaping the output
+## Prepare the output
 
-`Map` runs a plain function that returns a **new** dict, so anything it does not name is
-dropped:
+`Map` runs a usual function that returns a **new** dict. Thus it removes each column that
+the function does not name:
 
 ```python
 def finalize_record(record: dict) -> dict:
@@ -227,14 +230,15 @@ def finalize_record(record: dict) -> dict:
     }
 ```
 
-This is where `_language` and `_model` lose their underscore. The leading underscore marks
-a column the run added rather than the data carrying, which is useful in flight and noise
-in a published dataset. The same step fixes the column order.
+This step removes the underscore from `_language` and `_model`. The underscore at the
+start identifies a column that the run adds. The data does not contain it. During the
+run, these columns are useful. In a published dataset, they have no use. The same step
+sets the column order.
 
-`AddUUID(column="id", overwrite=True)` runs **after** the `Map`, so the id belongs to the
-published row and survives it.
+`AddUUID(column="id", overwrite=True)` runs **after** `Map`, so the `id` identifies the
+published record, and `Map` does not remove it.
 
-### A row
+### A record
 
 ```json
 {
@@ -249,18 +253,17 @@ published row and survives it.
 }
 ```
 
-Five of the eight columns were known before the call. Only `title` and `text` were
-generated, and only `id` was invented afterwards — so the metadata cannot be wrong about
-the text it describes.
+You know 5 of the 8 columns before the call. The model generates only `title` and `text`.
+`AddUUID` adds `id` after the call. Thus the metadata is always correct for the text.
 
-## Running it
+## Run the script
 
 ```bash
 python examples/scripts/44_cookbook_space_text_generation.py
 ```
 
-You need `OPENROUTER_API_KEY` in a `.env` file at the repository root. Hugging Face
-authentication is only needed if you publish.
+Put `OPENROUTER_API_KEY` in a `.env` file at the root of the repository. You must log in
+to Hugging Face only if you publish.
 
 ```python
 records = pipeline.run(
@@ -270,9 +273,9 @@ records = pipeline.run(
 )
 ```
 
-144 calls is long enough that an interruption is worth planning for. `resume=True` with a
-`checkpoint_dir` makes the command safe to repeat: the checkpoint holds one file per step,
-named after it.
+A run of 144 calls takes a long time, so prepare for a stop. With `resume=True` and a
+`checkpoint_dir`, you can do the same command again safely. The checkpoint has 1 file for
+each step, with the name of the step:
 
 ```text
 manifest.json
@@ -283,20 +286,22 @@ step_003_add_uuid.jsonl
 step_004_JSONLSink.jsonl
 ```
 
-Those names are `.as_step(...)` paying for itself — they are also the values `resume_from`
-takes. The sink was left unnamed and shows up as `JSONLSink`.
+`.as_step(...)` gives these names. `resume_from` also uses these names. The sink has no
+name, so its file has the name `JSONLSink`.
 
-Run the finished script a second time and it costs **nothing**: zero calls, the same 144
-records, the same ids, the same file. That is worth knowing before the next section,
-because it is what makes publishing a separate step.
+If you run the completed script a second time, it makes **no** LLM calls. You get the
+same 144 records, the same IDs and the same file. The next section uses this fact to
+publish in a different step.
 
-One warning about resume: the checkpoint fingerprint covers step names and classes only.
-Change the prompt, the topics or the model and resume will happily continue with the old
-records. Use a fresh `checkpoint_dir` when you change what is generated.
+!!! warning "Use a new `checkpoint_dir` when you change the generation"
 
-## Publishing, and why it is not a step
+    The checkpoint fingerprint includes only the step names and classes. If you change
+    the prompt template, the topics or the model, resume continues with the old records.
 
-The Hub push is a function, called after the run, behind an environment variable:
+## Publish the dataset after the run
+
+The push to the Hub is a function. The script calls it after the run, and an environment
+variable controls it:
 
 ```python
 def push_records_to_hub(records: list[dict]) -> None:
@@ -319,60 +324,70 @@ if os.getenv("DATAFAST_PUSH_TO_HUB") == "1":
 DATAFAST_PUSH_TO_HUB=1 python examples/scripts/44_cookbook_space_text_generation.py
 ```
 
-A sink inside the pipeline runs on every run. That is the right behaviour for a file on
-disk and the wrong one for a public artefact: re-running a script to check a column should
-not publish. So this recipe keeps the push out of the chain and gates it, and the free
-re-run above is what makes that pleasant — generate first, read the JSONL, then run the
-same command again with the variable set. Resume replays the whole pipeline from the
-checkpoint at zero cost and pushes the result.
+A sink in the pipeline runs each time that the pipeline runs. This is correct for a file
+on the disk. It is not correct for a public dataset: if you run the script again to
+examine a column, you must not publish. Thus this procedure keeps the push out of the
+pipeline, and an environment variable controls it.
 
-The trade-off is real, and it is worth being clear about it:
+Use this procedure:
+
+1. Run the script.
+2. Read the JSONL file.
+3. Run the same command again with the variable set.
+
+The second run makes no LLM calls. Resume runs the full pipeline from the checkpoint and
+pushes the result.
+
+The 2 methods have different effects:
 
 | | Sink in the pipeline | Push after the run |
 |---|---|---|
-| When it runs | every run | only when you ask |
+| When it runs | at each run | only when you ask |
 | In the manifest | yes, as a step | no |
-| Checkpointed and resumable | yes | no |
-| Checked by `compile()` | yes | no |
-| Needs `list(...)` | no | yes — `process` is a generator |
+| Checkpoints and resume | yes | no |
+| `compile()` examines it | yes | no |
+| Must use `list(...)` | no | yes, because `process` is a generator |
 
-The [persona cookbook](persona_generation.md) makes the opposite choice and chains
-`Sink.jsonl >> Sink.hub`, which is a good fit there because its repository is private and
-it is meant to publish on every run. Neither is more correct; pick by whether an
-accidental push would matter.
+The [persona cookbook](persona_generation.md) uses the other method and puts
+`Sink.jsonl >> Sink.hub` in the pipeline. That method is correct for that cookbook,
+because its repository is private and it must publish at each run. The 2 methods are
+both correct. Select the method from this question: is an accidental push a problem?
 
-`train_size=0.8` splits the dataset into `train` and `test`, and `SEED` — a fixed random
-seed, nothing to do with `Seed.product` — makes that split reproducible. `private=True` publishes to a repository only you can read —
-**change `HF_REPO_ID` to a repository you own before running this.**
+`train_size=0.8` divides the dataset into `train` and `test`. `SEED` is a fixed random
+seed. It is not related to `Seed.product`. It gives the same split each time.
+`private=True` publishes to a repository that only you can read.
 
-## Making it yours
+**Before you run this script, change `HF_REPO_ID` to a repository that you own.**
 
-| To change | Edit | Effect on the row count |
+## Change the dataset
+
+| To change | Edit | Effect on the record count |
 |---|---|---|
 | the registers | `DOCUMENT_TYPES` | linear |
-| the subject matter | `TOPICS` | linear |
+| the subjects | `TOPICS` | linear |
 | the readers | `EXPERTISE_LEVELS` | linear |
 | the languages | `LANGUAGES` | linear |
 | the models | `MODEL_IDS` | linear |
-| how many texts per combination | `NUM_OUTPUTS` | linear |
-| what is asked for | `PROMPT_PATH` | none |
-| where it publishes | `HF_REPO_ID` | none |
+| the number of texts for each combination | `NUM_OUTPUTS` | linear |
+| the instruction | `PROMPT_PATH` | none |
+| the destination of the push | `HF_REPO_ID` | none |
 
-Every axis multiplies with every other. Six dimensions gaining one value each does not add
-six rows.
+Each dimension multiplies with all the other dimensions. If you add 1 value to each of 6
+dimensions, you get many more than 6 new records.
 
-Two things worth adding once the shape is right:
+When the dataset is correct, you can add these steps:
 
-- **A length check.** A `Filter` on `len(record["text"])` catches both the empty `text`
-  described above and the model that answered in one sentence.
-- **A deduplication pass.** Eight topics and one prompt line will produce openings that
-  repeat. A `Map` that normalizes `text`, then `Group`, will show you how much.
+- **A length filter.** Add a `Filter` on `len(record["text"])`. It finds the empty `text`
+  columns, and the answers that are only 1 sentence.
+- **A step that finds duplicates.** With 8 topics and a prompt template of 1 line, many
+  texts start with the same words. Use a `Map` that normalizes `text`, then a `Group`, to
+  find how many.
 
-## Where to go next
+## Related pages
 
-- [Seed](../reference/seed.md) — every dimension and combiner.
-- [LLM step](../reference/llm_step.md) — the rest of what `LLMStep` takes.
-- [Structured output](../guides/structured_output.md) — parse modes, and what a provider could enforce instead.
-- [Pipelines & execution](../guides/pipelines_and_execution.md) — checkpoints and run controls.
-- [Sinks](../reference/sinks.md) — `Sink.jsonl`, `Sink.hub` and the others.
-- [Text classification](text_classification.md) — the same shape, with labels.
+- [Seed](../reference/seed.md): all the dimensions and combiners.
+- [LLM step](../reference/llm_step.md): the other arguments of `LLMStep`.
+- [Structured output](../guides/structured_output.md): parse modes, and the schemas that a provider can apply.
+- [Pipelines & execution](../guides/pipelines_and_execution.md): checkpoints and run controls.
+- [Sinks](../reference/sinks.md): `Sink.jsonl`, `Sink.hub` and the other sinks.
+- [Text classification](text_classification.md): the same shape, with labels.

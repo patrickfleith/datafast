@@ -1,29 +1,29 @@
 # Preference data with scoring
 
-Build a preference dataset — one question, a good answer, a weak answer — and keep only
-the pairs where the difference is real.
+Make a preference dataset: 1 question, 1 good answer and 1 bad answer. Keep only the
+pairs with a clear difference.
 
-Preference data is what you train a reward model or run DPO on. Every row is a question
-with two answers, one marked chosen and one rejected. Collecting that from humans is slow
-and expensive, and generating it is easy to do badly: ask a model twice and you get two
-answers that are equally good, which teaches nothing.
+You use preference data to train a reward model or to do DPO. Each record has a question
+and 2 answers. One answer is "chosen" and the other answer is "rejected". To get this
+data from people is slow and expensive. To generate it correctly is difficult. If you ask
+a model 2 times, you usually get 2 answers of the same quality. A model cannot learn from
+these pairs.
 
-This recipe generates both halves on purpose. One prompt asks for an expert answer, the
-other asks for a vague one, and the same question feeds both. Then it scores each answer
-and keeps only the pairs the scores agree are different. The result is a dataset where the
-preference is measured rather than assumed.
+This procedure generates the 2 answers with different instructions. One prompt asks for
+the answer of an expert. The other prompt asks for an unclear answer. The 2 prompts get
+the same question. Then the pipeline gives a score to each answer. It keeps only the
+pairs where the scores show a difference. Thus the dataset measures each preference.
 
-It is also the recipe with the most architecture per line: it is the one that needs
-`Branch`, because the two answers are two paths over the same record.
+This procedure uses `Branch`, because the 2 answers are 2 branch paths on the same record.
 
 - **Script:** `examples/scripts/42_pipeline_preference_with_scoring.py`
 - **Output:** `examples/outputs/42_preference_dataset.jsonl`
 - **Checkpoints:** `examples/checkpoints/42_preference`
-- **3 rows** by default, and **five LLM calls per row**
+- **3 records** by default, with **5 LLM calls for each record**
 
 ## The pipeline
 
-Eight steps: generate, split, merge, score twice, filter, write.
+The pipeline has 8 steps: generate, divide, merge, score 2 times, filter, write.
 
 ```python
 from datafast import Branch, Filter, JoinBranches, LLMStep, Score, Seed, Sink
@@ -49,27 +49,28 @@ pipeline = (
 )
 ```
 
-Record counts along the way:
+The record count after each step:
 
 | Step | In | Out | Why |
 |---|---|---|---|
-| `SeedSource` | 0 | 3 | one record per topic |
-| `generate_question` | 3 | 3 | one question each |
-| `branch_responses` | 3 | 6 | every record goes down both paths |
-| `JoinBranches` | 6 | 3 | the two paths merge back into one record |
+| `SeedSource` | 0 | 3 | 1 record for each topic |
+| `generate_question` | 3 | 3 | 1 question for each record |
+| `branch_responses` | 3 | 6 | each record goes through the 2 branch paths |
+| `JoinBranches` | 6 | 3 | the 2 branch paths merge into 1 record |
 | `score_chosen` | 3 | 3 | adds `score_chosen` |
 | `score_rejected` | 3 | 3 | adds `score_rejected` |
-| `filter_margin` | 3 | ≤ 3 | drops pairs that are too close |
-| `JSONLSink` | 3 | 3 | writes the file, passes records through |
+| `filter_margin` | 3 | ≤ 3 | removes the pairs that are too close |
+| `JSONLSink` | 3 | 3 | writes the file and sends the records through |
 
-`Seed.values` builds the three starting records — there is only one dimension here, so
-the seed is a list, not a grid — and `Sink.jsonl` writes the file at the end. The doubling
-at the branch and the halving at the join are the whole point: a `Branch` turns one record
-into one per path, and `JoinBranches` puts them back together.
-[Branching](../reference/branching.md) is the reference for both — this page only covers
-what this recipe does with them.
+`Seed.values` makes the 3 initial records. The seed has only 1 dimension, so it is a
+list. `Sink.jsonl` writes the file at the end.
 
-## One question, two answers
+The record count becomes 2 times larger at the branch and 2 times smaller at the join.
+`Branch` makes 1 record for each branch path from each record. `JoinBranches` merges the
+records again. [Branching](../reference/branching.md) is the reference for the 2 steps.
+This page tells you only how this procedure uses them.
+
+## One question and 2 answers
 
 ```python
 Branch(
@@ -92,48 +93,52 @@ Branch(
 )
 ```
 
-Both paths are ordinary `LLMStep`s, both read `question`, and both write `response`. Only
-the instructions differ, and the difference is deliberately blunt: an expert answering
-thoroughly against an answer that is brief and vague.
+The 2 branch paths are usual `LLMStep`s. The 2 steps read `question` and write
+`response`. Only the instructions are different, and the difference is large: a full
+answer from an expert, and a short, unclear answer.
 
-The chosen path also carries a `system_prompt` where the rejected one has none. That is a
-second lever pulling the same way — a system prompt shapes every answer on that path,
-where the user prompt shapes only this one.
+The `chosen` branch path also has a `system_prompt`. The `rejected` branch path has no
+system prompt. The system prompt has an effect on each answer in its branch path. The user
+prompt has an effect only on 1 answer. Thus the system prompt makes the difference
+between the 2 answers larger.
 
-The **path names are the design**: `chosen` and `rejected` become the column suffixes at
-the join, so the naming the training format expects falls out of the pipeline rather than
-being renamed at the end.
+**The branch path names are important.** At the join, `chosen` and `rejected` become the
+suffixes of the columns. Thus the pipeline gives the names that the training format
+expects. You do not change the names at the end.
 
-One model does all of it here, which keeps the comparison about the prompts. Giving each
-path its own model turns the same pipeline into a model comparison — see
-[making it yours](#making-it-yours) below, and read the warning about `_model` first.
+One model does all the work here. Thus the comparison is only between the prompts. If you
+give a different model to each branch path, the pipeline compares models. Refer to
+[Change the dataset](#change-the-dataset) and read the warning about `_model` first.
 
-### What the join gives you
+### The result of the join
 
-`JoinBranches()` groups the two records back by `_branch_id` and merges them:
+`JoinBranches()` makes groups of the 2 records with `_branch_id` and merges them:
 
-- `topic` and `question` existed **before** the branch, so they are copied once, unsuffixed.
-- `response` was **added** by each path, so it becomes `response_chosen` and
+- `topic` and `question` were in the record **before** the branch. The join copies them
+  1 time, without a suffix.
+- Each branch path **adds** `response`. Thus the join makes `response_chosen` and
   `response_rejected`.
-- The `_branch_*` bookkeeping columns are dropped.
+- The join removes the `_branch_*` columns.
 
-No `suffixes` argument is passed, so each path falls back to `_{path name}`. That is why
-the columns come out named after the paths.
+The step has no `suffixes` argument, so each branch path uses `_{branch path name}`. Thus
+the columns get the names of the branch paths.
 
-!!! warning "The `_model` column after a join is not what it looks like"
+!!! warning "After a join, the `_model` column can be incorrect"
 
-    `_model` exists **before** the branch — `generate_question` stamped it — and both
-    paths write it again. `JoinBranches` treats it as a pre-branch column and copies it
-    once, unsuffixed, from the first path that produced a record. There is no
-    `_model_chosen` or `_model_rejected`.
+    `_model` is in the record **before** the branch, because `generate_question` adds it.
+    The 2 branch paths then write it again. `JoinBranches` thinks that it is a column from
+    before the branch. Thus it copies the column 1 time, without a suffix, from the first
+    branch path that gives a record. There is no `_model_chosen` and no
+    `_model_rejected`.
 
-    With one model everywhere, as the script has it, nothing is lost. Give the paths
-    different models and the merged row names only the first path's, silently. The two
-    `Score` steps then overwrite it again, so the `_model` that reaches the file is the
-    scoring model's. If you need to know which model wrote which answer, copy `_model`
-    into a path-specific column inside each path, with a `Map`, before the join.
+    If all steps use 1 model, as in the script, you lose no data. If the branch paths use
+    different models, the merged record shows only the model of the first branch path,
+    and you get no warning. The 2 `Score` steps then write `_model` again. Thus the
+    `_model` in the file is the scoring model. If you must know which model wrote each
+    answer, add a `Map` in each branch path. The `Map` copies `_model` to a column for
+    that branch path, before the join.
 
-## Scoring both sides
+## Score the 2 answers
 
 ```python
 Score(
@@ -145,10 +150,13 @@ Score(
 ).as_step("score_chosen")
 ```
 
-`Score` is an [LLM step](../reference/llm_specialized.md) that asks for one number.
-`llm=` takes the served model, `output_column` names the column the number lands in, and
-`score_range` is the scale. It builds its own prompt from what you pass — you never write
-it:
+`Score` is an [LLM step](../reference/llm_specialized.md) that asks for 1 number:
+
+- `llm=` takes the served model.
+- `output_column` gives the column for the number.
+- `score_range` gives the scale.
+
+`Score` makes its prompt from these arguments. You do not write it:
 
 ```text
 Score the following content on a scale of 1 to 10.
@@ -163,40 +171,42 @@ Respond with valid JSON: {"score": <number between 1 and 10>}
 Return only the JSON object, no additional text.
 ```
 
-Two things about that prompt are worth noticing. Several `input_columns` are rendered as
-`name: value` lines, so the model sees which text is the question and which is the answer.
-And each `Score` step is given **one** answer, not both: the two are scored independently,
-against the criteria, rather than compared against each other. If you want a head-to-head
-judgement instead, `Compare` is the step for it.
+Know 2 facts about this prompt:
 
-Scoring twice means two more calls per row, which is why one row costs five: one question,
-two answers, two scores.
+- The prompt shows each column in `input_columns` as a `name: value` line. Thus the model
+  can see which text is the question and which text is the answer.
+- Each `Score` step gets **1** answer. It does not get the 2 answers. Thus each answer
+  gets a score against the criteria, and not against the other answer. To compare the 2
+  answers directly, use `Compare`.
 
-### What a score actually is
+The 2 scores are 2 more calls for each record. Thus each record uses 5 calls: 1
+question, 2 answers and 2 scores.
 
-The number that lands in the column is not always the number the model said. Measured
-against `score_range=(1, 10)`:
+### How `Score` sets the value
 
-| The model replies | The column gets |
+The value in the column is not always the number from the model. With
+`score_range=(1, 10)`:
+
+| The model answers | The column gets |
 |---|---|
 | `{"score": 7}` | `7.0` |
-| `{"score": 99}` | `10` — clamped to the top of the range |
-| `{"score": "high"}` | `1` — the bottom of the range |
-| `{"explanation": "..."}` with no score | `1` — the bottom of the range |
-| anything that is not JSON | nothing; the record is dropped |
+| `{"score": 99}` | `10`, the maximum of the range |
+| `{"score": "high"}` | `1`, the minimum of the range |
+| `{"explanation": "..."}` without a score | `1`, the minimum of the range |
+| an answer that is not JSON | no value. The step removes the record |
 
-Only the last row is an error. The other three are silent, and two of them turn a model
-that ignored the instruction into a confident score — a perfect 10 or a bottom 1. On a
-preference dataset that is worse than a dropped row, because the margin filter downstream
-then keeps or discards the pair for a reason that has nothing to do with the answers.
+Only the last line is an error. The other 3 lines give no warning. In 2 of them, a model
+that did not obey the instruction gets a score of 10 or 1. In a preference dataset, this
+is worse than a removed record. The margin filter then keeps or removes the pair for a
+reason that is not related to the answers.
 
-Watch for it the cheap way: a histogram of `score_chosen` and `score_rejected` with spikes
-exactly at the ends of the range is the symptom.
+To find this problem, make a histogram of `score_chosen` and `score_rejected`. Many
+values at the 2 ends of the range show the problem.
 
-Note also that an in-range score arrives as a **float** and a clamped one as the range's
-own value, so the column can hold `7.0` and `10` in the same file.
+Also, a score in the range is a **float**, and a score at a limit is the value of that
+limit. Thus the same file can contain `7.0` and `10` in the column.
 
-## Keeping only clear preferences
+## Keep only clear preferences
 
 ```python
 Filter(
@@ -204,9 +214,9 @@ Filter(
 ).as_step("filter_margin")
 ```
 
-This is the step that makes the dataset worth training on. A pair where both answers
-scored 6 and 5 is not a preference — it is noise with a label. The margin of 2 on a 1–10
-scale is the threshold, and it is inclusive:
+This step makes the dataset useful for training. If the 2 answers get 6 and 5, the pair
+is not a preference. It is noise with a label. The margin is 2 on a scale of 1 to 10.
+The filter keeps a pair with a margin of exactly 2:
 
 | `score_chosen` | `score_rejected` | Margin | Kept |
 |---|---|---|---|
@@ -215,16 +225,19 @@ scale is the threshold, and it is inclusive:
 | 6 | 5 | 1 | no |
 | missing | 3 | −3 | no |
 
-`fn` gets the whole record and returns a bool, so the comparison is plain Python — no
-operator syntax to learn. `.get(column, 0)` rather than `record[column]` is what makes the
-last row of that table a dropped record instead of a `KeyError`: a `Score` that failed to
-parse drops the record before this step, but a `Score` you later remove would not.
+`fn` gets the full record and returns a bool. Thus the comparison is usual Python, with
+no operator syntax.
 
-Raise the margin for a smaller, cleaner dataset; lower it for more rows and more noise.
-Whatever you choose, count what survives — a filter that drops everything is a silent
-empty file.
+The step uses `.get(column, 0)` and not `record[column]`. Thus a missing score removes
+the record, as in the last line of the table, and does not cause a `KeyError`. Now, a
+`Score` that cannot parse an answer removes the record before this step. But if you
+remove a `Score` step later, this protection becomes necessary.
 
-## A row
+For a smaller dataset with less noise, increase the margin. For more records and more
+noise, decrease it. After the run, count the records that stay. If the filter removes all
+records, the file is empty, and you get no warning.
+
+## A record
 
 ```json
 {
@@ -238,19 +251,21 @@ empty file.
 }
 ```
 
-That is the standard preference shape: a prompt column and two response columns, plus the
-scores that justified the pair. Rename `question` to `prompt` and the two response columns
-to `chosen` and `rejected` with a `Map` if your trainer expects those names.
+This is the usual preference shape: 1 prompt column and 2 answer columns. The scores
+show why the pipeline kept the pair. If your trainer expects different names, use a `Map`.
+Change `question` to `prompt`, and change the 2 answer columns to `chosen` and
+`rejected`.
 
-## Running it
+## Run the script
 
 ```bash
 python examples/scripts/42_pipeline_preference_with_scoring.py
 ```
 
-You need `OPENROUTER_API_KEY` in a `.env` file at the repository root. The script builds
-its model with `openrouter(...)`; the commented-out `ollama("gemma3:4b")` line above it
-runs the whole recipe locally, for free, if you have Ollama.
+Put `OPENROUTER_API_KEY` in a `.env` file at the root of the repository. The script makes
+its served model with `openrouter(...)`. Above that line, there is an `ollama("gemma3:4b")`
+line in a comment. If you have Ollama, use that line to run all the procedure on your
+computer, at no cost.
 
 ```python
 records = pipeline.run(
@@ -259,7 +274,8 @@ records = pipeline.run(
 )
 ```
 
-The checkpoint directory holds one file per step, and the branch gets one per path:
+The checkpoint directory has 1 file for each step. The branch has 1 file for each branch
+path:
 
 ```text
 manifest.json
@@ -275,46 +291,48 @@ step_006_filter_margin.jsonl
 step_007_JSONLSink.jsonl
 ```
 
-!!! note "Checkpoints are written, not read"
+!!! note "The runner writes the checkpoints but does not read them"
 
-    `resume` defaults to `False`, and this script does not set it. The files above are
-    written on every run and never used, so running the script twice pays for all fifteen
-    calls twice. Add `resume=True` to the `run()` call to reuse them.
+    The default value of `resume` is `False`, and this script does not set it. The runner
+    writes the files above at each run, but it does not use them. Thus, if you run the
+    script 2 times, it makes the 15 calls 2 times. To use the checkpoints, add
+    `resume=True` to the `run()` call.
 
-Only four of the eight steps are named. The rest show up as their class names —
-`SeedSource`, `JoinBranches`, `JSONLSink` — which is fine until you want to
-`resume_from` one of them. Name the steps you might restart from.
+Only 4 of the 8 steps have a name. The other steps use their class names: `SeedSource`,
+`JoinBranches` and `JSONLSink`. This is not a problem until you must use `resume_from`
+on one of them. Give a name to each step that you can start again from.
 
-`batch_size=2` sets how many LLM calls go out per batch. Note what it costs when one
-fails: a failing call takes its whole batch group with it, so a larger batch loses more.
-See [Error handling & troubleshooting](../guides/troubleshooting.md).
+`batch_size=2` sets the number of LLM calls in each batch. If 1 call fails, all the
+calls in its batch group fail. Thus a larger batch loses more calls. Refer to
+[Error handling & troubleshooting](../guides/troubleshooting.md).
 
-## Making it yours
+## Change the dataset
 
 | To change | Edit | Effect |
 |---|---|---|
-| the subject matter | the `topic` values | linear on the row count |
-| how bad the rejected answer is | the `rejected` path's prompt | changes the margin, not the count |
-| what "good" means | `criteria` on both `Score` steps | keep the two identical, or the scores are not comparable |
-| how strict the scoring is | `rubric=` on the `Score` steps | anchors the scale to descriptions instead of a bare 1–10 |
-| why a score was given | `include_explanation=True` | adds a `{output_column}_explanation` column |
-| how different the pair must be | the margin in `filter_margin` | higher keeps fewer, cleaner pairs |
+| the subjects | the `topic` values | linear on the record count |
+| the quality of the rejected answer | the prompt of the `rejected` branch path | changes the margin, not the count |
+| the meaning of "good" | `criteria` on the 2 `Score` steps | use the same criteria on the 2 steps. If not, you cannot compare the scores |
+| how strict the scores are | `rubric=` on the `Score` steps | gives a description for each value of the scale, not only 1 to 10 |
+| the reason for a score | `include_explanation=True` | adds a `{output_column}_explanation` column |
+| the necessary difference in a pair | the margin in `filter_margin` | a higher margin keeps fewer pairs, with less noise |
 
-Three extensions worth the effort:
+You can add these changes:
 
-- **A model per path.** Put a strong model on `chosen` and a small one on `rejected` and
-  the dataset compares models instead of prompts. Copy `_model` inside each path first,
-  as the warning above explains.
-- **A third path.** `Branch` takes any number of paths, so a `middle` path gives you
-  ranked triples rather than pairs. The join suffixes it the same way.
-- **Deduplicate the questions.** Three topics produce three questions; a hundred topics
-  will produce near-duplicates. `Group` on a normalized `question` finds them before you
-  pay for four calls each.
+- **A model for each branch path.** Put a strong model on `chosen` and a small model on
+  `rejected`. The dataset then compares models, not prompts. First copy `_model` in each
+  branch path, as the warning above tells you.
+- **A third branch path.** `Branch` accepts 1 or more branch paths. A `middle` branch
+  path gives you sets of 3 ranked answers, not pairs. The join adds the suffix in the
+  same way.
+- **Remove duplicate questions.** Three topics give 3 questions. One hundred topics give
+  questions that are almost the same. Use `Group` on a normalized `question` to find
+  them before you make 4 more calls for each.
 
-## Where to go next
+## Related pages
 
-- [Branching](../reference/branching.md) — `Branch`, `JoinBranches`, suffixes and the join rules.
-- [Specialized LLM steps](../reference/llm_specialized.md) — `Score`, `Compare`, `Classify`, `Rewrite`, `Extract`.
-- [Data ops](../reference/data_ops.md) — `Filter`, `Map`, `Group` and the rest.
-- [Pipelines & execution](../guides/pipelines_and_execution.md) — checkpoints, resume and run controls.
-- [Text classification](text_classification.md) — a simpler recipe, seed-driven end to end.
+- [Branching](../reference/branching.md): `Branch`, `JoinBranches`, suffixes and the join rules.
+- [Specialized LLM steps](../reference/llm_specialized.md): `Score`, `Compare`, `Classify`, `Rewrite` and `Extract`.
+- [Data ops](../reference/data_ops.md): `Filter`, `Map`, `Group` and the other transforms.
+- [Pipelines & execution](../guides/pipelines_and_execution.md): checkpoints, resume and run controls.
+- [Text classification](text_classification.md): a simpler procedure that uses a seed from start to end.

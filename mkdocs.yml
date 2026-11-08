@@ -38,7 +38,7 @@ theme:
 # TEMPORARY palette preview — see docs/stylesheets/palette-preview.css
 extra_css:
   - stylesheets/palette-preview.css
-  # The example datasets grid on the Cookbook index.
+  # The cookbooks grid on the Cookbook index.
   - stylesheets/showcase.css
 
 markdown_extensions:

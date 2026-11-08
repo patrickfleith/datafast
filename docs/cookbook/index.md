@@ -1,77 +1,53 @@
 # Cookbook
 
-Cookbooks connect a runnable script to a documentation walkthrough.
+Each cookbook connects a script that you can run to a page that explains it.
 
-## Example datasets
-
-Eight kinds of dataset you can build with datafast today. Each square links to its
-cookbook walkthrough, or to the example script that builds it.
+## Cookbooks
 
 <div class="grid cards showcase" markdown>
 
--   **[Q&A pairs](examples.md#full-pipelines)**
-
-    Questions by domain and difficulty, each with its answer.
-
-    Script `38`
-
 -   **[Text classification](text_classification.md)**
 
-    Multilingual trail reports, each written to fit one label.
-
-    Cookbook
+    Trail reports in 2 languages. Each report agrees with 1 label.
 
 -   **[Personas](persona_generation.md)**
 
-    Personas inferred from real articles, then expanded.
-
-    Cookbook
+    Personas from real articles, then a related persona for each.
 
 -   **[Domain text corpus](space_text_generation.md)**
 
-    Spacecraft engineering text in several languages.
-
-    Cookbook
+    Text about spacecraft engineering in 2 languages.
 
 -   **[Preference pairs](preference_with_scoring.md)**
 
-    Chosen and rejected answers, scored, close pairs dropped.
-
-    Cookbook
-
--   **[Quality-filtered text](examples.md#full-pipelines)**
-
-    Facts scored 1 to 10 by a judge, 7 and up kept.
-
-    Script `39`
-
--   **[Augmented text](examples.md#full-pipelines)**
-
-    Labelled sentences plus two paraphrases of each.
-
-    Script `41`
-
--   **[Structured extraction](examples.md#specialized-llm-steps)**
-
-    Names, prices and features pulled out of product text.
-
-    Script `33`
+    Chosen and rejected answers with scores. Pairs that are too close are removed.
 
 </div>
 
 ## How a cookbook works
 
-The Python script is the source of truth. Each cookbook page explains:
+The Python script is the reference. Each cookbook page tells you:
 
-- where the executable example lives
-- what inputs it uses
-- which prompt assets it depends on
-- where it writes its output artifacts
+- where the script is
+- which inputs the script uses
+- which prompt files the script uses
+- where the script writes its output files
 
-## Available Cookbooks
+## Example datasets
 
-- [Examples](examples.md): all 45 runnable scripts in `examples/scripts/`, grouped by what they show.
-- [Text Classification](text_classification.md): generate a multilingual trail-conditions classification dataset from explicit seed dimensions.
-- [Persona Generation](persona_generation.md): infer personas from real articles and expand them through relationships using randomized prompt variants.
-- [Space Engineering Text Generation](space_text_generation.md): generate a raw multilingual technical text corpus from seed dimensions.
-- [Preference Data with Scoring](preference_with_scoring.md): generate chosen/rejected answer pairs with `Branch`, score both sides, and keep only clear preferences.
+Datafast steps are modular, and you can put them together in many different ways. Thus
+the cookbooks show only some of the datasets that you can make. The
+[example scripts](examples.md) make other datasets, for example:
+
+- [Q&A pairs](examples.md#full-pipelines): questions for each domain and difficulty
+  level, each with its answer. Script `38`.
+- [Quality-filtered text](examples.md#full-pipelines): a judge gives each fact a score
+  from 1 to 10. Scores of 7 and higher stay. Script `39`.
+- [Classification data with verified labels](examples.md#full-pipelines): examples with
+  labels, then `Classify` examines each label. Script `40`.
+- [Augmented text](examples.md#full-pipelines): sentences with labels, and 2 paraphrases
+  of each sentence. Script `41`.
+- [Structured extraction](examples.md#specialized-llm-steps): names, prices and features
+  that the LLM finds in product text. Script `33`.
+- [Rewrite styles](examples.md#branching): the same text in many styles, merged into 1
+  record. Script `35`.

@@ -1,26 +1,27 @@
 # Text classification
 
-Build a labelled, multilingual text-classification dataset from nothing but a list of
-labels.
+Make a text classification dataset in 2 languages. The only input that you write is a
+list of labels.
 
-The problem this solves is common: you want to train or evaluate a classifier, you know
-what the classes are, and you have no data. Writing examples by hand is slow and the
-result is narrow — the same handful of phrasings for every class. Here the classes are
-declared up front, every example is generated to fit exactly one of them, and the label
-is known before the text exists rather than guessed afterwards.
+Use this procedure when you must train or evaluate a classifier and you have no data.
+You know the classes, but you have no examples. If you write examples manually, the work
+is slow. Also, the examples are not different: each class gets the same small set of
+phrases. In this procedure, you specify the classes first. The LLM then generates each
+text to agree with 1 class. Thus you know the label before the LLM writes the text.
 
-The worked example is trail-condition reports: short comments a hiker might leave about a
-path, sorted into four categories a trail-maintenance team would act on.
+The example is a set of trail reports. Each report is a short comment from a hiker about
+a trail. Each report has 1 of 4 categories. A trail maintenance team does a different
+action for each category.
 
 - **Script:** `examples/scripts/45_cookbook_text_classification.py`
-- **Prompt:** [`text_classification_generation.txt`](assets/text_classification_generation.txt)
+- **Prompt template:** [`text_classification_generation.txt`](assets/text_classification_generation.txt)
 - **Output:** `examples/outputs/45_text_classification_cookbook.jsonl`
 - **Checkpoints:** `examples/checkpoints/45_text_classification_cookbook`
-- **96 rows** by default, from 4 labels
+- **96 records** by default, from 4 labels
 
 ## The pipeline
 
-Five steps, and every one of them is named:
+The pipeline has 5 steps. Each step has a name:
 
 ```python
 from datafast import AddUUID, LLMStep, Map, Seed, SeedDimension, Sink
@@ -45,40 +46,43 @@ pipeline = (
 )
 ```
 
-Record counts along the way:
+The record count after each step:
 
 | Step | In | Out | Why |
 |---|---|---|---|
 | `seed_trail_report_grid` | 0 | 24 | 4 labels × 3 trail types × 2 styles |
 | `generate_trail_reports` | 24 | 96 | × 2 languages × 2 models |
-| `keep_output_fields` | 96 | 96 | drops the columns not meant for publication |
+| `keep_output_fields` | 96 | 96 | removes the columns that you do not publish |
 | `add_uuid` | 96 | 96 | adds `id` |
-| `JSONLSink` | 96 | 96 | writes the file, passes records through |
+| `JSONLSink` | 96 | 96 | writes the file and sends the records through |
 
-## Designing the seed
+## Design the seed
 
-The seed is the whole design of the dataset. Everything the model is asked to vary is
-declared here, so you can count and inspect it before spending anything.
+The seed is the design of the dataset. You specify each dimension that the LLM must
+change in the seed. Thus you can count and examine the records before you make LLM calls.
 
-`Seed.product` crosses the dimensions it is given: every label against every trail type
-against every style. Three axes were chosen, and each one exists for a different reason.
+`Seed.product` makes all the combinations of its dimensions. Each label goes with each
+trail type and each style. This seed has 3 dimensions, and each dimension has a different
+function.
 
-**`label` — what the dataset is for.** Four trail-condition classes: `trail_obstruction`,
-`infrastructure_issues`, `hazards`, `positive_conditions`. This is the target column, so
-it has to be balanced by construction: every label gets the same number of rows because
-the product gives it the same number of combinations.
+**`label`: the purpose of the dataset.** There are 4 trail condition classes:
+`trail_obstruction`, `infrastructure_issues`, `hazards` and `positive_conditions`. This is
+the target column, so the classes must have equal quantities of records. The product
+gives each label the same number of combinations, thus each label gets the same number of
+records.
 
-**`trail_type` — content variety.** A mountain trail, a coastal path, a forest walk. A
-classifier trained only on mountain-trail language learns the setting, not the class.
+**`trail_type`: different content.** The trail types are a mountain trail, a coastal path
+and a forest walk. If you train a classifier only on reports about mountain trails, it
+learns the location and not the class.
 
-**`style` — surface variety.** A brief social media post, or a hiking review. Same
-meaning, very different sentence shape. This is what stops every row in a class from
-reading like the same person wrote it.
+**`style`: different sentence shapes.** The styles are a short social media post and a
+hiking review. The meaning stays the same, but the sentences are different. Thus
+the records in a class do not all read as if 1 person wrote them.
 
-### Why the label and its description are one dimension
+### Why the label and its description are 1 dimension
 
-`label` and `label_description` vary **together**. A label is meaningless with another
-label's definition, so they must never be crossed:
+`label` and `label_description` change **together**. A label with the description of a
+different label has no meaning. Thus you must not make combinations of the 2 columns:
 
 ```python
 from datafast import Seed, SeedDimension
@@ -92,16 +96,16 @@ dimension = SeedDimension(columns=["label", "label_description"], values=LABELS)
 assert len(dimension) == 2  # two values in one dimension, not two dimensions
 ```
 
-`SeedDimension` is the general form of a dimension: any number of columns that move
-together, given as a list of dicts. [`Seed.expand`](../reference/seed.md) is
-the two-column shorthand for the same idea.
+`SeedDimension` is the general form of a dimension. It contains 1 or more columns that
+change together, as a list of dicts. [`Seed.expand`](../reference/seed.md) is the short
+form of the same function for 2 columns.
 
-Getting this wrong is the classic seeding mistake. Two separate `Seed.values` dimensions
-would produce 16 label-and-description pairs where 12 of them are contradictions.
+This is a frequent seed error. If you use 2 different `Seed.values` dimensions, you get
+16 pairs of a label and a description. Of these 16 pairs, 12 are incorrect.
 
-### Counting before spending
+### Count the records before you make LLM calls
 
-The script computes the total itself and prints it before the run:
+The script calculates the total and shows it before the run starts:
 
 ```python
 LABELS, TRAIL_TYPES, STYLES = range(4), range(3), range(2)
@@ -111,34 +115,35 @@ expected_rows = len(LABELS) * len(TRAIL_TYPES) * len(STYLES) * len(LANGUAGES) * 
 assert expected_rows == 96
 ```
 
-`len(seed)` gives the same number for the seed itself, before the LLM step multiplies it.
-Do this every time: one careless dimension turns 96 calls into 960.
+`len(seed)` gives the record count of the seed, before the LLM step multiplies it. Do
+this calculation each time. If 1 dimension is incorrect, 96 calls can become 960 calls.
 
 ## The generation step
 
-One `LLMStep` does all the work, and it multiplies its input three ways at once.
+One `LLMStep` does all the generation. This step multiplies its input in 3 ways.
 
 ### Languages
 
-`language=LANGUAGES` takes a dict of code to name, and runs every record once per entry:
+`language=LANGUAGES` takes a dict of language codes and names. The step runs each record
+1 time for each entry:
 
 ```python
 LANGUAGES = {"en": "English", "fr": "French"}
 ```
 
-Both halves reach the prompt, as two different placeholders:
+The prompt template gets the 2 parts as 2 different placeholders:
 
 | Placeholder | Value | Use |
 |---|---|---|
-| `{language}` | `en` | when the code reads better |
-| `{language_name}` | `English` | what you ask the model to write in |
+| `{language}` | `en` | when the code is better |
+| `{language_name}` | `English` | the language for the model to write in |
 
-The prompt uses `{language_name}` — models follow "in English" far more reliably than "in
-en". The code is what lands in the `_language` column.
+The prompt template uses `{language_name}`. Models obey "in English" better than "in en".
+The step writes the code in the `_language` column.
 
 ### Models
 
-`model=MODELS` takes a list, and every record is generated once by each:
+`model=MODELS` takes a list. Each model generates each record 1 time:
 
 ```python
 MODEL_IDS = [
@@ -147,52 +152,52 @@ MODEL_IDS = [
 ]
 ```
 
-Two models from **different families** is the point. Generating with one model bakes its
-habits into the dataset, and a classifier trained on it learns that model as much as the
-task. Two families, one API key: both are reached through
+The 2 models are from **different families**. If 1 model generates all the data, the
+dataset gets the habits of that model. A classifier that you train on that data learns
+the model as well as the task. One API key gives access to the 2 models, through
 [OpenRouter](../reference/providers/openrouter.md).
 
-`temperature=0.8` is set on each served model — high enough for varied phrasing, not so
-high that the comment stops matching its label. Sampling settings live on the served
-model, never on the step.
+Each served model has `temperature=0.8`. This value gives different phrases, but the
+comments continue to agree with their labels. Put the sampling settings on the served
+model. Do not put them on the step.
 
-The model that produced each row is recorded in `_model`, so you can compare them
-afterwards or drop one without regenerating everything.
+The `_model` column records the model that generated each record. Thus you can compare
+the models later, or remove the records of 1 model without a new generation.
 
-### The prompt
+### The prompt template
 
-The prompt is a file, not a string:
+The prompt template is in a file:
 
 ```python
 PROMPT_PATH = "docs/cookbook/assets/text_classification_generation.txt"
 ```
 
-Passing a path keeps a long prompt out of the pipeline definition and under version
-control on its own. It opens by naming the task and the language, then gives the category
-and its definition, then a list of constraints — the setting, the style, a length limit,
-and several things *not* to do:
+With a path, the long prompt template stays out of the pipeline, and it has its own
+version history. The prompt template first gives the task and the language. Then it
+gives the category and its description. Then it gives a list of limits: the location,
+the style, a maximum length and some things that the model must not do:
 
 ```text
 - Do not sound like an official report, safety bulletin, or structured form.
 - Do not mention the category name directly.
 ```
 
-That second line matters more than it looks. Without it the model writes "This is a
-hazard on the trail", and every row contains its own label. A classifier trained on that
-learns to find the word, and scores well on data no real user would write.
+The second line is important. Without it, the model writes "This is a hazard on the
+trail", and each record contains its label. A classifier learns to find the word. It
+then gets good scores on data that is not similar to the text of real users.
 
-**`input_columns` is a whitelist, not a note.** Only the columns listed there are
-available to the prompt. A placeholder for a column that exists in the record but is
-missing from `input_columns` stops the run with a `KeyError` — which is the good outcome,
-because it happens before any call is made.
+**Only the columns in `input_columns` go to the prompt template.** A record can contain a
+column that is not in `input_columns`. If the prompt template has a placeholder for that
+column, the run stops with a `KeyError`. This result is good, because it occurs before
+the first LLM call.
 
-`parse_mode="text"` means the whole reply, stripped, becomes the `text` column. There is
-nothing to parse: one prompt, one answer, one column.
+`parse_mode="text"` puts the full answer, without spaces at the two ends, in the `text`
+column. The step does not parse the answer. There is 1 prompt, 1 answer and 1 column.
 
-## Shaping the output
+## Prepare the output
 
-Two steps stand between generation and the file, and both exist for the same reason: the
-columns that were useful *during* the run are not the columns you want to publish.
+Two steps come between the generation and the file. They have the same purpose: the
+columns that you use during the run are not the columns that you publish.
 
 ```python
 def keep_output_fields(record: dict) -> dict:
@@ -207,16 +212,16 @@ def keep_output_fields(record: dict) -> dict:
     }
 ```
 
-`Map` returns a **new** dict rather than editing the old one, so anything left out is
-dropped. `label_description` goes here — it was written for the model, and republishing a
-paragraph of instructions on every row helps nobody. The same step renames the two
-metadata columns from `_language` and `_model` to `language` and `model`, and fixes the
-column order.
+`Map` returns a **new** dict. It does not change the old dict, so it removes each column
+that the function does not name. This step removes `label_description`, because the text
+is an instruction for the model, and it has no use in each published record. The same
+step changes the names of 2 metadata columns from `_language` and `_model` to `language`
+and `model`. It also sets the column order.
 
-`AddUUID(column="id", overwrite=True)` runs **after** the `Map`, so the id belongs to the
-published row.
+`AddUUID(column="id", overwrite=True)` runs **after** `Map`, so the `id` identifies the
+published record.
 
-### A row
+### A record
 
 ```json
 {
@@ -230,17 +235,17 @@ published row.
 }
 ```
 
-Every column except `text` and `id` came from the seed or from the run. Nothing was
-inferred, so nothing can be wrong.
+All the columns, other than `text` and `id`, come from the seed or from the run. The
+pipeline does not guess these values, so they are correct.
 
-## Running it
+## Run the script
 
 ```bash
 python examples/scripts/45_cookbook_text_classification.py
 ```
 
-You need `OPENROUTER_API_KEY` in a `.env` file at the repository root. Hugging Face
-authentication is only needed if you publish.
+Put `OPENROUTER_API_KEY` in a `.env` file at the root of the repository. You must log in
+to Hugging Face only if you publish.
 
 ```python
 records = pipeline.run(
@@ -250,11 +255,12 @@ records = pipeline.run(
 )
 ```
 
-`resume=True` with a `checkpoint_dir` makes the command safe to repeat. Run it again after
-an interruption and it picks up where it stopped instead of paying twice.
+With `resume=True` and a `checkpoint_dir`, you can do the same command again safely. If
+the run stops, start it again. It continues from the point where it stopped, and it does
+not make the same LLM calls again.
 
-Naming the steps pays off here. The checkpoint directory holds one file per step, named
-after it:
+The step names are important here. The checkpoint directory has 1 file for each step,
+with the name of the step:
 
 ```text
 manifest.json
@@ -265,9 +271,9 @@ step_003_add_uuid.jsonl
 step_004_JSONLSink.jsonl
 ```
 
-Those are the names `resume_from` wants, and the reason `.as_step(...)` is worth the
-keystrokes — the fifth step was left unnamed and shows up as `JSONLSink`. To rebuild the
-output after editing `keep_output_fields`, without regenerating a single comment:
+`resume_from` uses these names. This is the reason to use `.as_step(...)`. The fifth step
+has no name, so its file has the name `JSONLSink`. If you change `keep_output_fields`,
+you can make the output again without a new generation:
 
 ```python
 records = pipeline.run(
@@ -277,14 +283,15 @@ records = pipeline.run(
 )
 ```
 
-One warning about resume: the checkpoint fingerprint covers step names and classes only.
-Change the prompt, the labels or a model and resume will happily continue with the old
-records. Use a fresh `checkpoint_dir` when you change what is generated. See
-[Error handling & troubleshooting](../guides/troubleshooting.md).
+!!! warning "Use a new `checkpoint_dir` when you change the generation"
 
-## Publishing
+    The checkpoint fingerprint includes only the step names and classes. If you change
+    the prompt template, the labels or a model, resume continues with the old records.
+    Refer to [Error handling & troubleshooting](../guides/troubleshooting.md).
 
-The Hub push is deliberately outside the pipeline:
+## Publish the dataset
+
+The push to the Hub is outside the pipeline:
 
 ```python
 if os.getenv("DATAFAST_PUSH_TO_HUB") == "1":
@@ -300,50 +307,52 @@ if os.getenv("DATAFAST_PUSH_TO_HUB") == "1":
     )
 ```
 
-A sink in the chain runs on every run. Publishing is not something you want to happen
-because you re-ran a script to check an output column, so it sits behind an environment
-variable:
+A sink in the pipeline runs each time that the pipeline runs. Do not publish
+each time that you run the script to examine a column. Thus an environment variable
+controls the push:
 
 ```bash
 DATAFAST_PUSH_TO_HUB=1 python examples/scripts/45_cookbook_text_classification.py
 ```
 
-`train_size=0.8` splits the dataset 80/20 into `train` and `test`. The rows come out of
-the run grouped by model, so the split has to mix them: `shuffle=True` shuffles before
-splitting, and the fixed `seed` is what makes the result the same every time.
-`private=False` publishes openly; **change `HF_REPO_ID` to a repository you own before running this.**
+`train_size=0.8` divides the dataset into `train` (80%) and `test` (20%). The run gives
+the records in groups by model, so the split must mix them. `shuffle=True` mixes the
+records before the split. The fixed `seed` gives the same result each time.
+`private=False` publishes the dataset for all users.
 
-`Sink.hub` is a step like any other, so calling `.process(records)` runs it directly. It
-is a generator, which is why the call is wrapped in `list(...)` — without that, nothing
-happens.
+**Before you run this script, change `HF_REPO_ID` to a repository that you own.**
 
-## Making it yours
+`Sink.hub` is a step, so `.process(records)` runs it directly. It is a generator. Thus
+the call is in `list(...)`. Without `list(...)`, the push does not occur.
 
-| To change | Edit | Effect on the row count |
+## Change the dataset
+
+| To change | Edit | Effect on the record count |
 |---|---|---|
 | the classes | `LABELS` | linear |
-| the settings | `TRAIL_TYPES` | linear |
-| the voices | `STYLES` | linear |
+| the locations | `TRAIL_TYPES` | linear |
+| the styles | `STYLES` | linear |
 | the languages | `LANGUAGES` | linear |
 | the models | `MODEL_IDS` | linear |
-| where it publishes | `HF_REPO_ID` | none |
+| the destination of the push | `HF_REPO_ID` | none |
 
-Every axis multiplies with every other, so adding one value to each of five dimensions
-does not add five rows.
+Each dimension multiplies with all the other dimensions. If you add 1 value to each of 5
+dimensions, you get many more than 5 new records.
 
-Two things worth adding once the shape is right:
+When the dataset is correct, you can add these steps:
 
-- **A verification pass.** Add a [`Classify`](../reference/llm_specialized.md) step that
-  reads `text` and predicts the label, then a `Filter` that keeps only the rows where the
-  prediction matches the seeded label. Generation quality varies by label; this measures
-  it instead of assuming it.
-- **A deduplication step.** High temperature and 24 seed combinations still produce near
-  duplicates. A `Map` that normalizes `text`, followed by `Group`, will find them.
+- **A verification step.** Add a [`Classify`](../reference/llm_specialized.md) step. It
+  reads `text` and predicts the label. Then add a `Filter` that keeps only the records
+  where the prediction agrees with the seed label. The quality of the generation is
+  different for each label. This step measures the quality.
+- **A step that finds duplicates.** A high temperature and 24 seed combinations can
+  still give records that are almost the same. Use a `Map` that normalizes `text`, then
+  a `Group`, to find them.
 
-## Where to go next
+## Related pages
 
-- [Seed](../reference/seed.md) — every dimension and combiner.
-- [LLM step](../reference/llm_step.md) — the rest of what `LLMStep` takes.
-- [Pipelines & execution](../guides/pipelines_and_execution.md) — checkpoints and run controls.
-- [Sinks](../reference/sinks.md) — `Sink.jsonl`, `Sink.hub` and the others.
-- [Persona generation](persona_generation.md) — a cookbook that starts from real text instead of a seed.
+- [Seed](../reference/seed.md): all the dimensions and combiners.
+- [LLM step](../reference/llm_step.md): the other arguments of `LLMStep`.
+- [Pipelines & execution](../guides/pipelines_and_execution.md): checkpoints and run controls.
+- [Sinks](../reference/sinks.md): `Sink.jsonl`, `Sink.hub` and the other sinks.
+- [Persona generation](persona_generation.md): a cookbook that starts from real text, not from a seed.

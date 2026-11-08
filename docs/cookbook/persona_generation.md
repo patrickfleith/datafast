@@ -1,32 +1,35 @@
 # Persona generation
 
-Turn a corpus of real articles into a set of personas, then expand each persona into
-someone connected to them.
+Get personas from a corpus of real articles. Then, for each persona, get a second person
+who has a relation to the first.
 
-Synthetic data is only as varied as the thing that seeds it. A list of personas written by
-hand converges fast — they all sound like the person who wrote them. This recipe seeds the
-personas from **real text** instead: for each article, infer one plausible reader. Real
-writing carries a range of subjects, registers and assumptions that no hand-written list
-matches, so the personas inherit that range for free.
+The seed of synthetic data controls how different the data is. If you write a list of
+personas manually, the personas become similar quickly: they all sound like the writer.
+This procedure starts from **real text**. For each article, the LLM gives 1 possible
+reader. Real articles have many different subjects, registers and assumptions. A list
+that you write manually does not have this range. The personas get the same range as the
+articles.
 
-Then it does it again, one step out. From each inferred persona, the pipeline infers a
-second person in a close relationship with the first. One article becomes two connected
-people.
+Then the pipeline does the same procedure 1 more time. For each persona, the pipeline
+gets a second person who has a close relation to the first. Thus 1 article gives 2
+related people.
 
-The approach comes from the Persona Hub paper — its Text-to-Persona and
-Persona-to-Persona methods — reimplemented here with datafast. No Persona Hub code is
-reused; the paper says its published prompts are simplified rather than the exact
-experiment strings, so these are adaptations.
+This procedure comes from the Persona Hub paper and its Text-to-Persona and
+Persona-to-Persona methods. This page does the procedure again with datafast. It does not
+use code from Persona Hub. The paper tells you that its published prompts are simplified
+versions of the prompts in the experiment. Thus the prompt templates on this page are
+adaptations.
 
 - **Script:** `examples/scripts/43_cookbook_persona_generation.py`
-- **Prompts:** [asset index](assets/index.md) — three variants per step
+- **Prompt templates:** [asset index](assets/index.md), 3 variants for each step
 - **Output:** `examples/outputs/43_persona_cookbook.jsonl` **and** a private Hub dataset
 - **Checkpoints:** `examples/checkpoints/43_persona_cookbook`
-- **10 rows** by default, and two LLM calls per row
+- **10 records** by default, with 2 LLM calls for each record
 
 ## The pipeline
 
-Twelve steps, in four stages: prepare the corpus, infer a persona, expand it, publish.
+The pipeline has 12 steps in 4 stages: prepare the corpus, get a persona, get a related
+persona, publish.
 
 ```python
 from datafast import AddUUID, Filter, LLMStep, Map, Sample, Sink, Source, openrouter
@@ -63,26 +66,26 @@ pipeline = (
 )
 ```
 
-Unlike a seeded dataset, the record count does not multiply. Each stage keeps or reduces
-what it is given:
+A pipeline with a seed multiplies the record count. This pipeline does not. Each step
+keeps the record count, or makes it smaller:
 
 | Step | Effect on the count |
 |---|---|
-| `add_word_count` | unchanged — adds `word_count` |
-| `filter_word_count` | drops articles outside 300–500 words |
-| `take_first_10` | cuts to `n=10` |
-| `assign_life_stage` | unchanged — adds `life_stage` |
-| `text_to_persona` | unchanged — one call per record |
-| `assign_related_life_stage` | unchanged — adds `related_life_stage` |
-| `persona_to_persona` | unchanged — one call per record |
-| `keep_output_fields` | unchanged — drops columns |
-| `add_uuid` | unchanged — adds `id` |
-| `Sink.jsonl`, `Sink.hub` | unchanged — both write and pass through |
+| `add_word_count` | no change, adds `word_count` |
+| `filter_word_count` | removes the articles that are not 300 to 500 words long |
+| `take_first_10` | keeps `n=10` records |
+| `assign_life_stage` | no change, adds `life_stage` |
+| `text_to_persona` | no change, 1 call for each record |
+| `assign_related_life_stage` | no change, adds `related_life_stage` |
+| `persona_to_persona` | no change, 1 call for each record |
+| `keep_output_fields` | no change, removes columns |
+| `add_uuid` | no change, adds `id` |
+| `Sink.jsonl`, `Sink.hub` | no change, the 2 sinks write the records and send them through |
 
-## Preparing the corpus
+## Prepare the corpus
 
-The source is [XSum](https://huggingface.co/datasets/EdinburghNLP/xsum), BBC articles with
-single-sentence summaries, loaded from the Hub:
+The source is [XSum](https://huggingface.co/datasets/EdinburghNLP/xsum). XSum contains
+BBC articles, each with a summary of 1 sentence. The source loads it from the Hub:
 
 ```python
 from datafast import Source
@@ -94,36 +97,37 @@ source = Source.huggingface(
 )
 ```
 
-`columns=` keeps only what is needed. The dataset's own `id` is kept deliberately —
-without it there is no way back from a generated persona to the article it came from.
+`columns=` keeps only the necessary columns. The source keeps the `id` of the dataset.
+Without the `id`, you cannot find the article that a persona comes from.
 
-Three steps then narrow the corpus, and the order matters.
+Then 3 steps make the corpus smaller. The order of these steps is important.
 
-**Measure, then filter.** `Filter` reads columns; it does not compute them. So a `Map`
-adds `word_count` first:
+**Measure, then filter.** `Filter` reads columns. It does not calculate them. Thus a
+`Map` adds `word_count` first:
 
 ```python
 def add_word_count(record: dict) -> dict:
     return {**record, "word_count": len(record["document"].split())}
 ```
 
-**Filter on length.** 300 to 500 words. Below that there is not enough signal to infer a
-specific reader and the model produces generic personas; above it the article usually
-covers several topics and the persona blurs. It is also the largest lever on cost, since
-every article becomes prompt tokens.
+**Filter on length.** Keep articles of 300 to 500 words. A shorter article does not give
+sufficient data for a specific reader, and the model gives general personas. A longer
+article usually has many topics, and the persona becomes unclear. The length also has
+the largest effect on the token count, because each article becomes prompt tokens.
 
-**Then cut to size.** `Sample(n=10, strategy="first")` takes the first ten survivors.
-`"first"` is not random: the same ten articles come out on every run, which makes prompt
-changes comparable. Raise `n` once the output looks right.
+**Then keep a small number.** `Sample(n=10, strategy="first")` keeps the first 10
+records that the filter keeps. `"first"` is not random. Each run gives the same 10
+articles, so you can compare the results when you change a prompt template. When the
+output is correct, increase `n`.
 
-A step's name is not a label. It becomes the checkpoint file name and the value
-`resume_from` takes, so `take_first_10` is what you will see on disk as
-`step_003_take_first_10.jsonl`. Keep the name and the number it claims in step.
+A step name is not only a label. It becomes the name of the checkpoint file and a value
+for `resume_from`. Thus the file for `take_first_10` on the disk is
+`step_003_take_first_10.jsonl`. If you change the number, change the name too.
 
-Filtering before sampling is the cheap order. Ten articles chosen first, then filtered,
-could leave you with three.
+Filter first, then sample. This order uses fewer articles. If you sample 10 articles and
+then filter them, only 3 can stay.
 
-For a local corpus, swap the source and keep everything after it:
+For a local corpus, replace the source and keep all the other steps:
 
 ```python
 from datafast import Map, Source
@@ -131,12 +135,12 @@ from datafast import Map, Source
 pipeline = Source.file("data/articles.jsonl") >> Map(lambda r: {**r, "document": r["text"]})
 ```
 
-The rest of the pipeline only needs a `document` column.
+The other steps use only a `document` column.
 
 ## Two LLM steps
 
-Both are plain `LLMStep`s with the same shape: read a column, ask for JSON, write
-named columns.
+The 2 steps are usual `LLMStep`s with the same shape. Each step reads a column, asks for
+JSON and writes columns with names.
 
 ### Text-to-Persona
 
@@ -152,10 +156,11 @@ LLMStep(
 )
 ```
 
-The prompt asks for **a reader of the text, not its subject** — an article about a flood
-should give a council officer or a local resident, not the mayor it quotes. It also asks
-for one specific person rather than a category, forbids quoting the source, and forbids
-referring to the article at all, so the persona stands on its own.
+The prompt template asks for **a reader of the text, not its subject**. For an article
+about a flood, the persona must be a council officer or a local resident. It must not be
+the mayor that the article quotes. The prompt template also asks for 1 specific person,
+not a category. It tells the model not to quote the article and not to refer to the
+article. Thus the persona has no dependency on the article.
 
 ### Persona-to-Persona
 
@@ -171,17 +176,17 @@ LLMStep(
 )
 ```
 
-This step reads only `persona_description`. The article is gone — the second person is
-derived from the first, not from the text. It returns **two** columns: the relationship
-and the new persona.
+This step reads only `persona_description`. It does not read the article. The second
+person comes from the first person, not from the text. The step gives **2** columns: the
+relation and the new persona.
 
-The relationship is what makes the pair useful. Two unrelated personas are just two rows;
-a persona and their coach can be given the same question and disagree in a way that has a
-reason behind it.
+The relation makes the pair useful. Two personas without a relation are only 2 records.
+You can ask a persona and their coach the same question. They can then give different
+answers, and each answer has a reason.
 
-### Randomizing the prompt
+### Change the prompt template at random
 
-Both steps pass a `Sample` where a prompt normally goes:
+Each of the 2 steps gives a `Sample` to `prompt`, not a prompt template:
 
 ```python
 from datafast import Sample
@@ -196,17 +201,18 @@ picker = Sample(TEXT_TO_PERSONA_PROMPTS, n=1)
 assert len(picker.pick()) == 1
 ```
 
-`Sample` does two different jobs depending on how it is built. Given `items`, it is a
-picker you can hand to `prompt`, `model` or `language`, and it is drawn **once per
-record**. Given no items, it is a pipeline step that samples records — which is what
-`Sample(n=10, strategy="first")` is, four lines higher in the same pipeline.
+`Sample` has 2 different functions:
 
-Three prompt variants ask for the same thing in different words. One prompt applied to a
-thousand articles produces a thousand personas with the same sentence structure; the
-variants break that up. It is the same idea as varying the model, applied to the
-instruction instead.
+- With `items`, it selects values. You can give it to `prompt`, `model` or `language`. It
+  selects 1 time **for each record**.
+- Without `items`, it is a pipeline step that samples records.
+  `Sample(n=10, strategy="first")` in the same pipeline is this type.
 
-The life stages are randomized the same way, but in plain Python:
+The 3 variants of the prompt template ask for the same thing with different words. If 1
+prompt template goes to 1000 articles, you get 1000 personas with the same sentence
+structure. The variants prevent this. A list of models does the same thing for the model.
+
+The life stages also change at random, but with usual Python:
 
 ```python
 import random
@@ -217,36 +223,42 @@ def assign_life_stage(record: dict) -> dict:
     return {**record, "life_stage": random.choice(LIFE_STAGES)}
 ```
 
-Two separate draws, one before each LLM step, so a teenager's related persona is not
-forced to be another teenager. The prompt asks the model to reflect the stage without
-naming an age, so the text does not fill up with "42-year-old".
+There are 2 different random selections, 1 before each LLM step. Thus the related
+persona of a teenager can be a different life stage. The prompt template tells the model
+to show the life stage without an age. Thus the text does not contain "42-year-old" many
+times.
 
-**Random draws are not checkpoint-safe.** These `Map` steps give a different answer every
-time they run. That is fine while the pipeline runs forward, because each step's output is
-saved, but it means a resumed run cannot reproduce the draws it did not save. See
-[Error handling & troubleshooting](../guides/troubleshooting.md).
+!!! warning "Random selections are not safe with checkpoints"
 
-### How the JSON actually happens
+    These `Map` steps give a different result each time that they run. When the pipeline
+    runs from start to end, this is not a problem, because the runner records the output
+    of each step. But if you resume a run, the runner cannot make the same random
+    selections again for the steps that it did not record. Refer to
+    [Error handling & troubleshooting](../guides/troubleshooting.md).
 
-Neither prompt file mentions JSON. `parse_mode="json"` appends the instruction, built from
-`output_columns`:
+### How the step asks for JSON
+
+The 2 prompt files do not contain the word JSON. `parse_mode="json"` adds the instruction
+at the end of the prompt. The step makes the instruction from `output_columns`:
 
 ```text
 Respond with valid JSON containing these fields: {"relationship_type": "<relationship_type value>", "related_persona_description": "<related_persona_description value>"}
 Return only the JSON object, no additional text or markdown code fences.
 ```
 
-Do not write your own — you would get both. This is a *prompted* schema, not an enforced
-one: nothing stops the model returning prose, and if it does, parsing fails. See
+Do not write a JSON instruction in the prompt file. If you do, the model gets 2
+instructions. This schema is only an instruction in the prompt. The provider does not
+apply it. The model can return text that is not JSON, and then the parse fails. Refer to
 [Structured output & parse modes](../guides/structured_output.md).
 
-Both steps set `on_parse_error="raise"`, so a reply the parser cannot read stops the
-run rather than quietly shortening the dataset. Leave it at the default `"skip"` and a
-bad reply drops that record instead — ten rows in, nine rows out.
+The 2 steps set `on_parse_error="raise"`. If the step cannot parse an answer, the run
+stops. The dataset does not become smaller without a message. With the default value
+`"skip"`, the step removes the record of a bad answer: 10 records in, 9 records out.
 
 ## The output
 
-`keep_output_fields` selects and renames, and `AddUUID` adds the row id last:
+`keep_output_fields` selects columns and changes their names. Then `AddUUID` adds the
+record `id`:
 
 ```python
 def keep_output_fields(record: dict) -> dict:
@@ -263,25 +275,25 @@ def keep_output_fields(record: dict) -> dict:
     }
 ```
 
-The dataset's `id` is renamed to `source_id` here, which is what frees the name `id` for
-the row's own UUID a step later. The article and its summary are kept, so every persona
-can be traced to the text it came from and judged.
+This step changes the name of the dataset `id` to `source_id`. Thus the next step can
+use the name `id` for the UUID of the record. The step keeps the article and its summary.
+Thus you can find the text that each persona comes from, and you can judge the persona.
 
-| Column | Where it comes from |
+| Column | Origin |
 |---|---|
 | `id` | `AddUUID` |
 | `source_id` | the XSum record |
 | `summary`, `document` | the XSum record |
 | `word_count` | `add_word_count` |
-| `life_stage` | a random draw |
+| `life_stage` | a random selection |
 | `persona_description` | Text-to-Persona |
 | `relationship_type` | Persona-to-Persona |
-| `related_life_stage` | a second random draw |
+| `related_life_stage` | a second random selection |
 | `related_persona_description` | Persona-to-Persona |
 
-## Two sinks, one run
+## Two sinks in 1 run
 
-The pipeline ends in two sinks:
+The pipeline has 2 sinks at the end:
 
 ```python
 from datafast import Sink, Source
@@ -294,33 +306,37 @@ pipeline = (
 pipeline.compile()
 ```
 
-A sink writes its records **and yields them through unchanged**, so a second sink receives
-the same records and writes them somewhere else. One run, two destinations, no second pass
-and no hand-carrying of records between scripts.
+A sink writes its records **and sends them through with no change**. Thus a second sink
+gets the same records and writes them to a different location. One run writes to 2
+destinations. A second run is not necessary, and you do not move records between
+scripts.
 
-`compile()` allows any number of sinks in a row and rejects anything after them — a
-transform following a sink would mean writing records before the pipeline had finished
-shaping them.
+`compile()` accepts many sinks in a sequence. It does not accept a step after them. A
+transform after a sink causes the sink to write records before the pipeline has the
+final records.
 
-`private=True` matters here. The output contains article text and inferred descriptions of
-people; a public default would be the wrong one. **Set `HF_REPO_ID` to a repository you
-own before running**, or the push fails on the author's:
+`private=True` is important here. The output contains article text and descriptions of
+people. A public dataset is not a correct default for this data.
+
+**Before you run the script, set `HF_REPO_ID` to a repository that you own.** If you do
+not, the push to the repository of the author fails:
 
 ```python
 HF_REPO_ID = "<your-username-or-org>/new-persona-cookbook-dataset"
 ```
 
-Unlike the other cookbooks, this push is not behind an environment variable — it is part
-of the pipeline, so it runs every time.
+In the other cookbooks, an environment variable controls the push. In this cookbook, the
+push is a step in the pipeline, so it occurs at each run.
 
-## Running it
+## Run the script
 
 ```bash
 python examples/scripts/43_cookbook_persona_generation.py
 ```
 
-You need `OPENROUTER_API_KEY`, and Hugging Face authentication through `HF_TOKEN` or a
-cached `huggingface_hub` login — for reading XSum as well as for the push.
+You must have `OPENROUTER_API_KEY`. You must also log in to Hugging Face with `HF_TOKEN`
+or with a `huggingface_hub` login. The script uses this login to read XSum and to push
+the dataset.
 
 ```python
 build_pipeline().run(
@@ -330,17 +346,17 @@ build_pipeline().run(
 )
 ```
 
-`resume=False` starts fresh every time. Checkpoints are still written, so the work is
-recoverable, but you have to opt in to reusing it by passing `resume=True`. That is the
-right default while the prompts are still moving: the fingerprint that guards a checkpoint
-covers step names and classes only, so an edited prompt file would resume against records
-generated by the old one.
+With `resume=False`, each run starts again from the beginning. The runner continues to
+write checkpoints, so you can get the work back. To use the checkpoints, set
+`resume=True`. While you change the prompt templates, `resume=False` is the correct
+default. The checkpoint fingerprint includes only the step names and classes. Thus a run
+with an edited prompt file can resume with records from the old prompt file.
 
-`batch_size=1` sends one call at a time. The articles are 300–500 words each, so the
-prompts are large, and this pipeline is short — the safe setting costs little here.
+`batch_size=1` sends 1 call at a time. Each article has 300 to 500 words, so the prompts
+are large. The pipeline is short, so this safe setting does not make it much slower.
 
-Named steps become the checkpoint file names, which is what makes a partial rerun
-possible:
+The step names become the names of the checkpoint files. Thus you can run only a part of
+the pipeline again:
 
 ```text
 step_003_take_first_10.jsonl
@@ -348,7 +364,7 @@ step_005_text_to_persona.jsonl
 step_007_persona_to_persona.jsonl
 ```
 
-To rework the second stage while keeping the personas you already paid for:
+To change the second stage and keep the personas that you have:
 
 ```python
 records = build_pipeline().run(
@@ -358,33 +374,34 @@ records = build_pipeline().run(
 )
 ```
 
-## Making it yours
+## Change the dataset
 
 | To change | Edit |
 |---|---|
 | the corpus | the `Source` step |
-| how many rows | `n` in `Sample(n=10, strategy="first")` |
-| article length | the bounds in `filter_word_count` |
-| the age spread | `LIFE_STAGES` |
-| persona style | the prompt files under `docs/cookbook/assets/` |
+| the number of records | `n` in `Sample(n=10, strategy="first")` |
+| the length of the articles | the limits in `filter_word_count` |
+| the range of ages | `LIFE_STAGES` |
+| the style of the personas | the prompt files in `docs/cookbook/assets/` |
 | the model | `MODEL_ID` |
-| where it publishes | `HF_REPO_ID` |
+| the destination of the push | `HF_REPO_ID` |
 
-Worth adding once it runs:
+When the script runs correctly, you can add these steps:
 
-- **A third hop.** Persona-to-Persona can be chained again for a small network of related
-  people around one article.
-- **A quality filter.** A [`Score`](../reference/llm_specialized.md) step rating how
-  specific each persona is, then a `Filter` on the score, removes the generic ones that
-  short articles produce.
-- **Stratified sampling.** With a corpus that has source metadata,
-  `Sample(n=250, strategy="stratified", by="source_file")` stops one file dominating.
+- **A third persona.** Add 1 more Persona-to-Persona step. You then get a small group of
+  related people for each article.
+- **A quality filter.** Add a [`Score`](../reference/llm_specialized.md) step that gives
+  a score for how specific each persona is. Then add a `Filter` on the score. This
+  removes the general personas that short articles give.
+- **Stratified sampling.** If your corpus has metadata about the source, use
+  `Sample(n=250, strategy="stratified", by="source_file")`. This prevents too many
+  records from 1 file.
 
-## Where to go next
+## Related pages
 
-- [Source](../reference/source.md) — `Source.huggingface` and its options.
-- [Data ops](../reference/data_ops.md) — `Map`, `Filter` and `AddUUID`.
-- [Sample](../reference/sample.md) — every strategy, and both of its jobs.
-- [Structured output & parse modes](../guides/structured_output.md) — what `parse_mode="json"` guarantees.
-- [Sinks](../reference/sinks.md) — `Sink.jsonl`, `Sink.hub` and chaining them.
-- [Text classification](text_classification.md) — the same shape, seeded instead of sourced.
+- [Source](../reference/source.md): `Source.huggingface` and its options.
+- [Data ops](../reference/data_ops.md): `Map`, `Filter` and `AddUUID`.
+- [Sample](../reference/sample.md): all the strategies, and the 2 functions of `Sample`.
+- [Structured output & parse modes](../guides/structured_output.md): what `parse_mode="json"` does and does not do.
+- [Sinks](../reference/sinks.md): `Sink.jsonl`, `Sink.hub` and how to put sinks in a sequence.
+- [Text classification](text_classification.md): the same shape, with a seed and not a source.
