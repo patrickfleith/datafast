@@ -1,6 +1,6 @@
 # Cookbook
 
-Each cookbook is an end-to-end example of how datafast work for a specific dataset example.
+Each cookbook is an end-to-end example of how datafast works for a specific dataset example.
 
 ## Cookbooks
 
@@ -26,7 +26,7 @@ Each cookbook is an end-to-end example of how datafast work for a specific datas
 
 -   **[Preference pairs](preference_with_scoring.md)**
 
-    Make chosen and rejected answers pairs with scores for RLHF.
+    Make chosen and rejected answer pairs with scores for RLHF.
 
     Script `42`
 
