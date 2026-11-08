@@ -16,6 +16,16 @@ bottom rather than deleted.
 - **`JoinBranches(how="outer")` does not fill with `None`** as its docstring promises —
   `_merge_group` skips a `None` record, so the missing path contributes no keys at all.
 
+- **A crash before an LLM step's first progress save still recovers nothing.** The
+  2026-08-19 fix below writes each call id right after its record, but
+  `load_llm_progress` returns nothing unless the progress file exists, and the runner
+  first writes that file after `checkpoint_every` calls. Measured with a stub model on a
+  200-call step (2026-11-08): a crash at call 160 resumes with 40 calls, a crash at call
+  60 re-runs all 200. Writing the progress file when the step starts would close it.
+  `docs/guides/troubleshooting.md` says both things: that a crash at call 60 re-runs
+  everything, and that resume is exact "no matter when the crash came". Key Concepts
+  documents the measured behaviour, pinned by `tests/test_concepts_page.py`.
+
 ## Risks
 
 - **Resume can attach LLM results to the wrong records.** `_step_signature` renders a
@@ -72,7 +82,7 @@ bottom rather than deleted.
 
 - **`SeedDimension` is public, constructible and undocumented.** It is in
   `datafast.__all__`, and cookbook script 45 builds one directly to keep `label` and
-  `label_description` in a single dimension. `sources_and_seed.md` names it only as a type
+  `label_description` in a single dimension. `seed.md` names it only as a type
   in two parameter tables, so the reference page has no way to build a dimension of more
   than two columns — `Seed.expand` is parent/child only. Either document the constructor or
   give `Seed` a factory for the n-column case.

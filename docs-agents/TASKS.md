@@ -4,24 +4,21 @@
 
 ## To do
 
+- [ ] Create a skill that teaches a coding agent to use datafast <!-- promised under 'Coming soon' on the docs home page -->
+- [ ] Make security updates
+- [ ] Get the new local environment variables
+- [ ] Check every link across the whole documentation resolves, and update the stale ones <!-- right before launch -->
 - [ ] <task> <!-- optional (context) -->
 
 ## Documentation improvements
 
-- [ ] Split `docs/reference/sources_and_seed.md` into separate Source and Seed reference pages <!-- two nav entries; `tests/test_reference_sources_and_seed.py` splits with it -->
-- [ ] Reorganize 'Key Concepts' pedagogically: Record → Step → Source → Seed (its own section) → served model → LLM step → Sample → Sink → Data operations <!-- Data operations reuses the `docs/reference/data_ops.md` 'At a glance' table, but each row gets a concrete, evocative example -->
-- [ ] Retitle `docs/guides/index.md` from 'Guides' to 'How To Guides' — the page's `# ` heading only, leaving the nav item as 'Guides'
-- [ ] Polish 'What's in v1'
-- [ ] Move the Glossary out of 'Get started' — retitle it 'Full Glossary' and put it under Reference <!-- it is lookup material, not an onboarding step; reached via search and in-page links -->
-- [ ] Polish the Quickstart
-- [ ] Rename 'Concepts' to 'Key Concepts' and widen it to cover every key concept, absorbing what the glossary defines — pitched higher: not just what a term means, but how it works and where it fits in datafast <!-- glossary stays the precise lookup, incl. its Avoid lines -->
-- [ ] Add an example datasets showcase to the docs — a grid graphic (e.g. 2x4 of labelled squares, one dataset type per square) linking each type to its cookbook or example script
+- [ ] Fix the `checkpoint_every` wording in the troubleshooting and pipelines guides <!-- both say resume is exact whatever the crash point; a crash before the first progress save re-runs the step, see CONCERNS -->
 
 ## Conventions for documentation pages
 
 Kept from the v1 launch, because every future page follows them.
 
-- Copy `docs/reference/sources_and_seed.md` for a page and `tests/test_reference_sources_and_seed.py` for its test.
+- Copy `docs/reference/source.md` for a page and `tests/test_reference_source.py` for its test.
 - Plain short sentences and simple words. Use the glossary's terms and never one it lists under *Avoid*.
 - Assert code → docs first: every parameter `inspect.signature` reports must appear on the page in backticks.
 - Then execute every self-contained example, prove each behavioural claim with a real call, and resolve every relative link.
@@ -31,6 +28,24 @@ Kept from the v1 launch, because every future page follows them.
 
 ## Done
 
+- [X] Add an example datasets showcase: a 2x4 grid of square cards on the Cookbook
+      index, linked from the home page; 24 tests resolve every square's page, anchor and
+      script, and require a square for every new cookbook walkthrough
+- [X] Rename 'Concepts' to 'Key Concepts' and widen it: 548 lines covering all 29
+      glossary terms, with new sections on capabilities, parse mode, branching and
+      execution strategy; 76 tests. Found that a crash before an LLM step's first
+      progress save still re-runs the whole step, now in CONCERNS
+- [X] Polish the Quickstart: plain wording, and a tested claim that the script makes
+      six calls
+- [X] Move the Glossary under Reference as 'Full Glossary': nav and page title only, so
+      the URL and the 28 inbound links keep working; their link text now matches
+- [X] Polish 'What's in v1': plain wording, and the resume rough edge added
+- [X] Reorganize Concepts pedagogically — nine concept sections in the intended
+      order, five of them new; 28 tests, and the section order itself is now pinned
+- [X] Retitle the guides index to 'How To Guides' — the page's `# ` heading and browser
+      title only; the tab, sidebar and section label still read 'Guides'
+- [X] Split the sources & seed reference into a Source page and a Seed page — two nav
+      entries, two test files, and 17 inbound references rewritten
 - [X] Retire `SOFTWARE_DESCRIPTION.md` — deleted after verifying every section is covered elsewhere
 - [X] Ship `py.typed` — plus the package-data entry, verified inside a built wheel, with 74 tests guarding the annotations it exposes
 - [X] Nav restructure — nine finished pages had been unreachable; three superseded guides deleted and their 31 inbound links rewritten
