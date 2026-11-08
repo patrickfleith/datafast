@@ -1,7 +1,6 @@
 ---
 name: log
 description: Quickly add one entry to the right doc — a task, idea, stack choice, concern, or open question — in the correct format. Triggered by "log"/"note"/"capture"/"add"/"jot down" + the kind, e.g. "log this task", "note this idea down", "capture a concern", "add TODO", "we're using X for Y — put it in the stack", "open question:". Addition only.
-disable-model-invocation: true
 ---
 
 # log

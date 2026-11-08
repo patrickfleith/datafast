@@ -1,7 +1,6 @@
 ---
 name: decide
 description: Record decisions in docs-agents/DECISIONS.md — add a TBD (open question), log a decided decision, or revise/revoke an existing one. Use when the user says "decide", "we decided", "log a decision", "that's TBD", or wants to change/revoke a past decision
-disable-model-invocation: true
 ---
 
 # decide
@@ -23,7 +22,7 @@ Edit `docs-agents/DECISIONS.md` in the current project. If it doesn't exist, cre
 
 ### DEC-001 — title
 
-Decided by: Author | Author with Claude Code | Claude Code
+Decided by: Author | Author with Agent | Agent
 Date: YYYY-MM-DD HH:MM
 
 **Decision:** 1–2 sentences (what was decided).
@@ -57,7 +56,7 @@ Date: YYYY-MM-DD HH:MM
 ```
 Set "Decided by" to who actually decided (ask if unclear; default `Author with Agent`).
 `Author` means the person using the skill.
-`Agent` means the coding agent harness (Claude Code / Codex).
+`Agent` means the coding agent harness in use.
 
 **3. Revise a decision**
 Locate the `DEC-NNN`. Do NOT rewrite history silently — append a revision note under the existing entry:

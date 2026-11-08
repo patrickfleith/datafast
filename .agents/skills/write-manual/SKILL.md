@@ -1,7 +1,6 @@
 ---
 name: write-manual
 description: Write or update docs-agents/SUM.md — the Software User Manual — from the codebase. Mode 1 (generate) builds a full, detailed SUM from scratch by inventorying every user-facing surface so nothing is missed. Mode 2 (update) revises the SUM against a PR/diff, removing what's obsolete, editing what changed, and adding what's new — precisely and concisely. Triggered by "write the manual", "generate the user manual", "document how to use this", or "update the manual for this PR".
-disable-model-invocation: true
 ---
 
 # write-manual
@@ -10,7 +9,7 @@ Maintains `docs-agents/SUM.md` — the end-user manual: how to install and use t
 
 ## The Contents block
 
-A SUM is long, so `docs-agents/SUM.md` opens with a `## Contents` map — the first thing an AI tool (Claude Code, Codex) or human reads to jump to the right passage. Build it from the actual headings (never guess), and **rebuild it after every change so it always matches the document** (see Mode 1 Step C and Mode 2 step 4).
+A SUM is long, so `docs-agents/SUM.md` opens with a `## Contents` map — the first thing an agent or human reads to jump to the right passage. Build it from the actual headings (never guess), and **rebuild it after every change so it always matches the document** (see Mode 1 Step C and Mode 2 step 4).
 
 - One entry per `##` section, and one **nested** sub-entry per `### Feature: <name>` subsection under §5, in document order.
 - Each entry is a heading anchor link + ` — ` + a one-line "what's here". For a feature, the one-liner is what the feature does.
@@ -21,7 +20,7 @@ A SUM is long, so `docs-agents/SUM.md` opens with a `## Contents` map — the fi
 
 1. **Read the template** `templates/docs-agents/SUM.md` for the target structure.
 2. **Read `docs-agents/GLOSSARY.md`** — use its canonical terms verbatim; never invent a synonym for something the glossary already names.
-3. **Skim sibling docs for context, not for copying:** `docs-agents/PRD.md` (what & who it's for), `docs-agents/features/*` (feature intent), `README.md`, `docs-agents/ROADMAP.md`. The SUM describes *how to use*, the PRD/FRD describe *what & why* — don't leak the latter in.
+3. **Skim sibling docs for context, not for copying:** `docs-agents/PRD.md` (what & who it's for), `docs-agents/features/*` (feature intent), `README.md`, `docs-agents/CHANGELOG.md`. The SUM describes *how to use*, the PRD/FRD describe *what & why* — don't leak the latter in.
 
 ## Mode 1 — Generate a full SUM from the codebase
 

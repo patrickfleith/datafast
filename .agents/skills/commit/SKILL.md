@@ -1,7 +1,6 @@
 ---
 name: commit
 description: Turn uncommitted work into a logically ordered sequence of atomic conventional commits. Surveys the whole working tree, groups changes, orders them foundation-first, shows a plan, then commits by path. Use when the user says "commit this", "commit my work", "split this into commits", or "clean up my changes into commits"
-disable-model-invocation: true
 ---
 
 # commit

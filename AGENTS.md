@@ -1,9 +1,8 @@
 # AGENTS.md
 
-Instructions for AI coding agents (Claude Code, Codex, and any tool that reads
-`AGENTS.md`) working in this repo. Claude loads it via `@AGENTS.md` in
-`CLAUDE.md`; other tools read this file directly. It is loaded every session —
-this is the whole mechanism, so keep it compact and current.
+Instructions for AI coding agents working in this repo. Codex and Cursor read
+this file directly, Codex cloud tasks included. Claude Code reads it through the
+one-line `CLAUDE.md` adapter (`@AGENTS.md`). Keep it compact and current.
 
 ## How to work here
 
@@ -12,6 +11,11 @@ this is the whole mechanism, so keep it compact and current.
 - Keep changes minimal and in the style of the surrounding code.
 - **No live LLM calls unless asked:** never run code that hits a real provider API unless the user explicitly requests it. Default to `-m "not live"` and to examples/scripts that don't call out.
 - **Tests:** `pytest` is not on PATH — run via `.venv/bin/pytest`. Tests under `tests/live/` hit real providers; they self-skip without `--run-live`, and deselect with `-m "not live"`.
+
+## Writing rules
+
+Everything you write follows `.agents/skills/unslop/SKILL.md`: answers in chat,
+docs, commit messages, PR text. Read it before you write.
 
 ## Project docs
 
@@ -33,10 +37,18 @@ doesn't exist yet, don't fabricate one — create it with the skill noted below.
 
 ## Capabilities
 
-Skills are auto-discovered from `.claude/skills/`. Currently available:
+Skills live in `.agents/skills/`, committed with the repository so local and
+cloud sessions use the same workflows. Codex and Cursor discover that directory
+natively; `.claude/skills/` is a **generated** adapter for Claude Code, which
+reads only its own path.
 
-- `commit` — turn uncommitted work into atomic conventional commits.
-- `log` — append an entry to STACK, TASKS, IDEAS, CONCERNS, or QUESTIONS.
-- `decide` — record and manage decisions in DECISIONS.
-- `glossary` — add and refine canonical terms in GLOSSARY.
-- `write-manual` — write or update the SUM from the codebase.
+Never edit `.claude/skills/` by hand. Write the skill in `.agents/skills/` and
+run `agents-control adapters`. Invoke a skill as `/name` in Claude Code, `$name`
+in Codex, or by asking for it in Cursor. Currently available:
+
+- `commit`: turn uncommitted work into atomic conventional commits.
+- `log`: append an entry to STACK, TASKS, IDEAS, CONCERNS, or QUESTIONS.
+- `decide`: record and manage decisions in DECISIONS.
+- `glossary`: add and refine canonical terms in GLOSSARY.
+- `write-manual`: write or update the SUM from the codebase.
+- `unslop`: writing rules for anything an agent writes. Always applies.

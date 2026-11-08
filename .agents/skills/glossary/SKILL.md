@@ -1,7 +1,6 @@
 ---
 name: glossary
 description: Manage docs-agents/GLOSSARY.md — add or refine a canonical term, extract terms from the current conversation, or audit for conflicts and duplicates. Use when the user says "define this term", "add to the glossary", "build a glossary", "what do we call this", or wants to harden terminology
-disable-model-invocation: true
 ---
 
 # glossary
