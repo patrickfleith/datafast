@@ -93,7 +93,7 @@ assert len(dimension) == 2  # two values in one dimension, not two dimensions
 ```
 
 `SeedDimension` is the general form of a dimension: any number of columns that move
-together, given as a list of dicts. [`Seed.expand`](../reference/sources_and_seed.md) is
+together, given as a list of dicts. [`Seed.expand`](../reference/seed.md) is
 the two-column shorthand for the same idea.
 
 Getting this wrong is the classic seeding mistake. Two separate `Seed.values` dimensions
@@ -342,7 +342,7 @@ Two things worth adding once the shape is right:
 
 ## Where to go next
 
-- [Sources & Seed](../reference/sources_and_seed.md) — every dimension and combiner.
+- [Seed](../reference/seed.md) — every dimension and combiner.
 - [LLM step](../reference/llm_step.md) — the rest of what `LLMStep` takes.
 - [Pipelines & execution](../guides/pipelines_and_execution.md) — checkpoints and run controls.
 - [Sinks](../reference/sinks.md) — `Sink.jsonl`, `Sink.hub` and the others.

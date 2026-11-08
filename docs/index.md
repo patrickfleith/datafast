@@ -1,7 +1,7 @@
 # Datafast
-Generate high-quality and diverse synthetic data for your project with LLMs.
+Generate high-quality and diverse synthetic data with LLMs.
 
-In datafast, you assemble building blocks of dataset engineering operations would otherwise do manually. It designed to be flexible and modular, so you get a custom pipeline that generates a dataset matching your actual project needs. It works with open-weights and proprietary models.
+In datafast, you assemble building blocks of data operations that would otherwise be done manually. It is designed to be flexible and modular, and you get a custom pipeline that generates a dataset matching your project needs. It works with open-weights and proprietary models.
 
 ### Intended Use Cases
 
@@ -15,7 +15,7 @@ In datafast, you assemble building blocks of dataset engineering operations woul
 
 ### Example Pipeline
 
-The simple pipeline below combines seeds topics and difficulty levels to generate questiosn and answers, written directly to a JSONL file.
+The simple pipeline below combines seeds topics and difficulty levels to generate questions and answers, written to a JSONL file.
 
 ```python
 from datafast import LLMStep, Seed, Sink, openai
@@ -45,13 +45,13 @@ pipeline.run()
 
 ## Why pipelines
 
-AI projects all needs something special in their datasets. Wether this is for training, fine tuning, evaluation, or just to test the application coverage in realistic conditions. So we need something highly flexible and modular: Like assembling LEGOs, datafast provides building blocks so you can build your synthetic data generation pipleine that matches your need.
+AI projects all need something special in their datasets. Whether this is for training, fine tuning, evaluation, or just to test the application coverage in realistic conditions. So we need something highly flexible and modular: Like assembling LEGOs, datafast provides building blocks so you can build your synthetic data pipeline that matches your needs.
 
 ## Where to start?
 
 - Follow the [Quickstart](quickstart.md) - from install to your first dataset.
-- Read [Concepts](concepts.md) for the execution model.
-- Read [Sources & seed](reference/sources_and_seed.md) and [Data
+- Read [Key Concepts](concepts.md) for the execution model.
+- Read [Source](reference/source.md), [Seed](reference/seed.md) and [Data
   ops](reference/data_ops.md) for sources, transforms and sinks.
 - Read [LLM step](reference/llm_step.md) for generation and evaluation steps.
 - Read [Pipelines & execution](guides/pipelines_and_execution.md) for resume and

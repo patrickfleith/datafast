@@ -1,4 +1,4 @@
-# Guides
+# How To Guides
 
 Task-shaped pages. Each one takes a job you are trying to do and walks it end to end.
 

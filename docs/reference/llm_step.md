@@ -260,7 +260,7 @@ the run stops on the first failure.
 - [Specialized LLM steps](llm_specialized.md) — `Classify`, `Score`, `Compare`, `Rewrite`, `Extract`.
 - [Pipelines & execution](../guides/pipelines_and_execution.md) — the steps in context.
 - [Served models](served_models.md) — building the models this step calls.
-- [Sources & Seed](sources_and_seed.md) — where the records come from.
+- [Source](source.md) and [Seed](seed.md) — where the records come from.
 - [Structured output](../guides/structured_output.md) — parse modes and provider-side schemas.
-- [Glossary](../glossary.md) — record, column, parse mode, served model.
+- [Full Glossary](../glossary.md) — record, column, parse mode, served model.
 - [API reference](../api.md) — the generated signature.

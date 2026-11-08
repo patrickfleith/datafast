@@ -1,6 +1,6 @@
 """The branching reference, pinned against the code it documents.
 
-Same shape as ``test_reference_sources_and_seed.py``:
+Same shape as ``test_reference_source.py``:
 
 1. Every parameter the code takes, and every metadata column it adds, is named on
    the page (code → docs). Something that exists and is undocumented cannot be

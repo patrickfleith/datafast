@@ -1,11 +1,12 @@
-# Glossary
+# Full Glossary
 
-Datafast uses these terms precisely and consistently, in the documentation, in error
-messages, and in the API. This page is the canonical definition of each one.
+Datafast uses these terms the same way in the documentation, in error messages, and in
+the API. This page is the official definition of each one. For how the pieces work and
+fit together, read [Key Concepts](concepts.md).
 
-Every entry ends with an **Avoid** line: terms datafast deliberately does *not* use for
-that concept, usually because they are ambiguous or belong to a different idea. They are
-listed so that searching for the word you expected brings you to the word datafast uses.
+Every entry ends with an **Avoid** line: words datafast does *not* use for that concept,
+usually because they are ambiguous or belong to a different idea. They are listed so
+that searching for the word you expected brings you to the word datafast uses.
 
 ## Pipelines
 
@@ -49,7 +50,7 @@ listed so that searching for the word you expected brings you to the word datafa
 
 ## Models and providers
 
-**Capabilities** — What a served model can actually do: the intersection of the model's own traits and the provider's features, declared by Datafast up front rather than discovered at call time. **Avoid:** features, support matrix
+**Capabilities** — What a served model can actually do: the intersection of the model's own traits and the provider's features, declared by Datafast up front rather than discovered at call time. For example, `openai("gpt-5.5")` accepts text, images and files, and can switch reasoning on and off. `openrouter("openai/gpt-5.5")` is the same model through a different provider, and accepts text and images only, with no reasoning control. **Avoid:** features, support matrix
 
 **Capability profile** — A named, reusable Capabilities record shared by served models that behave alike. **Avoid:** preset, template
 

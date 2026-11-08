@@ -413,9 +413,9 @@ def test_most_pages_carry_a_test_that_names_them():
 
 def test_the_named_example_pairing_is_real():
     assert (ROOT / "docs" / "reference" / "sinks.md").exists()
-    assert (ROOT / "docs" / "reference" / "sources_and_seed.md").exists()
+    assert (ROOT / "docs" / "reference" / "source.md").exists()
     assert (ROOT / "tests" / "test_reference_sinks.py").exists()
-    assert (ROOT / "tests" / "test_reference_sources_and_seed.py").exists()
+    assert (ROOT / "tests" / "test_reference_source.py").exists()
 
 
 # --- adding a served model ---------------------------------------------------------

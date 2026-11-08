@@ -81,7 +81,7 @@ what it is given:
 
 ## Preparing the corpus
 
-The source is [XSum](https://huggingface.co/datasets/xsum), BBC articles with
+The source is [XSum](https://huggingface.co/datasets/EdinburghNLP/xsum), BBC articles with
 single-sentence summaries, loaded from the Hub:
 
 ```python
@@ -382,7 +382,7 @@ Worth adding once it runs:
 
 ## Where to go next
 
-- [Sources & Seed](../reference/sources_and_seed.md) — `Source.huggingface` and its options.
+- [Source](../reference/source.md) — `Source.huggingface` and its options.
 - [Data ops](../reference/data_ops.md) — `Map`, `Filter` and `AddUUID`.
 - [Sample](../reference/sample.md) — every strategy, and both of its jobs.
 - [Structured output & parse modes](../guides/structured_output.md) — what `parse_mode="json"` guarantees.

@@ -108,3 +108,25 @@ def test_landing_example_runs_and_produces_six_rows(doc, tmp_path, monkeypatch):
 
     assert len(rows) == 6, f"{doc.name} claims three topics x two levels"
     assert set(rows[0]) == {"topic", "level", "question", "answer", "_model"}
+
+
+def test_quickstart_makes_the_six_calls_the_page_promises(tmp_path, monkeypatch):
+    """The page says six calls to OpenAI's default model; count them on the stub."""
+    calls = []
+
+    class CountingModel(StubModel):
+        def generate(self, *args, **kwargs):
+            calls.append(kwargs.get("prompt") or kwargs.get("messages"))
+            return STUB_REPLY
+
+    built = []
+    monkeypatch.setattr(
+        datafast, "openai", lambda *args, **kwargs: built.append(args) or CountingModel()
+    )
+    monkeypatch.chdir(tmp_path)
+    (code,) = [b for b in _code_blocks("python") if "pipeline = (" in b]
+    exec(compile(code, str(QUICKSTART), "exec"), {})
+
+    assert built == [()], "the page calls openai() with no model, so the default model"
+    assert len(calls) == 6
+    assert "six calls" in QUICKSTART.read_text()

@@ -1,6 +1,6 @@
 """The data operations reference, pinned against the code it documents.
 
-Same contract as ``test_reference_sources_and_seed.py``:
+Same contract as ``test_reference_source.py``:
 
 1. Every parameter the code takes, and every ``Filter`` operator it implements, is named
    on the page (code → docs). Something that exists and is undocumented cannot be found.

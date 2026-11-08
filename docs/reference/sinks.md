@@ -163,8 +163,8 @@ than appending to it, so what you read is always the last run.
 
 ## Where to go next
 
-- [Sources & Seed](sources_and_seed.md) — the other end of the pipeline.
-- [Concepts](../concepts.md) — how sinks fit the record → step → pipeline model.
-- [Glossary](../glossary.md) — the precise meaning of sink, record, column and step.
+- [Source](source.md) and [Seed](seed.md) — the other end of the pipeline.
+- [Key Concepts](../concepts.md) — how sinks fit the record → step → pipeline model.
+- [Full Glossary](../glossary.md) — the precise meaning of sink, record, column and step.
 - [Installation](../installation.md) — the `parquet` and `hub` extras.
 - [API reference](../api.md) — generated signatures for everything on this page.

@@ -331,7 +331,7 @@ several times on both sides yields one record per combination.
 ## Where to go next
 
 - [Pipelines & execution](../guides/pipelines_and_execution.md) — how these steps chain together.
-- [Sources & Seed](sources_and_seed.md) — the steps that come first.
-- [Concepts](../concepts.md) — the record → step → pipeline model.
-- [Glossary](../glossary.md) — what record, column, step and transform mean here.
+- [Source](source.md) and [Seed](seed.md) — the steps that come first.
+- [Key Concepts](../concepts.md) — the record → step → pipeline model.
+- [Full Glossary](../glossary.md) — what record, column, step and transform mean here.
 - [API reference](../api.md) — generated signatures for everything on this page.

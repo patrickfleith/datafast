@@ -126,5 +126,5 @@ concurrency-fallback warning. `max_concurrent` (default 4) and `rpm_limit` still
 - [Served models](../served_models.md) — every configuration field, shared by all providers.
 - [Installation](../../installation.md) — `OPENROUTER_API_KEY` and the `.env` rules.
 - [Served models guide](../../llms.md) — narrative introduction.
-- [Glossary](../../glossary.md) — provider, served model, transport, capability profile.
+- [Full Glossary](../../glossary.md) — provider, served model, transport, capability profile.
 - [API reference](../../api.md) — generated signatures.

@@ -266,9 +266,9 @@ pipeline.compile()
 
 ## Where to go next
 
-- [Concepts](../concepts.md) — records, steps, the runner, and checkpoints.
-- [Glossary](../glossary.md) — the precise meaning of branch path, record and column.
-- [Sources & Seed](sources_and_seed.md) — the steps a pipeline starts with.
+- [Key Concepts](../concepts.md) — records, steps, the runner, and checkpoints.
+- [Full Glossary](../glossary.md) — the precise meaning of branch path, record and column.
+- [Source](source.md) and [Seed](seed.md) — the steps a pipeline starts with.
 - [Data ops](data_ops.md) — `Map`, `Filter` and the other transforms a path is made of.
 - [Pipelines & execution](../guides/pipelines_and_execution.md) — resume, and the
   per-call progress a path relies on.

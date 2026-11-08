@@ -370,7 +370,7 @@ Two things worth adding once the shape is right:
 
 ## Where to go next
 
-- [Sources & Seed](../reference/sources_and_seed.md) — every dimension and combiner.
+- [Seed](../reference/seed.md) — every dimension and combiner.
 - [LLM step](../reference/llm_step.md) — the rest of what `LLMStep` takes.
 - [Structured output](../guides/structured_output.md) — parse modes, and what a provider could enforce instead.
 - [Pipelines & execution](../guides/pipelines_and_execution.md) — checkpoints and run controls.

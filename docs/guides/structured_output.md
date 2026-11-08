@@ -226,4 +226,4 @@ to reduce the pain:
 - [Served models](../reference/served_models.md) — declaring capabilities yourself.
 - [LLM step reference](../reference/llm_step.md) — the full parameter list.
 - [Error handling & troubleshooting](troubleshooting.md) — what to do when a reply will not parse.
-- [Glossary](../glossary.md) — the exact wording of parse mode and structured output.
+- [Full Glossary](../glossary.md) — the exact wording of parse mode and structured output.

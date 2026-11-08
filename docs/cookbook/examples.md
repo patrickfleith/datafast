@@ -133,5 +133,5 @@ dataset as its source, so it needs the same extra even without publishing. **Poi
 ## Where to go next
 
 - [Quickstart](../quickstart.md) — the shortest complete pipeline.
-- [Concepts](../concepts.md) — what a record, a step and the runner are.
+- [Key Concepts](../concepts.md) — what a record, a step and the runner are.
 - [Guides](../guides/index.md) — the same ground as the scripts, in prose.

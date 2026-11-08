@@ -42,7 +42,7 @@
 
 ## Models and providers
 
-**Capabilities** — What a served model can actually do: the intersection of the model's own traits and the provider's features, declared by Datafast up front rather than discovered at call time. _avoid:_ features, support matrix
+**Capabilities** — What a served model can actually do: the intersection of the model's own traits and the provider's features, declared by Datafast up front rather than discovered at call time. For example, `openai("gpt-5.5")` accepts text, images and files, and can switch reasoning on and off. `openrouter("openai/gpt-5.5")` is the same model through a different provider, and accepts text and images only, with no reasoning control. _avoid:_ features, support matrix
 
 **Capability profile** — A named, reusable Capabilities record shared by served models that behave alike. _avoid:_ preset, template
 

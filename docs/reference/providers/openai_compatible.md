@@ -154,5 +154,5 @@ instead.)
 - [OpenAI](openai.md) — the hosted provider, for comparison.
 - [Installation](../../installation.md) — API keys and the `.env` rules.
 - [Served models guide](../../llms.md) — narrative introduction.
-- [Glossary](../../glossary.md) — provider, transport, capability profile.
+- [Full Glossary](../../glossary.md) — provider, transport, capability profile.
 - [API reference](../../api.md) — generated signatures.

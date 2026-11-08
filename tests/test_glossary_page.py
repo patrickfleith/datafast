@@ -81,3 +81,30 @@ def test_documented_execution_strategies_are_the_real_ones(strategy):
     values = {s.value for s in datafast.LLMExecutionStrategy}
     assert strategy in values and f"`{strategy}`" in PAGE.read_text()
     assert len(values) == 3, f"the glossary lists three strategies, code has {values}"
+
+
+def _nav_section(title: str) -> str:
+    """The lines of one top-level nav section in mkdocs.yml."""
+    nav = (ROOT / "mkdocs.yml").read_text().split("\nnav:\n", 1)[1].split("\n\n", 1)[0]
+    match = re.search(rf"^  - {title}:\n((?:    .*\n)+)", nav + "\n", re.MULTILINE)
+    assert match, f"no '{title}' section in the nav — check the test, not the config"
+    return match.group(1)
+
+
+def test_the_glossary_is_reference_material_not_an_onboarding_step():
+    """It is reached by search and in-page links, so it sits under Reference."""
+    assert "- Full Glossary: glossary.md" in _nav_section("Reference")
+    assert "glossary.md" not in _nav_section("Get started")
+    assert PAGE.read_text().startswith("# Full Glossary\n")
+
+
+def test_the_capabilities_example_matches_what_datafast_declares():
+    """The entry contrasts one model on two providers. The OpenRouter half comes from
+    OpenRouter's default profile, so cataloguing `openai/gpt-5.5` will change it."""
+    direct = datafast.openai("gpt-5.5").capabilities
+    routed = datafast.openrouter("openai/gpt-5.5").capabilities
+    assert {m.value for m in direct.modalities} == {"text", "image", "file"}
+    assert direct.supports_reasoning
+    assert {m.value for m in routed.modalities} == {"text", "image"}
+    assert not routed.supports_reasoning
+    assert 'openrouter("openai/gpt-5.5")' in _terms(PAGE)["Capabilities"]

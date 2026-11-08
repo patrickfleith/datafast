@@ -282,8 +282,8 @@ or read the values without choosing any.
 
 ## Where to go next
 
-- [Sources & Seed](sources_and_seed.md) — the steps that produce the records you sample.
+- [Source](source.md) and [Seed](seed.md) — the steps that produce the records you sample.
 - [Data ops](data_ops.md) — the other transforms.
 - [LLM step](llm_step.md) — where `.pick()` gets used.
-- [Glossary](../glossary.md) — the precise meaning of record, column, step and sampling strategy.
+- [Full Glossary](../glossary.md) — the precise meaning of record, column, step and sampling strategy.
 - [API reference](../api.md) — the generated signature.

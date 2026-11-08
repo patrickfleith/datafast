@@ -194,6 +194,6 @@ Reach for these when you want one answer rather than a dataset. Inside a pipelin
 
 - [OpenAI](providers/openai.md) — the model table, transports and traps for one provider.
 - [Served models guide](../llms.md) — the narrative version of this surface.
-- [Glossary](../glossary.md) — served model, provider, model, transport, capabilities.
+- [Full Glossary](../glossary.md) — served model, provider, model, transport, capabilities.
 - [Installation](../installation.md) — every API key and environment variable.
 - [API reference](../api.md) — generated signatures.

@@ -218,4 +218,4 @@ part = ContentPart(
   the `unsupported_params` policy this page contrasts with.
 - [Providers](../reference/providers/openai.md) — what each provider supports.
 - [Structured output](structured_output.md) — asking for a schema alongside an image.
-- [Glossary](../glossary.md) — capabilities, served model, provider, transport.
+- [Full Glossary](../glossary.md) — capabilities, served model, provider, transport.

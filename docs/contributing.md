@@ -158,8 +158,8 @@ A page test asserts four things, in this order:
 4. **Every relative link resolves.**
 
 No test may pass vacuously, so each one asserts that the introspection found something
-before checking it. `docs/reference/sources_and_seed.md` and
-`tests/test_reference_sources_and_seed.py` are the template to copy.
+before checking it. `docs/reference/source.md` and
+`tests/test_reference_source.py` are the template to copy.
 
 If you change a signature, the page test tells you which page to update.
 

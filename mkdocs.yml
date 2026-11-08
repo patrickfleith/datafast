@@ -58,8 +58,7 @@ nav:
   - Get started:
       - Installation: installation.md
       - Quickstart: quickstart.md
-      - Concepts: concepts.md
-      - Glossary: glossary.md
+      - Key Concepts: concepts.md
       - What's in v1: whats_in_v1.md
   - Guides:
       - guides/index.md
@@ -71,7 +70,8 @@ nav:
       - Served models guide: llms.md
       - Langfuse tracing: guides/langfuse_tracing.md
   - Reference:
-      - Sources & Seed: reference/sources_and_seed.md
+      - Source: reference/source.md
+      - Seed: reference/seed.md
       - Data ops: reference/data_ops.md
       - Sample: reference/sample.md
       - LLM step: reference/llm_step.md
@@ -89,6 +89,7 @@ nav:
           - Ollama: reference/providers/ollama.md
           - OpenAI-compatible: reference/providers/openai_compatible.md
       - API: api.md
+      - Full Glossary: glossary.md
   - Cookbook:
       - cookbook/index.md
       - All examples: cookbook/examples.md

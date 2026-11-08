@@ -210,4 +210,4 @@ response metadata, timeouts and rate limits. They make real calls, so read befor
 - [Structured output](structured_output.md) — `response_format` in full.
 - [Multimodal input](multimodal_input.md) — sending images, audio and files.
 - [Served models](../reference/served_models.md) — every construction setting.
-- [Glossary](../glossary.md) — served model, provider, transport, capabilities.
+- [Full Glossary](../glossary.md) — served model, provider, transport, capabilities.
