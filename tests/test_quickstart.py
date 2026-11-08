@@ -25,7 +25,7 @@ class StubModel:
     """Stands in for `openai()` so the documented code runs without a network call."""
 
     provider_id = "openai"
-    model_id = "gpt-5.5"
+    model_id = "gpt-6-luna"
 
     def generate(self, prompt=None, messages=None, metadata=None, response_format=None):
         return STUB_REPLY

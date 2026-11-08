@@ -13,6 +13,10 @@ import pytest
 
 from datafast.llm.capabilities import (
     OPENAI_CHAT,
+    OPENAI_GPT6,
+    OPENAI_GPT6_ALWAYS_ON,
+    OPENAI_GPT6_LUNA,
+    OPENAI_GPT6_SOL,
     OPENAI_RESPONSES,
     _SERVED_MODEL_CATALOG,
     resolve_capabilities,
@@ -24,7 +28,16 @@ ROOT = Path(__file__).parent.parent
 PAGE = ROOT / "docs" / "reference" / "providers" / "openai.md"
 
 CATALOGUED = sorted(m for (p, m) in _SERVED_MODEL_CATALOG if p == "openai")
-REASONING_PREFIXES = ["gpt-5", "o1", "o3", "o4"]
+REASONING_PREFIXES = ["gpt-5", "gpt-6", "o1", "o3", "o4"]
+PROFILES = {
+    "OPENAI_RESPONSES": OPENAI_RESPONSES,
+    "OPENAI_CHAT": OPENAI_CHAT,
+    "OPENAI_GPT6": OPENAI_GPT6,
+    "OPENAI_GPT6_ALWAYS_ON": OPENAI_GPT6_ALWAYS_ON,
+    "OPENAI_GPT6_LUNA": OPENAI_GPT6_LUNA,
+    "OPENAI_GPT6_SOL": OPENAI_GPT6_SOL,
+}
+ALL_EFFORTS = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 
 
 def _page() -> str:
@@ -33,8 +46,41 @@ def _page() -> str:
 
 def test_the_documented_default_model_is_the_factory_default():
     default = inspect.signature(openai).parameters["model_id"].default
-    assert default == "gpt-5.5"
+    assert default == "gpt-6-luna"
     assert f"`{default}`" in _page()
+
+
+@pytest.mark.parametrize(
+    "model_id,effort",
+    [("gpt-6-luna", "high"), ("gpt-6.1-sol", "medium")],
+)
+def test_the_recommended_models_default_to_the_documented_effort(model_id, effort):
+    capabilities = resolve_capabilities("openai", model_id)
+    assert capabilities.reasoning_effort_default == effort
+    assert capabilities.reasoning_effort_on == effort
+    assert f"| `{model_id}` | `{effort}` |" in _page()
+
+
+def test_the_page_says_terra_and_astra_are_not_recommended():
+    assert "`gpt-6.1-terra` and `gpt-6-astra` are supported but not recommended" in _page()
+    assert "Terra has poor" in _page()
+    assert "very expensive" in _page()
+
+
+@pytest.mark.parametrize(
+    "model_id,efforts,off_param",
+    [
+        ("gpt-6-luna", ALL_EFFORTS, ("reasoning_effort", "none")),
+        ("gpt-6.1-terra", ALL_EFFORTS, ("reasoning_effort", "none")),
+        ("gpt-6.1-sol", ALL_EFFORTS - {"none"}, None),
+        ("gpt-6-astra", ALL_EFFORTS - {"none"}, None),
+    ],
+)
+def test_gpt6_profiles_declare_the_published_efforts(model_id, efforts, off_param):
+    capabilities = resolve_capabilities("openai", model_id)
+    assert capabilities.reasoning_efforts == efforts
+    assert capabilities.reasoning_off_param == off_param
+    assert capabilities.reasoning_always_on is (off_param is None)
 
 
 def test_the_model_table_lists_every_catalogued_openai_model():
@@ -48,8 +94,7 @@ def test_the_page_claims_no_models_the_catalog_lacks():
     rows = re.findall(r"^\|\s*`(gpt-[\w.\-]+)`\s*\|\s*`(OPENAI_\w+)`", _page(), re.M)
     assert rows, "the model table should have rows"
     for model_id, profile in rows:
-        expected = {"OPENAI_RESPONSES": OPENAI_RESPONSES, "OPENAI_CHAT": OPENAI_CHAT}[profile]
-        assert resolve_capabilities("openai", model_id) is expected, (
+        assert resolve_capabilities("openai", model_id) is PROFILES[profile], (
             f"the page puts {model_id} on {profile}; the resolver disagrees"
         )
 

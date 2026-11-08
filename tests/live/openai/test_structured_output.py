@@ -62,7 +62,7 @@ def test_structured_output_from_messages(served_model):
 def test_nested_schema_is_honoured(served_model):
     """A flat two-string schema says little about the Pydantic-to-`text_format`
     translation; a nested list of objects is where it can actually break."""
-    response = served_model(max_completion_tokens=600).generate(
+    response = served_model(max_completion_tokens=4096).generate(
         prompt="Describe the Eiffel Tower and two of its notable attributes.",
         response_format=Landmark,
     )

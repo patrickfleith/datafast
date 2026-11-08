@@ -1124,7 +1124,7 @@ class ServedModel:
 
 
 class _OpenAIServedModel(ServedModel):
-    def __init__(self, model_id: str = "gpt-5.5", **kwargs: Any) -> None:
+    def __init__(self, model_id: str = "gpt-6-luna", **kwargs: Any) -> None:
         super().__init__(
             "openai",
             model_id,
@@ -1310,12 +1310,16 @@ class _OpenAICompatibleServedModel(ServedModel):
         )
 
 
-def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> ServedModel:
+def openai(model_id: str = "gpt-6-luna", **kwargs: Any) -> ServedModel:
     """Build a served model on OpenAI.
 
     Reads `OPENAI_API_KEY` unless `api_key=` is passed. Reasoning models are
     reached over the Responses endpoint and plain chat models over Chat
     Completions; `endpoint_mode=` overrides the choice.
+
+    Use the default, `gpt-6-luna` at effort high, or `gpt-6.1-sol` at effort
+    medium. `gpt-6.1-terra` and `gpt-6-astra` are supported but not recommended:
+    Terra has poor quality for its cost, and Astra is very expensive.
 
     Args:
         model_id: OpenAI model name.

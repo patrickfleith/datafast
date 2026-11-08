@@ -2,9 +2,9 @@ import pytest
 
 from datafast import openai
 
-MODEL_ID = "gpt-5.4-mini"
+MODEL_ID = "gpt-6-luna"
 # gpt-4o-mini is the only way to reach OPENAI_CHAT: every openai id in the
-# catalog resolves to OPENAI_RESPONSES.
+# catalog resolves to a Responses profile.
 CHAT_MODEL_ID = "gpt-4o-mini"
 
 
@@ -17,7 +17,7 @@ def served_model(require_api_key):
     require_api_key("OPENAI_API_KEY")
 
     def _make(**overrides):
-        params = {"max_completion_tokens": 300}
+        params = {"max_completion_tokens": 2048}
         params.update(overrides)
         return openai(model_id=MODEL_ID, **params)
 

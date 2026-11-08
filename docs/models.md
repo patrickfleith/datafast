@@ -5,7 +5,10 @@ don't pass one.
 
 ## OpenAI
 
-- `gpt-5.5`
+- `gpt-6-luna`, at effort `high`
+
+The other recommended model is `gpt-6.1-sol`, at effort `medium`. See
+[OpenAI](reference/providers/openai.md#recommended-models).
 
 ## Anthropic
 

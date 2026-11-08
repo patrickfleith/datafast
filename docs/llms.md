@@ -31,7 +31,7 @@ Pass a model id, plus any configuration, to build a served model:
 ```python
 from datafast import openai, ollama
 
-model = openai("gpt-5.4-mini", temperature=0.7)
+model = openai("gpt-6-luna", temperature=0.7)
 local = ollama("gemma4:12b")
 ```
 

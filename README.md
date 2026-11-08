@@ -97,7 +97,7 @@ object you construct and pass to a step. Build one with a provider factory:
 ```python
 from datafast import openai
 
-model = openai("gpt-5.4-mini", temperature=0.7)
+model = openai("gpt-6-luna", temperature=0.7)
 ```
 
 The factories are the public entry points; `ServedModel` is exported for annotations.

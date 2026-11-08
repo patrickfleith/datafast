@@ -295,7 +295,7 @@ timeouts and retries are configured on the **served model**:
 ```python
 from datafast import openai
 
-model = openai(model_id="gpt-5.5", rpm_limit=500, max_concurrent=8, timeout=60)
+model = openai(model_id="gpt-6-luna", rpm_limit=500, max_concurrent=8, timeout=60)
 ```
 
 This split is deliberate. A rate limit belongs to the provider's account, not to a step:

@@ -130,7 +130,7 @@ step = LLMStep(
     prompt=["Summarize: {text}", "List the key points of: {text}"],
     input_columns=["text"],
     output_column="result",
-    model=[openai(), openai("gpt-5.4-mini")],
+    model=[openai(), openai("gpt-6.1-sol")],
     num_outputs=2,
 )
 ```
