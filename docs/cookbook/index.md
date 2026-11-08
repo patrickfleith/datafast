@@ -1,6 +1,6 @@
 # Cookbook
 
-Each cookbook connects a script that you can run to a page that explains it.
+Each cookbook is an end-to-end example of how datafast work for a specific dataset example.
 
 ## Cookbooks
 
@@ -8,19 +8,27 @@ Each cookbook connects a script that you can run to a page that explains it.
 
 -   **[Text classification](text_classification.md)**
 
-    Trail reports in 2 languages. Each report agrees with 1 label.
+    Generate synthetic trail reports from hikers in multiple languages with classification labels.
+    
+    Script `45`
 
 -   **[Personas](persona_generation.md)**
 
-    Personas from real articles, then a related persona for each.
+    Generate synthetic personas from real article seeds.
+
+    Script `43`
 
 -   **[Domain text corpus](space_text_generation.md)**
 
-    Text about spacecraft engineering in 2 languages.
+    Generate text content about spacecraft engineering in multiple languages.
+
+    Script `44`
 
 -   **[Preference pairs](preference_with_scoring.md)**
 
-    Chosen and rejected answers with scores. Pairs that are too close are removed.
+    Make chosen and rejected answers pairs with scores for RLHF.
+
+    Script `42`
 
 </div>
 
