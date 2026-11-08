@@ -67,6 +67,13 @@ Nothing in flight — the next item is picked from Next up.
 
 ## Next up
 
+- **Security updates and vulnerability scanning.** Update the dependencies and add a
+  scan to CI so a known-vulnerable or compromised release fails the build. CI runs no
+  dependency scan today, and `litellm` has already shipped two releases with malware
+  (1.82.7 and 1.82.8).
+- **Update to the latest models and test against them.** Refresh the served-model
+  catalog and each factory's default model, then run the live suites against the new
+  models.
 - **`theme.palette.primary: black` has no effect.** The `modern` Material stylesheet the
   site loads does not define that colour, so the header renders in the default indigo.
   Pick a colour it supports or drop the line.
@@ -90,17 +97,15 @@ Nothing in flight — the next item is picked from Next up.
 
 ### Provider feature expansion
 
-- **Audio input support.** Enable audio content parts end-to-end where `Modality.AUDIO` is declared; mocked gating test, one live test, and an example script.
+- **Audio input support.** Audio content parts normalize and gate as `Modality.AUDIO`, covered by mocked tests. What remains: one live test against a provider that declares audio (Gemini), and an example script.
 - **File / document input support.** Implemented and covered for chat and Responses shapes, with live Anthropic and OpenAI tests. What remains:
-  - Mocked gate-rejection tests for `OPENROUTER_CHAT` and `OLLAMA_CHAT`, which declare no `Modality.FILE`.
+  - A mocked gate-rejection test for `OLLAMA_CHAT`, which declares no `Modality.FILE`. OpenRouter's is in `tests/test_reference_provider_openrouter.py`.
   - An example script for a document-capable provider.
   - A decision on `Modality.DOCUMENT`, which no served model declares.
-- **Image output support.** Request-side selection and response normalization for image-generation models, exposed on `NormalizedResponse.images`; mocked test, live test, example.
+- **Image output support.** Response normalization onto `NormalizedResponse.images` exists, with mocked tests for chat and Responses replies. What remains: request-side selection of image output, a live test, and an example.
 
 ## Improvements & tech debt
 
 Non-feature work: rework, refactor, performance, cleanup.
 
-- ~~Migrate per-provider `integration` tests onto the `live` marker~~ — done. All six legacy files and their shared fixture module are deleted, coverage ported first.
-- ~~Dead `supports_thinking` capability flag~~ — done. It was set but never read; a flag that looks load-bearing while doing nothing is a trap.
-- ~~Unused markers~~ — done. `integration`, `slow`, `vllm` and `llamacpp` are no longer declared; a future suite re-adds its own.
+Nothing open.
