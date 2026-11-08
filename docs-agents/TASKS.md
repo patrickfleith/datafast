@@ -12,8 +12,6 @@
 
 ## Documentation improvements
 
-- [ ] Fix the `checkpoint_every` wording in the troubleshooting and pipelines guides <!-- both say resume is exact whatever the crash point; a crash before the first progress save re-runs the step, see CONCERNS -->
-
 ## Conventions for documentation pages
 
 Kept from the v1 launch, because every future page follows them.
@@ -28,6 +26,9 @@ Kept from the v1 launch, because every future page follows them.
 
 ## Done
 
+- [X] Fix the `checkpoint_every` wording in the troubleshooting and pipelines guides:
+      both now say resume needs the first progress file and is exact after it; a new
+      test pins the exact half
 - [X] Add an example datasets showcase: a 2x4 grid of square cards on the Cookbook
       index, linked from the home page; 24 tests resolve every square's page, anchor and
       script, and require a square for every new cookbook walkthrough

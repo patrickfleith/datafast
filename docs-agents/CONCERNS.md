@@ -22,9 +22,9 @@ bottom rather than deleted.
   first writes that file after `checkpoint_every` calls. Measured with a stub model on a
   200-call step (2026-11-08): a crash at call 160 resumes with 40 calls, a crash at call
   60 re-runs all 200. Writing the progress file when the step starts would close it.
-  `docs/guides/troubleshooting.md` says both things: that a crash at call 60 re-runs
-  everything, and that resume is exact "no matter when the crash came". Key Concepts
-  documents the measured behaviour, pinned by `tests/test_concepts_page.py`.
+  Key Concepts, the pipelines guide and the troubleshooting guide document the measured
+  behaviour, pinned by `tests/test_concepts_page.py` and
+  `tests/test_guide_troubleshooting.py`.
 
 ## Risks
 
