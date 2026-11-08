@@ -91,6 +91,25 @@ MISTRAL_REASONING_CHAT = ServedModelCapabilities(
 )
 
 
+# Mistral Large 4 takes low/medium/high and has no 'none', so thinking=False has
+# nothing to send and must be refused.
+MISTRAL_LARGE_4_CHAT = replace(
+    MISTRAL_REASONING_CHAT,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    reasoning_efforts=frozenset({"low", "medium", "high"}),
+    zero_temperature_requires_top_p=True,
+    notes=MISTRAL_REASONING_CHAT.notes[:1]
+    + (
+        "Mistral documents 'low', 'medium' and 'high' for this model, and not "
+        "'none', so thinking=False raises.",
+        "The API answers temperature=0 with a 400 unless top_p=1 is sent too, "
+        "so Datafast adds top_p=1 when the caller set no top_p.",
+    )
+    + MISTRAL_REASONING_CHAT.notes[2:],
+)
+
+
 # Mistral models with no reasoning control. Identical to HOSTED_CHAT except for the
 # file carrier, which is a property of the Mistral chat API rather than of the model.
 MISTRAL_CHAT = replace(HOSTED_CHAT, files_require_file_id=True)
@@ -380,6 +399,8 @@ _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("gemini", "gemini-3.5-flash-lite"): GEMINI_CHAT,
     ("gemini", "gemini-3.1-flash-lite"): GEMINI_CHAT,
     ("mistral", "mistral-medium-3-5"): MISTRAL_REASONING_CHAT,
+    ("mistral", "mistral-large-4"): MISTRAL_LARGE_4_CHAT,
+    ("mistral", "mistral-large-4-0"): MISTRAL_LARGE_4_CHAT,
     ("mistral", "mistral-large-2512"): MISTRAL_CHAT,
     ("mistral", "mistral-small-2603"): MISTRAL_REASONING_CHAT,
     # Ministral 3 is served from Mistral's own API — hosted chat with vision and
@@ -515,6 +536,7 @@ __all__ = [
     "HOSTED_CHAT",
     "LLAMACPP_CHAT",
     "MISTRAL_CHAT",
+    "MISTRAL_LARGE_4_CHAT",
     "MISTRAL_REASONING_CHAT",
     "OLLAMA_CHAT",
     "OLLAMA_REASONING_CHAT",

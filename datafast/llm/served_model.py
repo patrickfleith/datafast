@@ -558,10 +558,17 @@ class ServedModel:
                 "temperature", detail="while reasoning is enabled"
             )
 
+        top_p = self.config.top_p
+        if (
+            top_p is None
+            and self.config.temperature == 0
+            and self.capabilities.zero_temperature_requires_top_p
+        ):
+            top_p = 1
         self._add_supported_param(
             params,
             "top_p",
-            self.config.top_p,
+            top_p,
             endpoint=endpoint,
         )
         self._add_supported_param(

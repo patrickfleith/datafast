@@ -19,10 +19,12 @@ specific to Mistral.
 
 ## Supported models
 
-Six models are catalogued exactly:
+Eight model ids are catalogued exactly:
 
 | Model | Profile |
 |---|---|
+| `mistral-large-4` | `MISTRAL_LARGE_4_CHAT` |
+| `mistral-large-4-0` | `MISTRAL_LARGE_4_CHAT` |
 | `mistral-medium-3-5` | `MISTRAL_REASONING_CHAT` |
 | `mistral-small-2603` | `MISTRAL_REASONING_CHAT` |
 | `mistral-large-2512` | `MISTRAL_CHAT` |
@@ -61,13 +63,16 @@ lands on `MISTRAL_CHAT`, the profile with reasoning switched off, where the
 dropped with a warning under the default `unsupported_params="warn"` policy; set
 `unsupported_params="fail"` to make that stop the run instead.
 
+`MISTRAL_LARGE_4_CHAT` matches `MISTRAL_REASONING_CHAT` except for its reasoning levels,
+covered below.
+
 ## Reasoning
 
 `thinking=True` and `thinking=False` are the portable controls. On Mistral, `True` sends
 `reasoning_effort="high"` and `False` sends `reasoning_effort="none"`.
 
-**Mistral accepts only those two values.** `low` and `medium` are rejected by the API
-with an HTTP 400. Datafast checks the value while it builds the request, so asking for
+**Most Mistral reasoning models accept only those two values.**
+`low` and `medium` are rejected by the API with an HTTP 400. Datafast checks the value while it builds the request, so asking for
 one of them raises a `ValueError` before anything is sent:
 
 ```python
@@ -82,6 +87,14 @@ Magistral models reason natively. `mistral-medium` and `mistral-small` accept
 `reasoning_effort` on the server, but the installed LiteLLM only forwards it for a
 subset of models, so datafast adds it to `allowed_openai_params` to push it through.
 There is nothing to configure.
+
+Mistral Large 4 is the exception to the two-value rule. It accepts `low`, `medium` and
+`high`, and `thinking=True` sends `high`. It has no `none` level, so `thinking=False` and
+`reasoning_effort="none"` raise a `ValueError` before anything is sent. Use
+`reasoning_effort="low"` for the least reasoning.
+
+The API also rejects `temperature=0` on this model unless the request carries `top_p=1`,
+so datafast adds `top_p=1` when you set `temperature=0` and no `top_p`.
 
 ## Files
 

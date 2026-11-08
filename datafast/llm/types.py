@@ -90,6 +90,8 @@ class ServedModelCapabilities:
     # True where the served model rejects a caller-chosen temperature once
     # reasoning is on, so temperature is dropped for those requests.
     reasoning_locks_temperature: bool = False
+    # True where temperature=0 is rejected unless the request also carries top_p=1.
+    zero_temperature_requires_top_p: bool = False
     # True where a file part must carry an id from the served model's own upload
     # API, so inline bytes or a plain URL cannot satisfy Modality.FILE.
     files_require_file_id: bool = False

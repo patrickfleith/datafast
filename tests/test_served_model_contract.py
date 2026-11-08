@@ -451,6 +451,105 @@ def test_mistral_thinking_false_disables_reasoning(monkeypatch):
     assert captured["reasoning_effort"] == "none"
 
 
+@pytest.mark.parametrize("model_id", ["mistral-large-4", "mistral-large-4-0"])
+def test_mistral_large_4_capability_resolution(model_id):
+    caps = resolve_capabilities("mistral", model_id)
+
+    assert caps.supports_reasoning is True
+    assert caps.reasoning_requires_allowlist is True
+    assert caps.reasoning_efforts == frozenset({"low", "medium", "high"})
+    assert caps.modalities == frozenset({Modality.TEXT, Modality.IMAGE, Modality.FILE})
+    assert caps.files_require_file_id is True
+
+
+def test_mistral_large_4_thinking_true_sends_high_through_the_allowlist(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = mistral(model_id="mistral-large-4", api_key="test-key", thinking=True)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == "high"
+    assert "reasoning_effort" in captured["allowed_openai_params"]
+
+
+@pytest.mark.parametrize("effort", ["low", "medium", "high"])
+def test_mistral_large_4_forwards_each_documented_effort(monkeypatch, effort):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = mistral(model_id="mistral-large-4", api_key="test-key", reasoning_effort=effort)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == effort
+
+
+@pytest.mark.parametrize(
+    ("config", "expected_top_p"),
+    [
+        ({"temperature": 0}, 1),
+        ({"temperature": 0, "top_p": 0.9}, 0.9),
+        ({"temperature": 0.2}, None),
+        ({}, None),
+    ],
+)
+def test_mistral_large_4_adds_top_p_only_for_zero_temperature(
+    monkeypatch, config, expected_top_p
+):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    assert mistral(model_id="mistral-large-4", api_key="test-key", **config).generate(
+        prompt="ping"
+    ) == "ok"
+    assert captured.get("top_p") == expected_top_p
+
+
+def test_other_mistral_models_get_no_top_p_at_zero_temperature(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    mistral(model_id="mistral-small-2603", api_key="test-key", temperature=0).generate(
+        prompt="ping"
+    )
+    assert "top_p" not in captured
+
+
+@pytest.mark.parametrize(
+    "config", [{"thinking": False}, {"reasoning_effort": "none"}], ids=["thinking", "effort"]
+)
+def test_mistral_large_4_refuses_to_turn_reasoning_off(monkeypatch, config):
+    def fail_completion(**kwargs):
+        raise AssertionError("the request must not be sent")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fail_completion)
+
+    model = mistral(model_id="mistral-large-4", api_key="test-key", **config)
+
+    with pytest.raises(ValueError):
+        model.generate(prompt="ping")
+
+
 def test_anthropic_thinking_warns_and_omits_temperature(monkeypatch):
     captured = {}
 
