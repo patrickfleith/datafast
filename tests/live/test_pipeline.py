@@ -26,8 +26,9 @@ def _anthropic(require_api_key, require_ollama):
 
 def _openai(require_api_key, require_ollama):
     # No temperature: OPENAI_RESPONSES omits it, so setting one warns per call.
+    # Luna reasons at effort high by default, and reasoning tokens count against the cap.
     require_api_key("OPENAI_API_KEY")
-    return openai(model_id="gpt-5.4-mini", max_completion_tokens=50)
+    return openai(model_id="gpt-6-luna", max_completion_tokens=2048)
 
 
 def _mistral(require_api_key, require_ollama):

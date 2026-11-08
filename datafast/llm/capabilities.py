@@ -174,6 +174,37 @@ OPENAI_RESPONSES = ServedModelCapabilities(
 )
 
 
+# GPT-6 models publish their effort levels, and only some of them accept 'none'.
+OPENAI_GPT6 = replace(
+    OPENAI_RESPONSES,
+    reasoning_efforts=frozenset({"none", "low", "medium", "high", "xhigh", "max"}),
+)
+
+OPENAI_GPT6_ALWAYS_ON = replace(
+    OPENAI_GPT6,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    reasoning_efforts=OPENAI_GPT6.reasoning_efforts - {"none"},
+    notes=(
+        "These models have no 'none' effort, so thinking=False raises.",
+        *OPENAI_GPT6.notes[1:],
+    ),
+)
+
+# The two recommended models run at their recommended effort unless told otherwise.
+OPENAI_GPT6_LUNA = replace(
+    OPENAI_GPT6,
+    reasoning_effort_on="high",
+    reasoning_effort_default="high",
+)
+
+OPENAI_GPT6_SOL = replace(
+    OPENAI_GPT6_ALWAYS_ON,
+    reasoning_effort_on="medium",
+    reasoning_effort_default="medium",
+)
+
+
 OPENAI_CHAT = ServedModelCapabilities(
     endpoint_modes=frozenset({EndpointMode.CHAT, EndpointMode.RESPONSES}),
     default_endpoint_mode=EndpointMode.CHAT,
@@ -368,6 +399,10 @@ OPENAI_COMPATIBLE_CHAT = ServedModelCapabilities(
 
 
 _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
+    ("openai", "gpt-6-luna"): OPENAI_GPT6_LUNA,
+    ("openai", "gpt-6.1-sol"): OPENAI_GPT6_SOL,
+    ("openai", "gpt-6.1-terra"): OPENAI_GPT6,
+    ("openai", "gpt-6-astra"): OPENAI_GPT6_ALWAYS_ON,
     ("openai", "gpt-5.5"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-mini"): OPENAI_RESPONSES,
@@ -489,6 +524,7 @@ def _resolve_ollama_capabilities(model_id: str) -> ServedModelCapabilities:
 def _looks_like_openai_reasoning_model(model_id: str) -> bool:
     return (
         model_id.startswith("gpt-5")
+        or model_id.startswith("gpt-6")
         or model_id.startswith("o1")
         or model_id.startswith("o3")
         or model_id.startswith("o4")

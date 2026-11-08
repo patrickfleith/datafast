@@ -1,6 +1,6 @@
 """Live text generation against OpenAI (Responses endpoint).
 
-Every openai catalog id resolves to OPENAI_RESPONSES, so these calls go through
+Every openai catalog id resolves to a Responses profile, so these calls go through
 `litellm.responses` rather than `litellm.completion` — a transport the Anthropic
 suite never touches. They are the only proof that datafast's Responses request
 shape is accepted and that `_extract_responses_text` reads a real payload.

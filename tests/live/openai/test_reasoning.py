@@ -9,15 +9,15 @@ The assertions differ from the Anthropic suite for two reasons:
   stays empty under plain `thinking=True` and needs `reasoning_summary`.
 
 Reasoning tokens count against `max_output_tokens`, so these tests raise the
-fixture's 300-token ceiling.
+fixture's 2048-token ceiling.
 """
 
 import pytest
 
 pytestmark = [pytest.mark.live, pytest.mark.openai]
 
-REASONING_TOKENS = 2048
-SUMMARY_TOKENS = 4096
+REASONING_TOKENS = 4096
+SUMMARY_TOKENS = 8192
 PROMPT = "A shop sells pens at 3 for $2. What do 12 pens cost?"
 # A trivial prompt at effort 'low' returns a reasoning item with an empty summary,
 # so the summary test needs something worth summarising.
@@ -29,7 +29,7 @@ HARD_PROMPT = (
 
 
 def test_thinking_true_emits_a_reasoning_item(served_model):
-    """`thinking=True` resolves to effort 'low' and must produce a reasoning item
+    """`thinking=True` resolves to effort 'high' on Luna and must produce a reasoning item
     alongside the answer, not instead of it."""
     response = served_model(
         thinking=True,

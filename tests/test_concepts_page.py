@@ -145,7 +145,7 @@ def test_a_served_model_is_built_without_a_key_as_the_page_says(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     from datafast import openai
 
-    openai("gpt-5.4-mini", temperature=0.2)
+    openai("gpt-6-luna", temperature=0.2)
 
 
 def test_sample_cannot_start_a_pipeline():
@@ -306,7 +306,7 @@ def test_the_served_model_and_capability_blocks_print_what_the_page_says():
     assert vllm.provider_id == "vllm"
     assert vllm.config.litellm_route == "openai", "the page says the transport is OpenAI's"
 
-    gpt = datafast.openai("gpt-5.5")
+    gpt = datafast.openai("gpt-6-luna")
     assert gpt.capabilities.structured_output.value == "json_schema"
     assert gpt.endpoint_mode.value == "responses"
 

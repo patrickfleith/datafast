@@ -98,7 +98,7 @@ pipeline writes the same records to two files.
   "level": "beginner",
   "question": "What process do plants use to convert light into chemical energy?",
   "answer": "Photosynthesis, which occurs in the chloroplasts.",
-  "_model": "gpt-5.5"
+  "_model": "gpt-6-luna"
 }
 ```
 

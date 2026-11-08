@@ -100,11 +100,11 @@ def test_the_glossary_is_reference_material_not_an_onboarding_step():
 
 def test_the_capabilities_example_matches_what_datafast_declares():
     """The entry contrasts one model on two providers. The OpenRouter half comes from
-    OpenRouter's default profile, so cataloguing `openai/gpt-5.5` will change it."""
-    direct = datafast.openai("gpt-5.5").capabilities
-    routed = datafast.openrouter("openai/gpt-5.5").capabilities
+    OpenRouter's default profile, so cataloguing `openai/gpt-6-luna` will change it."""
+    direct = datafast.openai("gpt-6-luna").capabilities
+    routed = datafast.openrouter("openai/gpt-6-luna").capabilities
     assert {m.value for m in direct.modalities} == {"text", "image", "file"}
     assert direct.supports_reasoning
     assert {m.value for m in routed.modalities} == {"text", "image"}
     assert not routed.supports_reasoning
-    assert 'openrouter("openai/gpt-5.5")' in _terms(PAGE)["Capabilities"]
+    assert 'openrouter("openai/gpt-6-luna")' in _terms(PAGE)["Capabilities"]

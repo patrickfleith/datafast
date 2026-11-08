@@ -103,7 +103,7 @@ See [Seed](reference/seed.md) for every dimension and combiner.
 
 Three words keep apart things that other libraries blur:
 
-- The **model** is the LLM itself, the weights being served. `"gpt-5.4-mini"` is a model
+- The **model** is the LLM itself, the weights being served. `"gpt-6-luna"` is a model
   name.
 - The **provider** is the server that serves it. OpenAI, Anthropic, Gemini, Mistral and
   OpenRouter are cloud providers. Ollama, vLLM and llama.cpp run on your own machine.
@@ -113,7 +113,7 @@ Three words keep apart things that other libraries blur:
 ```python
 from datafast import openai
 
-model = openai("gpt-5.4-mini", temperature=0.2)
+model = openai("gpt-6-luna", temperature=0.2)
 ```
 
 Seven factories build one: `openai`, `anthropic`, `gemini`, `mistral`, `openrouter`,
@@ -178,7 +178,7 @@ Capabilities are resolved once, at construction, in this order:
 ```python
 from datafast import openai
 
-model = openai("gpt-5.5")
+model = openai("gpt-6-luna")
 print(model.capabilities.structured_output.value)  # json_schema
 print(model.endpoint_mode.value)  # responses
 ```

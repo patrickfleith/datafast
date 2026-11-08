@@ -1,7 +1,7 @@
 """Live coverage of the OPENAI_CHAT profile.
 
-No openai id in the catalog reaches this profile — every `gpt-5.x` id resolves to
-OPENAI_RESPONSES. A `gpt-4o-mini` falls through to OPENAI_CHAT, which is the only
+No openai id in the catalog reaches this profile — every `gpt-5.x` and `gpt-6` id
+resolves to a Responses profile. A `gpt-4o-mini` falls through to OPENAI_CHAT, which is the only
 place `litellm.completion` and native batching run under `provider_id="openai"`,
 and the only openai profile where a temperature is genuinely supported.
 """
@@ -24,7 +24,7 @@ def test_chat_profile_accepts_temperature_and_batches_natively(
     for expected, response in zip(("Paris", "Madrid"), responses):
         assert expected in response
 
-    # The inverse of the gpt-5.x tests: this profile supports both a temperature
+    # The inverse of the reasoning-model tests: this profile supports both a temperature
     # and native batching, so datafast must stay quiet. `recwarn` collects every
     # warning raised during the test; neither phrase may appear in any of them.
     messages = [str(warning.message) for warning in recwarn]

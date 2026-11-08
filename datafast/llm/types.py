@@ -76,6 +76,9 @@ class ServedModelCapabilities:
     reasoning_requires_allowlist: bool = False
     # reasoning_effort value that thinking=True maps to.
     reasoning_effort_on: str = "low"
+    # reasoning_effort sent when the caller sets neither thinking nor an effort.
+    # None omits it, which leaves the served model's own default in force.
+    reasoning_effort_default: str | None = None
     # (name, value) request param that turns reasoning off for thinking=False.
     # None omits it, which leaves the served model's own default in force —
     # correct only where that default is "no reasoning".
