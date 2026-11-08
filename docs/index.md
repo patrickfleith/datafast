@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Datafast
 Generate high-quality and diverse synthetic data with LLMs.
 
