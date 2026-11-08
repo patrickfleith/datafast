@@ -58,7 +58,8 @@ AI projects all need something special in their datasets. Whether this is for tr
   execution controls.
 - Read [Served models](llms.md) for provider configuration, reasoning and multimodal
   input.
-- Browse the [Cookbook](cookbook/index.md) for complete recipes.
+- Browse the [Cookbook](cookbook/index.md) for complete recipes, starting with the
+  [example datasets](cookbook/index.md#example-datasets) you can build.
 - Look up anything in the [API reference](api.md).
 
 ### Coming soon

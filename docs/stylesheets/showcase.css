@@ -1,0 +1,44 @@
+/* The example datasets grid on the Cookbook index: square cards, four across on a
+   wide screen and two across on a narrow one. Builds on the theme's own `grid cards`,
+   which already draws the border, the radius and the hover shadow. */
+
+.md-typeset .grid.cards.showcase {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .grid.cards.showcase {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Four across leaves each square about 8rem wide, so the type and padding are smaller
+   than the theme's card defaults. The square grows rather than clips if text wraps. */
+.md-typeset .grid.cards.showcase > ul > li {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.6rem;
+  font-size: 0.64rem;
+  line-height: 1.45;
+}
+
+.md-typeset .grid.cards.showcase > ul > li > p {
+  margin: 0 0 0.4em;
+}
+
+.md-typeset .grid.cards.showcase > ul > li > p:first-child {
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+/* The last line names what the square links to; pin it to the bottom edge. */
+.md-typeset .grid.cards.showcase > ul > li > p:last-child {
+  margin-top: auto;
+  margin-bottom: 0;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .grid.cards.showcase > ul > li:hover {
+  border-color: var(--md-accent-fg-color);
+}
