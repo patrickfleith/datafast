@@ -223,9 +223,9 @@ names, unless you set one with `as_step`.
 Completed steps always survive. A **partly finished LLM step** is the hard case, and the
 answer depends on `checkpoint_every`, which defaults to `100`.
 
-Progress inside an LLM step is only recorded every `checkpoint_every` calls. A run that
-dies at call 60 on the default has no progress file, so resume re-runs all of them and
-you pay twice. Lower it for slow or expensive steps:
+An LLM step saves its first progress file after `checkpoint_every` calls, and resume
+needs that file. A run that dies at call 60 on the default has no progress file, so
+resume runs all 60 calls again and you pay twice. Lower it for slow or expensive steps:
 
 ```python
 from datafast import Map, Sink, Source
@@ -234,10 +234,9 @@ pipeline = Source.list([{"text": "hello"}]) >> Map(lambda r: r) >> Sink.list()
 pipeline.run(checkpoint_dir="./checkpoints", checkpoint_every=10)
 ```
 
-`checkpoint_every` controls how often the step's summary is written. It does not affect
-correctness: each record's call id is written immediately after the record itself, so
-resume knows exactly what finished no matter when the crash came. A resumed run produces
-each record once.
+After the first progress file, the crash point no longer matters. Each record's call id
+is written right after the record itself, so resume knows exactly which calls finished
+and makes only the missing ones. In both cases a resumed run produces each record once.
 
 If a crash lands between those two writes, the record is discarded and its call runs
 again — one repeated call rather than a duplicated record.

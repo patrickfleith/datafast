@@ -125,7 +125,7 @@ possible: each step has a clean boundary where the full set of records exists.
 | `limit` | `int \| None` | `None` | Keep only the first N records from the source. |
 | `batch_size` | `int` | `4` | LLM calls per batch. |
 | `llm_strategy` | `str` | `"by_model"` | Order of LLM calls: `"by_model"`, `"round_robin"` or `"by_record"`. |
-| `checkpoint_every` | `int` | `100` | Save LLM progress every N completed calls. |
+| `checkpoint_every` | `int` | `100` | Save an LLM step's progress file every N completed calls. Resume needs the first one. |
 
 ```python
 records = pipeline.run(
@@ -227,13 +227,18 @@ running anything.
 
 ### Resuming inside an LLM step
 
-LLM steps checkpoint per call, not per step. Each completed call's record is appended as
-it arrives, and the list of completed call ids is saved every `checkpoint_every` calls.
-A run that dies after 700 of 1,000 calls resumes at call 701 — the 700 you already paid
-for are not repeated.
+LLM steps checkpoint per call, not per step. Each completed call's record and its call
+id are written as soon as the call returns. The step also saves a progress file every
+`checkpoint_every` calls, and resume needs that file to exist.
 
-Lower `checkpoint_every` for expensive calls, where losing 100 of them hurts. Raise it
-for cheap ones, where the disk writes cost more than the calls.
+Once the first progress file exists, resume is exact. A run that dies after 700 of 1,000
+calls resumes at call 701, so you do not pay for the first 700 again. A run that dies
+before the first progress file, at call 60 on the default of 100, runs the whole step
+again.
+
+Lower `checkpoint_every` for slow or expensive steps, so the first progress file comes
+sooner. Raise it for cheap, fast steps, where writing the progress file costs more than
+the calls.
 
 ### When the checkpoint no longer matches
 

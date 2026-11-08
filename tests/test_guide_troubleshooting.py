@@ -477,6 +477,18 @@ def test_resume_writes_every_record_exactly_once(tmp_path):
     assert len(set(texts)) == len(texts), "a record was written twice"
 
 
+
+def test_a_crash_after_the_first_progress_save_resumes_only_the_missing_calls(tmp_path):
+    """The page says the crash point stops mattering once a progress file exists."""
+    directory = str(tmp_path / "ckpt")
+    crashed = _crashing_run(directory, crash_at=6, checkpoint_every=2)
+    finished = crashed.calls - 1  # the sixth call raised instead of returning
+    assert list(Path(directory).glob("*.progress.json")), "a progress file was saved"
+
+    results, resumed = _resumed_run(directory, checkpoint_every=2)
+    assert resumed.calls == 8 - finished, "only the unfinished calls run again"
+    assert len(results) == 8
+
 # --- provider errors -------------------------------------------------------------
 
 
