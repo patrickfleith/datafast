@@ -143,7 +143,7 @@ def test_the_model_with_a_minimum_effort_refuses_thinking_off():
     assert GEMINI_NO_MINIMAL_CHAT.reasoning_off_param is None
     assert GEMINI_NO_MINIMAL_CHAT.reasoning_always_on is True
 
-    model = gemini("gemini-3.7-flash", thinking=False)
+    model = gemini("gemini-3.8-flash", thinking=False)
     with pytest.raises(ValueError, match="always reasons"):
         model._build_chat_params(REQUEST, None)
 
@@ -174,7 +174,7 @@ def test_the_per_model_minimum_claims_come_from_the_profile_notes():
     chat_notes = " ".join(GEMINI_CHAT.notes)
     assert "think by" in chat_notes and "billed" in chat_notes
     minimal_notes = " ".join(GEMINI_NO_MINIMAL_CHAT.notes)
-    assert "'medium' for gemini-3.7-flash" in minimal_notes
+    assert "'medium' on every model with this profile" in minimal_notes
     assert "which is `medium`" in _page()
 
 

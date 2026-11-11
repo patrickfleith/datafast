@@ -4,7 +4,7 @@
 from datafast import gemini
 
 model = gemini()                                  # gemini-3.5-flash-lite
-flash = gemini("gemini-3.7-flash", reasoning_effort="low")
+flash = gemini("gemini-3.8-flash", reasoning_effort="low")
 ```
 
 | | |
@@ -19,18 +19,35 @@ specific to Gemini.
 
 ## Supported models
 
-Four models are catalogued exactly:
+Five models are catalogued exactly:
 
 | Model | Profile | Transport |
 |---|---|---|
-| `gemini-3.7-flash` | `GEMINI_NO_MINIMAL_CHAT` | Chat |
-| `gemini-3.5-flash` | `GEMINI_CHAT` | Chat |
+| `gemini-4-carbon` | `GEMINI_NO_MINIMAL_CHAT` | Chat |
+| `gemini-4-argon` | `GEMINI_NO_MINIMAL_CHAT` | Chat |
+| `gemini-3.8-flash` | `GEMINI_NO_MINIMAL_CHAT` | Chat |
 | `gemini-3.5-flash-lite` | `GEMINI_CHAT` | Chat |
 | `gemini-3.1-flash-lite` | `GEMINI_CHAT` | Chat |
 
+Every model takes text, image, audio, video and PDF input and returns text. Each has a
+1,048,576-token context window and returns at most 65,536 tokens per request.
+
+| Model | Thinking levels | Google's default | Price per 1M tokens, input / output |
+|---|---|---|---|
+| `gemini-4-carbon` | `low`, `medium`, `high` | `medium` | $2 / $10 until Nov 30, 2026, then $4 / $20 |
+| `gemini-4-argon` | `low`, `medium`, `high` | `medium` | $2 / $10 until Nov 30, 2026, then $4 / $20 |
+| `gemini-3.8-flash` | `low`, `medium`, `high` | `medium` | $0.75 / $3.75 until Dec 31, 2026, then $1.50 / $7.50 |
+| `gemini-3.5-flash-lite` | `minimal` to `high` | `minimal` | $0.30 / $2.50 |
+| `gemini-3.1-flash-lite` | `minimal` to `high` | `minimal` | $0.25 / $1.50 |
+
+Google calls Gemini 4 Carbon its strongest model. Gemini 4 Argon answers faster and
+spends fewer tokens per turn. Both are paid-tier only, so a free-tier key cannot call
+them. Prices change, so check [Google's pricing page](https://aistudio.google.com/docs/pricing)
+before you budget a run.
+
 Any other model id gets `GEMINI_CHAT`, the provider default. There is no name matching
 here, so a Gemini model datafast has not heard of is assumed to behave like the
-catalogued 3.5 models. That is usually right — but read the reasoning section below
+catalogued Flash-Lite models. That is usually right, but read the reasoning section below
 before you trust it.
 
 ## The two profiles
@@ -65,16 +82,16 @@ model's lowest thinking level and hides the trace. Those tokens are still billed
 Gemini, `thinking=False` means *as little reasoning as this model allows*, not *no
 reasoning*.
 
-`gemini-3.7-flash` goes further. Its lowest level is `low`; it rejects the `minimal`
-level that `none` maps to. There is no value datafast could send, so `thinking=False`
-raises instead of quietly reasoning at the model's own default, which is `medium`. Ask
-for a level by name instead:
+`gemini-3.8-flash`, `gemini-4-argon` and `gemini-4-carbon` go further. Their lowest
+level is `low`, and they reject the `minimal` level that `none` maps to. There is no
+value datafast could send, so `thinking=False` raises instead of quietly reasoning at
+the model's own default, which is `medium`. Ask for a level by name instead:
 
 ```python
 from datafast import gemini
 
-cheap = gemini("gemini-3.7-flash", reasoning_effort="low")
-careful = gemini("gemini-3.7-flash", reasoning_effort="high")
+cheap = gemini("gemini-3.8-flash", reasoning_effort="low")
+careful = gemini("gemini-3.8-flash", reasoning_effort="high")
 ```
 
 At effort `low` the reasoning is real but invisible: no `reasoning_content` and no

@@ -12,6 +12,7 @@
 - Per-served-model reasoning controls: `thinking=True`/`False` resolve to each model's own values instead of a hardcoded effort and a silent no-op.
 - `claude-sonnet-5` support via a second Anthropic profile, since it reasons unless disabled through Anthropic's native switch.
 - Claude 5.5 support: `claude-haiku-5-5`, `claude-opus-5-5`, `claude-sonnet-5-5` and `claude-fable-5-1`, with `thinking=False` matched to what each model accepts and `litellm` floored at 1.108.3.
+- Gemini refresh: `gemini-3.8-flash`, `gemini-4-argon` and `gemini-4-carbon` added on the no-minimal profile; `gemini-3.5-flash` and `gemini-3.7-flash` dropped after Google removed them.
 - Ollama capability probe reading the daemon's `/api/show`, plus the factory default moved from `gemma3:4b` to `gemma4:12b`.
 - `provider_id` always names a server, never a wire format (DEC-003); `openai_compatible()` requires it and rejects wire-format values.
 - `top_p`, `frequency_penalty` and `reasoning_summary` as real config fields, gated by capability rather than slipping through unchecked.

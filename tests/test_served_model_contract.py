@@ -1069,8 +1069,9 @@ def test_ollama_probe_capabilities_follows_the_generate_daemon(monkeypatch):
 def test_gemini_reasoning_capability_resolution():
     # All catalogued Gemini models support reasoning natively.
     for model_id in (
-        "gemini-3.7-flash",
-        "gemini-3.5-flash",
+        "gemini-4-carbon",
+        "gemini-4-argon",
+        "gemini-3.8-flash",
         "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
     ):
@@ -1087,19 +1088,23 @@ def test_gemini_flash_lite_can_request_reasoning_off():
     assert caps.reasoning_off_param == ("reasoning_effort", "none")
 
 
-def test_gemini_flash_rejects_thinking_false():
-    """gemini-3.7-flash has no level below 'low', so thinking=False has nothing
+@pytest.mark.parametrize(
+    "model_id", ["gemini-3.8-flash", "gemini-4-argon", "gemini-4-carbon"]
+)
+def test_gemini_no_minimal_models_reject_thinking_false(model_id):
+    """These models have no level below 'low', so thinking=False has nothing
     to send. Refusing beats sending nothing and reasoning at 'medium'."""
-    model = gemini(model_id="gemini-3.7-flash", api_key="test-key", thinking=False)
+    model = gemini(model_id=model_id, api_key="test-key", thinking=False)
 
     with pytest.raises(ValueError, match="always reasons"):
         model.generate(prompt="ping")
 
 
-def test_gemini_flash_rejects_an_effort_below_its_floor():
-    model = gemini(
-        model_id="gemini-3.7-flash", api_key="test-key", reasoning_effort="minimal"
-    )
+@pytest.mark.parametrize(
+    "model_id", ["gemini-3.8-flash", "gemini-4-argon", "gemini-4-carbon"]
+)
+def test_gemini_no_minimal_models_reject_an_effort_below_their_floor(model_id):
+    model = gemini(model_id=model_id, api_key="test-key", reasoning_effort="minimal")
 
     with pytest.raises(ValueError, match="not supported"):
         model.generate(prompt="ping")
@@ -1115,7 +1120,7 @@ def test_gemini_reasoning_effort_is_forwarded(monkeypatch):
     monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
     model = gemini(
-        model_id="gemini-3.5-flash", api_key="test-key", reasoning_effort="high"
+        model_id="gemini-3.8-flash", api_key="test-key", reasoning_effort="high"
     )
 
     response = model.generate_response(prompt="think it through")
@@ -1136,7 +1141,7 @@ def test_gemini_thinking_true_defaults_to_low_effort(monkeypatch):
     monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
     model = gemini(
-        model_id="gemini-3.5-flash", api_key="test-key", thinking=True
+        model_id="gemini-3.8-flash", api_key="test-key", thinking=True
     )
 
     assert model.generate(prompt="ping") == "ok"
@@ -1152,7 +1157,7 @@ def test_gemini_thinking_false_disables_reasoning(monkeypatch):
 
     monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    model = gemini(model_id="gemini-3.5-flash", api_key="test-key", thinking=False)
+    model = gemini(model_id="gemini-3.5-flash-lite", api_key="test-key", thinking=False)
 
     assert model.generate(prompt="ping") == "ok"
     # Gemini 3 models think by default, so omitting the parameter would still

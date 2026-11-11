@@ -149,7 +149,8 @@ GEMINI_CHAT = ServedModelCapabilities(
 )
 
 
-# Gemini 3 models whose lowest thinking level is 'low' rather than 'minimal'.
+# Gemini 3.8 Flash and Gemini 4 models, whose lowest thinking level is 'low'
+# rather than 'minimal'.
 # They reject the value 'none' resolves to, so there is nothing thinking=False
 # could send: the only honest answer is to refuse it.
 GEMINI_NO_MINIMAL_CHAT = replace(
@@ -161,7 +162,7 @@ GEMINI_NO_MINIMAL_CHAT = replace(
     + (
         "'minimal' is rejected outright, which is what 'none' maps to, so "
         "thinking=False raises rather than silently reasoning at the model's "
-        "own default ('medium' for gemini-3.7-flash).",
+        "own default, which is 'medium' on every model with this profile.",
         "At effort 'low' the reasoning is real but invisible: no "
         "reasoning_content and no thinking_blocks come back, only an opaque "
         "thought_signatures entry. Callers who need a readable trace should "
@@ -475,8 +476,9 @@ _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
     ("anthropic", "claude-sonnet-5"): ANTHROPIC_ADAPTIVE_CHAT,
     ("anthropic", "claude-sonnet-4-6"): ANTHROPIC_CHAT,
     ("anthropic", "claude-haiku-4-5"): ANTHROPIC_CHAT,
-    ("gemini", "gemini-3.7-flash"): GEMINI_NO_MINIMAL_CHAT,
-    ("gemini", "gemini-3.5-flash"): GEMINI_CHAT,
+    ("gemini", "gemini-4-carbon"): GEMINI_NO_MINIMAL_CHAT,
+    ("gemini", "gemini-4-argon"): GEMINI_NO_MINIMAL_CHAT,
+    ("gemini", "gemini-3.8-flash"): GEMINI_NO_MINIMAL_CHAT,
     ("gemini", "gemini-3.5-flash-lite"): GEMINI_CHAT,
     ("gemini", "gemini-3.1-flash-lite"): GEMINI_CHAT,
     ("mistral", "mistral-medium-3-5"): MISTRAL_REASONING_CHAT,
