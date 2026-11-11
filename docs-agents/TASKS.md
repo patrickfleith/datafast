@@ -4,9 +4,12 @@
 
 ## To do
 
+- Rerun the 14 OpenAI live tests on `chore/model-refresh`, push it, update PR 149 and merge it into the docs branch. <!-- litellm 1.106.0 to 1.108.3 fail every OpenAI Responses call without the mcp package: https://github.com/BerriAI/litellm/issues/46045 -->
+- Fix the 30 older test failures, so `main` doesn't take them on.
+- Merge the security branch into the docs branch. You set it aside for now, but it matters here because it changes how releases are built and handles the release credentials. That needs to be in place before the first publish from this code.
+- Open a PR from the docs branch to `main`, resolve the `litellm` line, and read `publish.yml` before you merge.
 - [ ] Create a skill that teaches a coding agent to use datafast <!-- promised under 'Coming soon' on the docs home page -->
 - [ ] Make security updates
-- [ ] Get the new local environment variables
 - [ ] Check every link across the whole documentation resolves, and update the stale ones <!-- right before launch -->
 - [ ] <task> <!-- optional (context) -->
 
@@ -26,6 +29,8 @@ Kept from the v1 launch, because every future page follows them.
 
 ## Done
 
+- [X] Get the new local environment variables
+- [X] Raise the `litellm` floor to 1.108.4 on `chore/model-refresh` (`fda0cc1`)
 - [X] Fix the `checkpoint_every` wording in the troubleshooting and pipelines guides:
       both now say resume needs the first progress file and is exact after it; a new
       test pins the exact half
