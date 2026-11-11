@@ -9,7 +9,7 @@ from datafast import Source, LLMStep, Branch, JoinBranches, Sink, openrouter
 import litellm
 litellm.suppress_debug_info = True
 
-# model = ollama("gemma3:4b")
+# model = ollama("gemma4:12b")
 model_strong = openrouter("mistralai/ministral-14b-2512", temperature=0.7)
 model_weak = openrouter("mistralai/ministral-14b-2512", temperature=1.2)
 

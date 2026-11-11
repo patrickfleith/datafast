@@ -10,9 +10,9 @@ import litellm
 litellm.suppress_debug_info = True
 
 
-# model = ollama("gemma3:4b")
+# model = ollama("gemma4:12b")
 model_a = openrouter("mistralai/ministral-14b-2512", temperature=0.7)
-model_b = openrouter("google/gemini-2.0-flash-001", temperature=0.7)
+model_b = openrouter("google/gemini-3.5-flash-lite", temperature=0.7)
 
 prompts = [
     "Explain {concept} for a 5-year-old.",

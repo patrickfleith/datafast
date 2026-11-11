@@ -8,8 +8,8 @@ from datafast import Source, LLMStep, Sink, openrouter
 import litellm
 litellm.suppress_debug_info = True
 
-# model_a = ollama("gemma3:4b")
-# model_b = ollama("llama3:8b")
+# model_a = ollama("gemma4:12b")
+# model_b = ollama("ministral-3:3b")
 model_a = openrouter("mistralai/ministral-14b-2512", temperature=0.7)
 model_b = openrouter("mistralai/ministral-8b-2512", temperature=0.7)
 
