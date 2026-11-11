@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datafast import anthropic
 
 
-MODEL_ID = "claude-haiku-4-5"
+MODEL_ID = "claude-haiku-5-5"
 PROMPT = "Return a JSON object describing Anthropic in two short sentences."
 
 
@@ -19,7 +19,7 @@ class ProviderSummary(BaseModel):
 def main() -> None:
     load_dotenv()
 
-    model = anthropic(MODEL_ID, temperature=0)
+    model = anthropic(MODEL_ID)
     response = model.generate(prompt=PROMPT, response_format=ProviderSummary)
     print(response.model_dump_json(indent=2))
 

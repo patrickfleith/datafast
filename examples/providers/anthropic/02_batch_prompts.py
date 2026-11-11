@@ -6,7 +6,7 @@ from datafast import anthropic
 from datafast.llm_utils import format_generated_responses
 
 
-MODEL_ID = "claude-haiku-4-5"
+MODEL_ID = "claude-haiku-5-5"
 PROMPTS = [
     "Give a one-sentence definition of synthetic data.",
     "Give a one-sentence definition of retrieval-augmented generation.",
@@ -17,7 +17,7 @@ PROMPTS = [
 def main() -> None:
     load_dotenv()
 
-    model = anthropic(MODEL_ID, temperature=0)
+    model = anthropic(MODEL_ID)
     responses = model.generate(prompt=PROMPTS)
     print(format_generated_responses(PROMPTS, responses))
 

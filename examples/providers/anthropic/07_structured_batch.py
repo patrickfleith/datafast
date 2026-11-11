@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datafast import anthropic
 
 
-MODEL_ID = "claude-haiku-4-5"
+MODEL_ID = "claude-haiku-5-5"
 PROMPTS = [
     "Return JSON for Python with fields language, category, and one_sentence_use_case.",
     "Return JSON for Rust with fields language, category, and one_sentence_use_case.",
@@ -23,7 +23,7 @@ class LanguageCard(BaseModel):
 def main() -> None:
     load_dotenv()
 
-    model = anthropic(MODEL_ID, temperature=0)
+    model = anthropic(MODEL_ID)
     responses = model.generate(prompt=PROMPTS, response_format=LanguageCard)
 
     for response in responses:

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from datafast import anthropic
 
 
-MODEL_ID = "claude-sonnet-4-6"
+MODEL_ID = "claude-haiku-5-5"
 PROMPT = (
     "A train travels 60 miles per hour for 2.5 hours. "
     "Work it out carefully, then give the final answer in one short sentence."
@@ -32,8 +32,8 @@ def _first_choice_message(raw_response):
 def main() -> None:
     load_dotenv()
 
-    # Extended thinking is enabled natively; temperature is left unset because
-    # Anthropic requires the default temperature while thinking is on.
+    # Extended thinking is enabled natively. No temperature is set because the
+    # Claude 5.5 models reject one.
     model = anthropic(MODEL_ID, thinking=True)
     response = model.generate_response(prompt=PROMPT)
 

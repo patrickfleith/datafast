@@ -16,7 +16,7 @@ from datafast.llm import ContentPart
 
 
 # Swap this for any Claude model that supports image input.
-MODEL_ID = "claude-sonnet-4-6"
+MODEL_ID = "claude-haiku-5-5"
 IMAGE_PATH = Path(__file__).parent / "sample_ant.jpg"
 
 
@@ -41,7 +41,7 @@ def main() -> None:
         }
     ]
 
-    model = anthropic(MODEL_ID, temperature=0)
+    model = anthropic(MODEL_ID)
     response = model.generate(messages=messages)
     print(response.strip())
 
