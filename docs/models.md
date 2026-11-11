@@ -29,7 +29,7 @@ tasks that need maximum intelligence, use `claude-opus-5-5` with
 
 ## OpenRouter
 
-- `openai/gpt-5.4-mini`
+- `openai/gpt-6-luna`
 
 ## Ollama
 

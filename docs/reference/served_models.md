@@ -19,7 +19,7 @@ one — `ServedModel` is exported for type annotations, not for instantiation.
 | `anthropic()` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
 | `gemini()` | `gemini-3.5-flash-lite` | `GEMINI_API_KEY` |
 | `mistral()` | `mistral-small-2603` | `MISTRAL_API_KEY` |
-| `openrouter()` | `openai/gpt-5.4-mini` | `OPENROUTER_API_KEY` |
+| `openrouter()` | `openai/gpt-6-luna` | `OPENROUTER_API_KEY` |
 | `ollama()` | `gemma4:12b` | none — local daemon |
 | `openai_compatible()` | none — `model_id` is required | whatever you pass |
 

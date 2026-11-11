@@ -1229,7 +1229,7 @@ class _MistralServedModel(ServedModel):
 
 
 class _OpenRouterServedModel(ServedModel):
-    def __init__(self, model_id: str = "openai/gpt-5.4-mini", **kwargs: Any) -> None:
+    def __init__(self, model_id: str = "openai/gpt-6-luna", **kwargs: Any) -> None:
         super().__init__(
             "openrouter",
             model_id,
@@ -1384,7 +1384,7 @@ def mistral(model_id: str = "mistral-small-2603", **kwargs: Any) -> ServedModel:
 
 
 def openrouter(
-    model_id: str = "openai/gpt-5.4-mini",
+    model_id: str = "openai/gpt-6-luna",
     **kwargs: Any,
 ) -> ServedModel:
     """Build a served model on OpenRouter.
@@ -1393,7 +1393,7 @@ def openrouter(
     many upstream providers, so `model_id` carries a `vendor/model` prefix.
 
     Args:
-        model_id: OpenRouter model name, e.g. `"openai/gpt-5.4-mini"`.
+        model_id: OpenRouter model name, e.g. `"openai/gpt-6-luna"`.
         **kwargs: Any `ServedModelConfig` field — `temperature`, `max_tokens`,
             `max_concurrent`, ...
 
