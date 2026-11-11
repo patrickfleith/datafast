@@ -6,7 +6,7 @@ from datafast import openrouter
 # OPENROUTER_CHAT declares: it takes image input, and its endpoints support
 # structured outputs. The docs' `z-ai/glm-4.6` is text-only and could not
 # exercise the profile's IMAGE modality; the factory default
-# `openai/gpt-5.4-mini` costs ~7x more and only retreads the OpenAI suite.
+# `openai/gpt-6-luna` costs about the same but only retreads the OpenAI suite.
 MODEL_ID = "google/gemma-4-31b-it"
 
 # OpenRouter routes one model id across 19 endpoints, and they do not agree
