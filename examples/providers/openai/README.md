@@ -6,7 +6,7 @@ Requirements:
 
 Notes:
 
-- OpenAI's `gpt-5` models are reasoning models served on the Responses API. They
+- OpenAI's GPT-6 models are reasoning models served on the Responses API. They
   do not accept `temperature`, so these examples leave it unset (example 08 shows
   how the unsupported-parameter policy handles it).
 - Datafast suppresses LiteLLM's provider help banner by default for cleaner example

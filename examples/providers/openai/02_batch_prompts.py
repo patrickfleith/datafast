@@ -6,7 +6,7 @@ from datafast import openai
 from datafast.llm_utils import format_generated_responses
 
 
-MODEL_ID = "gpt-5.4-mini"
+MODEL_ID = "gpt-6-luna"
 PROMPTS = [
     "Give a one-sentence definition of synthetic data.",
     "Give a one-sentence definition of retrieval-augmented generation.",

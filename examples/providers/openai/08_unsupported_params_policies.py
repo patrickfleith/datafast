@@ -1,6 +1,6 @@
 """OpenAI example showing unsupported parameter policies.
 
-OpenAI's gpt-5 models are reasoning models served on the Responses API, which
+OpenAI's GPT-6 models are reasoning models served on the Responses API, which
 rejects sampling controls such as ``temperature``. Datafast omits it and routes
 the decision through the warn/quiet/fail policy.
 """
@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from datafast import openai
 
 
-MODEL_ID = "gpt-5.4-mini"
+MODEL_ID = "gpt-6-luna"
 PROMPT = "Explain OpenAI in one short sentence."
 
 

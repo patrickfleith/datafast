@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from datafast import openai
 
 
-MODEL_ID = "gpt-5.4-mini"
+MODEL_ID = "gpt-6-luna"
 TIMEOUT_SECONDS = 30
 RPM_LIMIT = 2
 PROMPTS = [
