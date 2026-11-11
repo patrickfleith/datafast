@@ -15,7 +15,7 @@ from datafast.llm import ContentPart
 
 
 # Swap this for any OpenRouter model on your account that supports image input.
-MODEL_ID = "openai/gpt-5-mini"
+MODEL_ID = "openai/gpt-6-luna"
 IMAGE_PATH = Path(__file__).parent / "sample_hot_air_balloon.jpg"
 
 

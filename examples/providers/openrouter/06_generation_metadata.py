@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from datafast import openrouter
 
 
-# MODEL_ID = "openai/gpt-5.4-mini"
+# MODEL_ID = "openai/gpt-6-luna"
 MODEL_ID = "google/gemma-4-31b-it:nitro"
 PROMPT = (
     "A train travels 60 miles per hour for 2.5 hours. "

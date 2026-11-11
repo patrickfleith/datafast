@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datafast import openrouter
 
 
-MODEL_ID = "openai/gpt-5.4-mini"
+MODEL_ID = "openai/gpt-6-luna"
 PROMPT = "Return a JSON object describing OpenRouter in two short sentences."
 
 
