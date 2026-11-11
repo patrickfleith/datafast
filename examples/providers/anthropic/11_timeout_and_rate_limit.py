@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from datafast import anthropic
 
 
-MODEL_ID = "claude-haiku-4-5"
+MODEL_ID = "claude-haiku-5-5"
 TIMEOUT_SECONDS = 30
 RPM_LIMIT = 2
 PROMPTS = [
@@ -22,7 +22,6 @@ def main() -> None:
 
     model = anthropic(
         MODEL_ID,
-        temperature=0,
         timeout=TIMEOUT_SECONDS,
         rpm_limit=RPM_LIMIT,
     )

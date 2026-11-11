@@ -1,6 +1,6 @@
 """OpenAI example comparing normalized fields with raw payload fields.
 
-gpt-5 models run on the Responses API, so the raw payload exposes ``output``
+GPT-6 models run on the Responses API, so the raw payload exposes ``output``
 items and ``output_text`` rather than the chat-completions ``choices`` array.
 """
 
@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from datafast import openai
 
 
-MODEL_ID = "gpt-5.4"
+MODEL_ID = "gpt-6-luna"
 PROMPT = (
     "A train travels 60 miles per hour for 2.5 hours. "
     "Work it out carefully, then give the final answer in one short sentence."
@@ -23,7 +23,8 @@ def main() -> None:
 
     model = openai(
         MODEL_ID,
-        provider_params={"reasoning": {"effort": "high", "summary": "auto"}},
+        reasoning_effort="high",
+        reasoning_summary="auto",
     )
     response = model.generate_response(prompt=PROMPT)
 

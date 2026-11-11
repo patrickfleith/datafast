@@ -23,11 +23,11 @@ ROOT = Path(__file__).parent.parent
 PAGE = ROOT / "docs" / "reference" / "served_models.md"
 
 FACTORY_DEFAULTS = {
-    "openai": ("gpt-5.5", "OPENAI_API_KEY"),
-    "anthropic": ("claude-haiku-4-5", "ANTHROPIC_API_KEY"),
+    "openai": ("gpt-6-luna", "OPENAI_API_KEY"),
+    "anthropic": ("claude-haiku-5-5", "ANTHROPIC_API_KEY"),
     "gemini": ("gemini-3.5-flash-lite", "GEMINI_API_KEY"),
     "mistral": ("mistral-small-2603", "MISTRAL_API_KEY"),
-    "openrouter": ("openai/gpt-5.4-mini", "OPENROUTER_API_KEY"),
+    "openrouter": ("openai/gpt-6-luna", "OPENROUTER_API_KEY"),
 }
 
 

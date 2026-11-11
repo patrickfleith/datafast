@@ -11,10 +11,12 @@ MODEL_ID = "gemini-3.5-flash-lite"
 # value below 1.0 risks infinite loops and degraded reasoning, and datafast
 # sends nothing unless a caller asks, so the provider default stands. Every
 # assertion here keys on a short factual answer that survives it.
-# gemini-3.7-flash is the current Flash line and the reason
+# gemini-3.8-flash is the current Flash line and the reason
 # GEMINI_NO_MINIMAL_CHAT exists: it rejects 'minimal', so thinking=False has no
-# value to send. Only the reasoning module uses it.
-FLASH_MODEL_ID = "gemini-3.7-flash"
+# value to send. Only the reasoning module uses it. Gemini 4 Argon and Carbon
+# share the profile but are left out: they are paid-tier only and cost several
+# times more per token.
+FLASH_MODEL_ID = "gemini-3.8-flash"
 
 
 @pytest.fixture
@@ -32,7 +34,7 @@ def served_model(require_api_key):
 
 @pytest.fixture
 def flash_served_model(require_api_key):
-    """The same factory on gemini-3.7-flash, whose reasoning floor is 'low'."""
+    """The same factory on gemini-3.8-flash, whose reasoning floor is 'low'."""
     require_api_key("GEMINI_API_KEY")
 
     def _make(**overrides):

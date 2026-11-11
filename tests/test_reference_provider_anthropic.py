@@ -1,6 +1,6 @@
 """The Anthropic provider page, pinned against the catalog and its capability profiles.
 
-Built on tests/test_reference_provider_openai.py. Anthropic ships two profiles that
+Built on tests/test_reference_provider_openai.py. Anthropic ships four profiles that
 differ in ways a reader cannot check by eye — which parameters they accept, how
 reasoning is turned off, which efforts are allowed — so every claim on the page is
 asserted here against `capabilities.py`.
@@ -14,7 +14,10 @@ import pytest
 
 from datafast.llm.capabilities import (
     ANTHROPIC_ADAPTIVE_CHAT,
+    ANTHROPIC_ALWAYS_THINKING_CHAT,
+    ANTHROPIC_BETWEEN_TOOLS_CHAT,
     ANTHROPIC_CHAT,
+    ANTHROPIC_HIGH_EFFORT_CHAT,
     _SERVED_MODEL_CATALOG,
     resolve_capabilities,
 )
@@ -28,7 +31,11 @@ CATALOGUED = sorted(m for (p, m) in _SERVED_MODEL_CATALOG if p == "anthropic")
 PROFILES = {
     "ANTHROPIC_CHAT": ANTHROPIC_CHAT,
     "ANTHROPIC_ADAPTIVE_CHAT": ANTHROPIC_ADAPTIVE_CHAT,
+    "ANTHROPIC_HIGH_EFFORT_CHAT": ANTHROPIC_HIGH_EFFORT_CHAT,
+    "ANTHROPIC_BETWEEN_TOOLS_CHAT": ANTHROPIC_BETWEEN_TOOLS_CHAT,
+    "ANTHROPIC_ALWAYS_THINKING_CHAT": ANTHROPIC_ALWAYS_THINKING_CHAT,
 }
+NEWER_PROFILES = [profile for profile in PROFILES.values() if profile is not ANTHROPIC_CHAT]
 
 
 def _page() -> str:
@@ -43,7 +50,7 @@ def _model_table_rows() -> list[tuple[str, str]]:
 
 def test_the_documented_default_model_is_the_factory_default():
     default = inspect.signature(anthropic).parameters["model_id"].default
-    assert default == "claude-haiku-4-5"
+    assert default == "claude-haiku-5-5"
     assert f"`{default}`" in _page()
 
 
@@ -62,12 +69,34 @@ def test_every_model_the_table_names_resolves_to_the_profile_it_claims():
         )
 
 
-def test_the_two_profiles_really_are_different_objects():
-    """The whole page rests on claude-sonnet-5 not sharing the provider default."""
-    assert ANTHROPIC_ADAPTIVE_CHAT is not ANTHROPIC_CHAT
-    assert resolve_capabilities("anthropic", "claude-sonnet-5") is ANTHROPIC_ADAPTIVE_CHAT
-    for model_id in ("claude-haiku-4-5", "claude-sonnet-4-6"):
-        assert resolve_capabilities("anthropic", model_id) is ANTHROPIC_CHAT
+def test_the_page_recommends_the_agreed_models_and_efforts():
+    section = _page().split("## Which model to use")[1].split("## Supported models")[0]
+    assert '| Default | `claude-haiku-5-5` | `reasoning_effort="high"` |' in section
+    assert (
+        '| Tasks that need maximum intelligence | `claude-opus-5-5` | `reasoning_effort="medium"` |'
+        in section
+    )
+    assert "`claude-sonnet-5-5` and `claude-fable-5-1` are supported but not recommended" in section
+    assert "poor quality-to-cost ratio" in section
+    assert "very expensive" in section
+    assert ANTHROPIC_HIGH_EFFORT_CHAT.reasoning_effort_default == "high"
+    assert "A bare `anthropic()` is the recommended default" in section
+
+
+@pytest.mark.parametrize(
+    "model_id, profile",
+    [
+        ("claude-haiku-5-5", ANTHROPIC_HIGH_EFFORT_CHAT),
+        ("claude-opus-5-5", ANTHROPIC_ALWAYS_THINKING_CHAT),
+        ("claude-sonnet-5-5", ANTHROPIC_BETWEEN_TOOLS_CHAT),
+        ("claude-fable-5-1", ANTHROPIC_ALWAYS_THINKING_CHAT),
+        ("claude-sonnet-5", ANTHROPIC_ADAPTIVE_CHAT),
+        ("claude-sonnet-4-6", ANTHROPIC_CHAT),
+        ("claude-haiku-4-5", ANTHROPIC_CHAT),
+    ],
+)
+def test_each_model_is_on_the_profile_its_off_switch_needs(model_id, profile):
+    assert resolve_capabilities("anthropic", model_id) is profile
 
 
 def test_an_uncatalogued_model_falls_back_to_the_provider_default():
@@ -77,7 +106,7 @@ def test_an_uncatalogued_model_falls_back_to_the_provider_default():
 
 
 def test_every_parameter_each_profile_accepts_is_documented():
-    accepted = ANTHROPIC_CHAT.supported_params | ANTHROPIC_ADAPTIVE_CHAT.supported_params
+    accepted = frozenset().union(*(profile.supported_params for profile in PROFILES.values()))
     assert accepted, "guard against an empty parameter scan"
     for parameter in accepted:
         assert f"`{parameter}`" in _page(), f"{parameter} is accepted but undocumented"
@@ -87,29 +116,40 @@ def test_the_temperature_rule_differs_between_the_profiles():
     """The page's central claim: locked while reasoning on one, unsupported on the other."""
     assert "temperature" in ANTHROPIC_CHAT.supported_params
     assert ANTHROPIC_CHAT.reasoning_locks_temperature is True
-    assert "temperature" not in ANTHROPIC_ADAPTIVE_CHAT.supported_params
-    assert ANTHROPIC_ADAPTIVE_CHAT.reasoning_locks_temperature is False
+    for profile in NEWER_PROFILES:
+        assert "temperature" not in profile.supported_params
+        assert profile.reasoning_locks_temperature is False
     for profile in PROFILES.values():
         assert "top_p" not in profile.supported_params
         assert "frequency_penalty" not in profile.supported_params
-    assert "`top_p` and `frequency_penalty` are on neither profile" in _page()
+    assert "`top_p` and `frequency_penalty` are on no profile" in _page()
 
 
 def test_the_documented_reasoning_off_values_are_the_ones_that_are_sent():
-    """The trap the page is built around: off is explicit on sonnet-5 only."""
+    """The trap the page is built around: each newer profile turns off differently."""
     assert ANTHROPIC_CHAT.reasoning_off_param is None
     assert ANTHROPIC_CHAT.reasoning_always_on is False
     assert ANTHROPIC_ADAPTIVE_CHAT.reasoning_off_param == ("thinking", {"type": "disabled"})
+    assert ANTHROPIC_BETWEEN_TOOLS_CHAT.reasoning_off_param == (
+        "thinking",
+        {"type": "between_tools"},
+    )
+    assert ANTHROPIC_ALWAYS_THINKING_CHAT.reasoning_off_param is None
+    assert ANTHROPIC_ALWAYS_THINKING_CHAT.reasoning_always_on is True
     assert 'thinking={"type": "disabled"}' in _page()
+    assert 'thinking={"type": "between_tools"}' in _page()
+    assert "raises a `ValueError`" in _page()
     assert 'reasoning_effort="none"' in _page()
 
 
-def test_the_documented_accepted_efforts_match_both_profiles():
+def test_the_documented_accepted_efforts_match_every_profile():
     assert ANTHROPIC_CHAT.reasoning_efforts is None  # any value, forwarded unchecked
     assert "any value, forwarded unchecked" in _page()
 
     efforts = ANTHROPIC_ADAPTIVE_CHAT.reasoning_efforts
     assert efforts == {"low", "medium", "high", "xhigh", "max"}
+    for profile in NEWER_PROFILES:
+        assert profile.reasoning_efforts == efforts
     for effort in efforts:
         assert f"`{effort}`" in _page(), f"{effort} is accepted but undocumented"
     for refused in ("none", "minimal"):
@@ -117,14 +157,15 @@ def test_the_documented_accepted_efforts_match_both_profiles():
         assert f"`{refused}`" in _page(), f"{refused} is refused but undocumented"
 
 
-def test_thinking_true_asks_for_the_documented_effort_on_both_profiles():
+def test_thinking_true_asks_for_the_documented_effort_on_every_profile():
     for profile in PROFILES.values():
         assert profile.supports_reasoning is True
-        assert profile.reasoning_effort_on == "low"
-    assert "effort `low` on both profiles" in _page()
+        expected = "high" if profile is ANTHROPIC_HIGH_EFFORT_CHAT else "low"
+        assert profile.reasoning_effort_on == expected
+    assert "effort `low` on every profile except `ANTHROPIC_HIGH_EFFORT_CHAT`" in _page()
 
 
-def test_the_documented_transport_is_the_only_one_both_profiles_have():
+def test_the_documented_transport_is_the_only_one_every_profile_has():
     for profile in PROFILES.values():
         assert profile.default_endpoint_mode is EndpointMode.CHAT
         assert profile.endpoint_modes == frozenset({EndpointMode.CHAT})
@@ -137,13 +178,13 @@ def test_the_documented_batch_mode_is_the_real_one():
     assert "native LiteLLM batch" in _page()
 
 
-def test_the_documented_structured_output_mode_matches_both_profiles():
+def test_the_documented_structured_output_mode_matches_every_profile():
     for profile in PROFILES.values():
         assert profile.structured_output is StructuredOutputMode.JSON_SCHEMA
     assert "`json_schema`" in _page()
 
 
-def test_the_documented_modalities_match_both_profiles():
+def test_the_documented_modalities_match_every_profile():
     expected = frozenset({Modality.TEXT, Modality.IMAGE, Modality.FILE})
     for profile in PROFILES.values():
         assert profile.modalities == expected

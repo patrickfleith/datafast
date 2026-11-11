@@ -13,14 +13,13 @@ from dotenv import load_dotenv
 from datafast import anthropic
 
 
-MODEL_ID = "claude-haiku-4-5"
+MODEL_ID = "claude-haiku-5-5"
 PROMPT = "Explain Anthropic in one short sentence."
 
 
 def run_case(policy: str) -> None:
     model = anthropic(
         MODEL_ID,
-        temperature=0,
         unsupported_params=policy,
     )
 

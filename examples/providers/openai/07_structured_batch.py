@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datafast import openai
 
 
-MODEL_ID = "gpt-5.4-mini"
+MODEL_ID = "gpt-6-luna"
 PROMPTS = [
     "Return JSON for Python with fields language, category, and one_sentence_use_case.",
     "Return JSON for Rust with fields language, category, and one_sentence_use_case.",

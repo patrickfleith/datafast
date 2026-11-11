@@ -5,11 +5,19 @@ don't pass one.
 
 ## OpenAI
 
-- `gpt-5.5`
+- `gpt-6-luna`, at effort `high`
+
+The other recommended model is `gpt-6.1-sol`, at effort `medium`. See
+[OpenAI](reference/providers/openai.md#recommended-models).
 
 ## Anthropic
 
-- `claude-haiku-4-5`
+- `claude-haiku-5-5`
+
+datafast runs it at `reasoning_effort="high"` unless you choose another effort. For
+tasks that need maximum intelligence, use `claude-opus-5-5` with
+`reasoning_effort="medium"`. See
+[Which model to use](reference/providers/anthropic.md#which-model-to-use).
 
 ## Gemini
 
@@ -21,7 +29,7 @@ don't pass one.
 
 ## OpenRouter
 
-- `openai/gpt-5.4-mini`
+- `openai/gpt-6-luna`
 
 ## Ollama
 

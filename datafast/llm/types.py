@@ -76,6 +76,9 @@ class ServedModelCapabilities:
     reasoning_requires_allowlist: bool = False
     # reasoning_effort value that thinking=True maps to.
     reasoning_effort_on: str = "low"
+    # reasoning_effort value sent when the caller sets neither thinking nor an
+    # effort. None omits it, which leaves the served model's own default in force.
+    reasoning_effort_default: str | None = None
     # (name, value) request param that turns reasoning off for thinking=False.
     # None omits it, which leaves the served model's own default in force —
     # correct only where that default is "no reasoning".
@@ -90,6 +93,8 @@ class ServedModelCapabilities:
     # True where the served model rejects a caller-chosen temperature once
     # reasoning is on, so temperature is dropped for those requests.
     reasoning_locks_temperature: bool = False
+    # True where temperature=0 is rejected unless the request also carries top_p=1.
+    zero_temperature_requires_top_p: bool = False
     # True where a file part must carry an id from the served model's own upload
     # API, so inline bytes or a plain URL cannot satisfy Modality.FILE.
     files_require_file_id: bool = False

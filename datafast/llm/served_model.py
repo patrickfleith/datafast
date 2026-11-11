@@ -558,10 +558,17 @@ class ServedModel:
                 "temperature", detail="while reasoning is enabled"
             )
 
+        top_p = self.config.top_p
+        if (
+            top_p is None
+            and self.config.temperature == 0
+            and self.capabilities.zero_temperature_requires_top_p
+        ):
+            top_p = 1
         self._add_supported_param(
             params,
             "top_p",
-            self.config.top_p,
+            top_p,
             endpoint=endpoint,
         )
         self._add_supported_param(
@@ -672,9 +679,13 @@ class ServedModel:
         """
         effort = self.config.reasoning_effort
         if effort is None:
-            if self.config.thinking is not True:
+            effort = (
+                self.capabilities.reasoning_effort_on
+                if self.config.thinking is True
+                else self.capabilities.reasoning_effort_default
+            )
+            if effort is None:
                 return None
-            effort = self.capabilities.reasoning_effort_on
 
         supported = self.capabilities.reasoning_efforts
         if supported is not None and effort not in supported:
@@ -1113,7 +1124,7 @@ class ServedModel:
 
 
 class _OpenAIServedModel(ServedModel):
-    def __init__(self, model_id: str = "gpt-5.5", **kwargs: Any) -> None:
+    def __init__(self, model_id: str = "gpt-6-luna", **kwargs: Any) -> None:
         super().__init__(
             "openai",
             model_id,
@@ -1124,7 +1135,7 @@ class _OpenAIServedModel(ServedModel):
 
 
 class _AnthropicServedModel(ServedModel):
-    def __init__(self, model_id: str = "claude-haiku-4-5", **kwargs: Any) -> None:
+    def __init__(self, model_id: str = "claude-haiku-5-5", **kwargs: Any) -> None:
         super().__init__(
             "anthropic",
             model_id,
@@ -1218,7 +1229,7 @@ class _MistralServedModel(ServedModel):
 
 
 class _OpenRouterServedModel(ServedModel):
-    def __init__(self, model_id: str = "openai/gpt-5.4-mini", **kwargs: Any) -> None:
+    def __init__(self, model_id: str = "openai/gpt-6-luna", **kwargs: Any) -> None:
         super().__init__(
             "openrouter",
             model_id,
@@ -1299,12 +1310,16 @@ class _OpenAICompatibleServedModel(ServedModel):
         )
 
 
-def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> ServedModel:
+def openai(model_id: str = "gpt-6-luna", **kwargs: Any) -> ServedModel:
     """Build a served model on OpenAI.
 
     Reads `OPENAI_API_KEY` unless `api_key=` is passed. Reasoning models are
     reached over the Responses endpoint and plain chat models over Chat
     Completions; `endpoint_mode=` overrides the choice.
+
+    Use the default, `gpt-6-luna` at effort high, or `gpt-6.1-sol` at effort
+    medium. `gpt-6.1-terra` and `gpt-6-astra` are supported but not recommended:
+    Terra has poor quality for its cost, and Astra is very expensive.
 
     Args:
         model_id: OpenAI model name.
@@ -1317,7 +1332,7 @@ def openai(model_id: str = "gpt-5.5", **kwargs: Any) -> ServedModel:
     return _OpenAIServedModel(model_id=model_id, **kwargs)
 
 
-def anthropic(model_id: str = "claude-haiku-4-5", **kwargs: Any) -> ServedModel:
+def anthropic(model_id: str = "claude-haiku-5-5", **kwargs: Any) -> ServedModel:
     """Build a served model on Anthropic.
 
     Reads `ANTHROPIC_API_KEY` unless `api_key=` is passed. Requests go through
@@ -1369,7 +1384,7 @@ def mistral(model_id: str = "mistral-small-2603", **kwargs: Any) -> ServedModel:
 
 
 def openrouter(
-    model_id: str = "openai/gpt-5.4-mini",
+    model_id: str = "openai/gpt-6-luna",
     **kwargs: Any,
 ) -> ServedModel:
     """Build a served model on OpenRouter.
@@ -1378,7 +1393,7 @@ def openrouter(
     many upstream providers, so `model_id` carries a `vendor/model` prefix.
 
     Args:
-        model_id: OpenRouter model name, e.g. `"openai/gpt-5.4-mini"`.
+        model_id: OpenRouter model name, e.g. `"openai/gpt-6-luna"`.
         **kwargs: Any `ServedModelConfig` field — `temperature`, `max_tokens`,
             `max_concurrent`, ...
 

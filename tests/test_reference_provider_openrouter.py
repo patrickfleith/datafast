@@ -31,7 +31,7 @@ def _page() -> str:
 
 def test_the_documented_default_model_is_the_factory_default():
     default = inspect.signature(openrouter).parameters["model_id"].default
-    assert default == "openai/gpt-5.4-mini"
+    assert default == "openai/gpt-6-luna"
     assert f"`{default}`" in _page()
 
 
@@ -61,7 +61,7 @@ def test_every_model_the_page_names_resolves_to_the_profile_it_claims():
 
 @pytest.mark.parametrize(
     "model_id",
-    ["nobody/never-shipped-this", "moonshotai/kimi-k9", "openai/gpt-5.4-mini"],
+    ["nobody/never-shipped-this", "moonshotai/kimi-k9", "openai/gpt-6-luna"],
 )
 def test_an_uncatalogued_model_id_still_resolves_to_the_provider_default(model_id):
     """The page's claim that *anything else* lands on the same profile."""

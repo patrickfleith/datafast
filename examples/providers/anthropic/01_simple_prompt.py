@@ -6,14 +6,14 @@ from datafast import anthropic
 from datafast.llm_utils import format_generated_responses
 
 
-MODEL_ID = "claude-haiku-4-5"
+MODEL_ID = "claude-haiku-5-5"
 PROMPT = "Write one sentence explaining what Anthropic is."
 
 
 def main() -> None:
     load_dotenv()
 
-    model = anthropic(MODEL_ID, temperature=0)
+    model = anthropic(MODEL_ID)
     response = model.generate(prompt=PROMPT)
     print(format_generated_responses(PROMPT, response))
 

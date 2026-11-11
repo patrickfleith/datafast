@@ -389,7 +389,7 @@ def test_mistral_is_the_shipped_provider_that_requires_a_file_id():
         for name, value in vars(capabilities).items()
         if isinstance(value, ServedModelCapabilities) and value.files_require_file_id
     )
-    assert requiring == ["MISTRAL_CHAT", "MISTRAL_REASONING_CHAT"]
+    assert requiring == ["MISTRAL_CHAT", "MISTRAL_LARGE_4_CHAT", "MISTRAL_REASONING_CHAT"]
     assert datafast.mistral().capabilities.files_require_file_id is True
 
 

@@ -6,7 +6,7 @@ from datafast import openrouter
 from datafast.llm_utils import format_generated_responses
 
 
-MODEL_ID = "openai/gpt-5.4-mini"
+MODEL_ID = "openai/gpt-6-luna"
 PROMPT = "Write one sentence explaining what OpenRouter is."
 
 

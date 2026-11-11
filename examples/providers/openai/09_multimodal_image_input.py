@@ -15,7 +15,7 @@ from datafast.llm import ContentPart
 
 
 # Swap this for any OpenAI model that supports image input.
-MODEL_ID = "gpt-5.4-mini"
+MODEL_ID = "gpt-6-luna"
 IMAGE_PATH = Path(__file__).parent / "sample_lion.jpg"
 
 

@@ -263,7 +263,7 @@ python examples/scripts/42_pipeline_preference_with_scoring.py
 ```
 
 Put `OPENROUTER_API_KEY` in a `.env` file at the root of the repository. The script makes
-its served model with `openrouter(...)`. Above that line, there is an `ollama("gemma3:4b")`
+its served model with `openrouter(...)`. Above that line, there is an `ollama("gemma4:12b")`
 line in a comment. If you have Ollama, use that line to run all the procedure on your
 computer, at no cost.
 

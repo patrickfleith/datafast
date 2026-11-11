@@ -20,14 +20,15 @@ from datafast import LLMStep, ListSink, Source, anthropic, mistral, ollama, open
 def _anthropic(require_api_key, require_ollama):
     require_api_key("ANTHROPIC_API_KEY")
     return anthropic(
-        model_id="claude-haiku-4-5", temperature=0.0, max_completion_tokens=50
+        model_id="claude-haiku-5-5", max_completion_tokens=50, thinking=False
     )
 
 
 def _openai(require_api_key, require_ollama):
     # No temperature: OPENAI_RESPONSES omits it, so setting one warns per call.
+    # Luna reasons at effort high by default, and reasoning tokens count against the cap.
     require_api_key("OPENAI_API_KEY")
-    return openai(model_id="gpt-5.4-mini", max_completion_tokens=50)
+    return openai(model_id="gpt-6-luna", max_completion_tokens=2048)
 
 
 def _mistral(require_api_key, require_ollama):

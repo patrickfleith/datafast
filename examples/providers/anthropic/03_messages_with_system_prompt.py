@@ -6,7 +6,7 @@ from datafast import anthropic
 from datafast.llm_utils import format_generated_responses
 
 
-MODEL_ID = "claude-haiku-4-5"
+MODEL_ID = "claude-haiku-5-5"
 MESSAGES = [
     {
         "role": "system",
@@ -22,7 +22,7 @@ MESSAGES = [
 def main() -> None:
     load_dotenv()
 
-    model = anthropic(MODEL_ID, temperature=0)
+    model = anthropic(MODEL_ID)
     response = model.generate(messages=MESSAGES)
     print(format_generated_responses(MESSAGES[-1]["content"], response))
 

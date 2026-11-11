@@ -2,7 +2,7 @@
 
 Gemini 3 has no off switch: 'minimal' is the floor everywhere, and whether a
 model even accepts that floor is per-model. That split is why the suite runs
-two models — `gemini-3.5-flash-lite` takes 'minimal', `gemini-3.7-flash` does
+two models — `gemini-3.5-flash-lite` takes 'minimal', `gemini-3.8-flash` does
 not — and it is the whole reason `GEMINI_NO_MINIMAL_CHAT` exists alongside
 `GEMINI_CHAT`.
 
@@ -17,6 +17,15 @@ pytestmark = [pytest.mark.live, pytest.mark.gemini]
 
 THINKING_TOKENS = 2048
 PROMPT = "A shop sells pens at 3 for $2. What do 12 pens cost?"
+# At effort 'low' a model decides for itself whether to think, and Flash-Lite
+# sometimes answers PROMPT without reasoning at all. This one takes a few steps,
+# so a trace is far more likely to come back. If the test still flakes, use
+# reasoning_effort="medium" instead of thinking=True, which makes the model
+# always reason.
+HARD_PROMPT = (
+    "A clock shows 3:15. What is the smaller angle between the hour hand and "
+    "the minute hand, in degrees?"
+)
 
 
 def test_thinking_true_returns_a_reasoning_trace(served_model):
@@ -24,10 +33,10 @@ def test_thinking_true_returns_a_reasoning_trace(served_model):
     response = served_model(
         thinking=True,
         max_completion_tokens=THINKING_TOKENS,
-    ).generate_response(prompt=PROMPT)
+    ).generate_response(prompt=HARD_PROMPT)
 
     assert response.reasoning_content or response.thinking_blocks
-    assert "8" in response.text
+    assert "7.5" in response.text
 
 
 def test_thinking_false_leaves_no_trace(served_model):
@@ -55,7 +64,7 @@ def test_explicit_reasoning_effort(served_model):
 
 
 def test_flash_accepts_its_floor_effort(flash_served_model):
-    """'low' is the lowest level gemini-3.7-flash accepts, and pinning that
+    """'low' is the lowest level gemini-3.8-flash accepts, and pinning that
     live is what makes GEMINI_NO_MINIMAL_CHAT's allowlist a measurement rather
     than a transcription of the docs.
 
@@ -74,17 +83,20 @@ def test_flash_accepts_its_floor_effort(flash_served_model):
 
 
 def test_flash_rejects_the_minimal_level(flash_served_model):
-    """The premise the whole profile rests on: gemini-3.7-flash really does
+    """The premise the whole profile rests on: gemini-3.8-flash really does
     refuse 'minimal'.
 
-    Datafast blocks that value client-side, so the only way to ask the API
-    itself is to go around the allowlist with provider_params, which is applied
-    last and overwrites the resolved effort. If this test ever passes a value
-    through, Google has widened the model and the profile should follow.
+    Datafast blocks that value client-side, so the request goes around the
+    allowlist with provider_params. Sending reasoning_effort='minimal' that way
+    proves nothing: LiteLLM rewrites it to 'low' for models it flags as lacking
+    'minimal', so Google never sees it. A raw thinkingConfig is passed through
+    untouched and wins over the one LiteLLM builds from reasoning_effort. If
+    this test ever passes, Google has widened the model and the profile should
+    follow.
     """
     model = flash_served_model(
         reasoning_effort="low",
-        provider_params={"reasoning_effort": "minimal"},
+        provider_params={"thinkingConfig": {"thinkingLevel": "minimal"}},
     )
 
     # Google's message shouts the level back: "Thinking level MINIMAL is not

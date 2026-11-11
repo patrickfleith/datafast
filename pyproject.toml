@@ -30,8 +30,13 @@ dependencies = [
     # Floor, not a pin: litellm 1.82.7 and 1.82.8 were published with malware,
     # so 1.83 is the oldest release that is known good. Do not lower it. The
     # upper bound is there because the provider adapters track litellm's API
-    # closely enough that a 2.0 could break them on a fresh install.
-    "litellm>=1.83,<2",
+    # closely enough that a 2.0 could break them on a fresh install. 1.108.3 is
+    # the oldest release that works with the Claude 5.5 models: 1.83 rejects
+    # reasoning_effort for them and builds structured output on a forced tool
+    # call, which they refuse. 1.108.4 is the floor because 1.106.0 to 1.108.3
+    # fail every OpenAI Responses API call without the mcp package (litellm
+    # issue 46045).
+    "litellm>=1.108.4,<2",
     "loguru",
     "pydantic",
     "httpx",

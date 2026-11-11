@@ -12,7 +12,7 @@ from datafast import (
 import litellm
 litellm.suppress_debug_info = True
 
-# model = ollama("gemma3:4b")
+# model = ollama("gemma4:12b")
 model = openrouter("mistralai/ministral-14b-2512", temperature=0.7)
 
 pipeline = (

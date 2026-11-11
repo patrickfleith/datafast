@@ -3,13 +3,13 @@
 ```python
 from datafast import openrouter
 
-model = openrouter()                              # openai/gpt-5.4-mini
+model = openrouter()                              # openai/gpt-6-luna
 glm = openrouter("z-ai/glm-4.6", temperature=0.2)
 ```
 
 | | |
 |---|---|
-| **Factory** | `openrouter(model_id="openai/gpt-5.4-mini", **config)` |
+| **Factory** | `openrouter(model_id="openai/gpt-6-luna", **config)` |
 | **API key** | `OPENROUTER_API_KEY`, or `api_key=` |
 | **Transport** | Chat Completions only |
 | **Extra needed** | none — LiteLLM reaches OpenRouter over its own HTTP transport |
@@ -25,14 +25,14 @@ model, then the model. That is the vendor prefix.
 
 | Model id | Vendor | Model |
 |---|---|---|
-| `openai/gpt-5.4-mini` | `openai` | `gpt-5.4-mini` |
+| `openai/gpt-6-luna` | `openai` | `gpt-6-luna` |
 | `google/gemma-4-31b-it` | `google` | `gemma-4-31b-it` |
 | `z-ai/glm-4.6` | `z-ai` | `glm-4.6` |
 
 The prefix is part of the id, not something datafast adds. Leave it out and OpenRouter
 does not know which model you mean. Copy the id from OpenRouter's own model page.
 
-The provider is still OpenRouter. `openai/gpt-5.4-mini` on OpenRouter and `gpt-5.4-mini`
+The provider is still OpenRouter. `openai/gpt-6-luna` on OpenRouter and `gpt-6-luna`
 on `openai()` are two different served models with two different profiles.
 
 ## How models resolve
@@ -42,7 +42,7 @@ resolves to the same capability profile, `OPENROUTER_CHAT`:
 
 | Model id | Profile |
 |---|---|
-| `openai/gpt-5.4-mini` | `OPENROUTER_CHAT` |
+| `openai/gpt-6-luna` | `OPENROUTER_CHAT` |
 | `google/gemma-4-31b-it` | `OPENROUTER_CHAT` |
 | `z-ai/glm-4.6` | `OPENROUTER_CHAT` |
 | anything else | `OPENROUTER_CHAT` |

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from datafast import openrouter
 
 
-MODEL_ID = "openai/gpt-5-mini"
+MODEL_ID = "openai/gpt-6-luna"
 PROMPT = "Explain OpenRouter in one short sentence."
 REASONING_EFFORT = "high"
 

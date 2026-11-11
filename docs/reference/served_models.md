@@ -1,8 +1,8 @@
 # Served models
 
 A **served model** is a provider and a model together, with its configuration — the
-object you construct and hand to a step. `openai("gpt-5.5", temperature=0.3)` is a
-served model; `"gpt-5.5"` on its own is just a model name.
+object you construct and hand to a step. `openai("gpt-6-luna", temperature=0.3)` is a
+served model; `"gpt-6-luna"` on its own is just a model name.
 
 This page covers everything shared by all seven providers: how you configure one, how
 datafast decides what it can do, and what happens when you ask for something it cannot.
@@ -15,11 +15,11 @@ one — `ServedModel` is exported for type annotations, not for instantiation.
 
 | Factory | Default model | API key |
 |---|---|---|
-| `openai()` | `gpt-5.5` | `OPENAI_API_KEY` |
-| `anthropic()` | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` |
+| `openai()` | `gpt-6-luna` | `OPENAI_API_KEY` |
+| `anthropic()` | `claude-haiku-5-5` | `ANTHROPIC_API_KEY` |
 | `gemini()` | `gemini-3.5-flash-lite` | `GEMINI_API_KEY` |
 | `mistral()` | `mistral-small-2603` | `MISTRAL_API_KEY` |
-| `openrouter()` | `openai/gpt-5.4-mini` | `OPENROUTER_API_KEY` |
+| `openrouter()` | `openai/gpt-6-luna` | `OPENROUTER_API_KEY` |
 | `ollama()` | `gemma4:12b` | none — local daemon |
 | `openai_compatible()` | none — `model_id` is required | whatever you pass |
 
@@ -28,7 +28,7 @@ Every factory takes `model_id` first and then any `ServedModelConfig` field as a
 ```python
 from datafast import openai
 
-model = openai("gpt-5.4-mini", temperature=0.2, max_tokens=512)
+model = openai("gpt-6-luna", temperature=0.2, max_tokens=512)
 ```
 
 Constructing a served model does **not** verify the API key. It resolves whatever it can
@@ -59,7 +59,7 @@ Every field below is a keyword argument on every factory.
 | `frequency_penalty` | `float \| None` | `None` | repetition control |
 | `max_completion_tokens` | `int \| None` | `None` | output cap; `max_tokens=` is accepted as an alias |
 | `thinking` | `bool \| None` | `None` | reasoning on or off, resolved per served model |
-| `reasoning_effort` | `str \| None` | `None` | explicit effort, where the model accepts one |
+| `reasoning_effort` | `str \| None` | `None` | explicit effort, where the model accepts one; `None` sends nothing, except `high` on `claude-haiku-5-5` |
 | `reasoning_summary` | `str \| None` | `None` | ask for a written summary of the reasoning |
 
 `thinking=True` and `thinking=False` are the portable controls: each served model knows

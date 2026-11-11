@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from datafast import openai
 
 
-MODEL_ID = "gpt-5.4"
+MODEL_ID = "gpt-6-luna"
 PROMPT = (
     "A train travels 60 miles per hour for 2.5 hours. "
     "Work it out carefully, then give the final answer in one short sentence."
@@ -15,11 +15,12 @@ PROMPT = (
 def main() -> None:
     load_dotenv()
 
-    # gpt-5 models run on the Responses API; asking for a reasoning summary
+    # GPT-6 models run on the Responses API; asking for a reasoning summary
     # surfaces reasoning_content alongside the reasoning token count.
     model = openai(
         MODEL_ID,
-        provider_params={"reasoning": {"effort": "high", "summary": "auto"}},
+        reasoning_effort="high",
+        reasoning_summary="auto",
     )
     response = model.generate_response(prompt=PROMPT)
     usage = getattr(response.raw, "usage", None)

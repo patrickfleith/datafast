@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datafast import openai
 
 
-MODEL_ID = "gpt-5.4-mini"
+MODEL_ID = "gpt-6-luna"
 PROMPT = "Return a JSON object describing OpenAI in two short sentences."
 
 

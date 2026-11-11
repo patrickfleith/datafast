@@ -91,6 +91,25 @@ MISTRAL_REASONING_CHAT = ServedModelCapabilities(
 )
 
 
+# Mistral Large 4 takes low/medium/high and has no 'none', so thinking=False has
+# nothing to send and must be refused.
+MISTRAL_LARGE_4_CHAT = replace(
+    MISTRAL_REASONING_CHAT,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    reasoning_efforts=frozenset({"low", "medium", "high"}),
+    zero_temperature_requires_top_p=True,
+    notes=MISTRAL_REASONING_CHAT.notes[:1]
+    + (
+        "Mistral documents 'low', 'medium' and 'high' for this model, and not "
+        "'none', so thinking=False raises.",
+        "The API answers temperature=0 with a 400 unless top_p=1 is sent too, "
+        "so Datafast adds top_p=1 when the caller set no top_p.",
+    )
+    + MISTRAL_REASONING_CHAT.notes[2:],
+)
+
+
 # Mistral models with no reasoning control. Identical to HOSTED_CHAT except for the
 # file carrier, which is a property of the Mistral chat API rather than of the model.
 MISTRAL_CHAT = replace(HOSTED_CHAT, files_require_file_id=True)
@@ -130,7 +149,8 @@ GEMINI_CHAT = ServedModelCapabilities(
 )
 
 
-# Gemini 3 models whose lowest thinking level is 'low' rather than 'minimal'.
+# Gemini 3.8 Flash and Gemini 4 models, whose lowest thinking level is 'low'
+# rather than 'minimal'.
 # They reject the value 'none' resolves to, so there is nothing thinking=False
 # could send: the only honest answer is to refuse it.
 GEMINI_NO_MINIMAL_CHAT = replace(
@@ -142,7 +162,7 @@ GEMINI_NO_MINIMAL_CHAT = replace(
     + (
         "'minimal' is rejected outright, which is what 'none' maps to, so "
         "thinking=False raises rather than silently reasoning at the model's "
-        "own default ('medium' for gemini-3.7-flash).",
+        "own default, which is 'medium' on every model with this profile.",
         "At effort 'low' the reasoning is real but invisible: no "
         "reasoning_content and no thinking_blocks come back, only an opaque "
         "thought_signatures entry. Callers who need a readable trace should "
@@ -171,6 +191,37 @@ OPENAI_RESPONSES = ServedModelCapabilities(
         "Cheap reasoning returns an empty summary, so a readable one needs "
         "effort 'medium' or above and a prompt worth summarising.",
     ),
+)
+
+
+# GPT-6 models publish their effort levels, and only some of them accept 'none'.
+OPENAI_GPT6 = replace(
+    OPENAI_RESPONSES,
+    reasoning_efforts=frozenset({"none", "low", "medium", "high", "xhigh", "max"}),
+)
+
+OPENAI_GPT6_ALWAYS_ON = replace(
+    OPENAI_GPT6,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    reasoning_efforts=OPENAI_GPT6.reasoning_efforts - {"none"},
+    notes=(
+        "These models have no 'none' effort, so thinking=False raises.",
+        *OPENAI_GPT6.notes[1:],
+    ),
+)
+
+# The two recommended models run at their recommended effort unless told otherwise.
+OPENAI_GPT6_LUNA = replace(
+    OPENAI_GPT6,
+    reasoning_effort_on="high",
+    reasoning_effort_default="high",
+)
+
+OPENAI_GPT6_SOL = replace(
+    OPENAI_GPT6_ALWAYS_ON,
+    reasoning_effort_on="medium",
+    reasoning_effort_default="medium",
 )
 
 
@@ -226,15 +277,57 @@ ANTHROPIC_ADAPTIVE_CHAT = replace(
         "temperature is rejected at any value but 1, whether or not reasoning "
         "is on, so it is unsupported here rather than merely locked while "
         "thinking. top_p never applied to Anthropic in Datafast.",
-        "The trace is real but unreadable: thinking_blocks come back with "
-        "empty text and reasoning_content is empty too, because Anthropic "
-        "omits the written summary by default and Datafast has no control to "
-        "ask for one.",
+        "With no effort set the trace is real but unreadable: thinking_blocks "
+        "come back with empty text and reasoning_content is empty too, because "
+        "Anthropic omits the written summary by default. Setting "
+        "reasoning_effort or thinking=True makes LiteLLM request the summary.",
         "Thinking is billed out of the same budget as the answer and can "
         "consume all of it — a hard prompt capped at 10000 tokens sometimes "
         "returns no answer at all — so raise max_completion_tokens when "
         "reasoning is on.",
     ),
+)
+
+
+# Claude Haiku 5.5 defaults to effort 'medium'. Datafast recommends 'high', so
+# that is what a caller gets without choosing an effort.
+ANTHROPIC_HIGH_EFFORT_CHAT = replace(
+    ANTHROPIC_ADAPTIVE_CHAT,
+    reasoning_effort_on="high",
+    reasoning_effort_default="high",
+    notes=(
+        "Datafast sends reasoning_effort='high' for thinking=True and when the "
+        "caller sets neither reasoning_effort nor thinking.",
+    )
+    + ANTHROPIC_ADAPTIVE_CHAT.notes,
+)
+
+
+# Claude Sonnet 5.5 rejects thinking={'type': 'disabled'} and LiteLLM drops that
+# value before the request, so the model would keep reasoning.
+ANTHROPIC_BETWEEN_TOOLS_CHAT = replace(
+    ANTHROPIC_ADAPTIVE_CHAT,
+    reasoning_off_param=("thinking", {"type": "between_tools"}),
+    notes=(
+        "The off switch is thinking={'type': 'between_tools'}. "
+        "thinking={'type': 'disabled'} returns a 400 on this model.",
+    )
+    + ANTHROPIC_ADAPTIVE_CHAT.notes[2:],
+)
+
+
+# Claude Opus 5.5 and Claude Fable 5.1 have no off switch. Anthropic returns a
+# 400 for thinking={'type': 'disabled'} and LiteLLM drops it first, so
+# thinking=False has to raise.
+ANTHROPIC_ALWAYS_THINKING_CHAT = replace(
+    ANTHROPIC_ADAPTIVE_CHAT,
+    reasoning_off_param=None,
+    reasoning_always_on=True,
+    notes=(
+        "These models always reason, so thinking=False raises. Lower "
+        "reasoning_effort to reduce reasoning.",
+    )
+    + ANTHROPIC_ADAPTIVE_CHAT.notes[2:],
 )
 
 
@@ -368,18 +461,29 @@ OPENAI_COMPATIBLE_CHAT = ServedModelCapabilities(
 
 
 _SERVED_MODEL_CATALOG: dict[tuple[str, str], ServedModelCapabilities] = {
+    ("openai", "gpt-6-luna"): OPENAI_GPT6_LUNA,
+    ("openai", "gpt-6.1-sol"): OPENAI_GPT6_SOL,
+    ("openai", "gpt-6.1-terra"): OPENAI_GPT6,
+    ("openai", "gpt-6-astra"): OPENAI_GPT6_ALWAYS_ON,
     ("openai", "gpt-5.5"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-mini"): OPENAI_RESPONSES,
     ("openai", "gpt-5.4-nano"): OPENAI_RESPONSES,
+    ("anthropic", "claude-fable-5-1"): ANTHROPIC_ALWAYS_THINKING_CHAT,
+    ("anthropic", "claude-opus-5-5"): ANTHROPIC_ALWAYS_THINKING_CHAT,
+    ("anthropic", "claude-sonnet-5-5"): ANTHROPIC_BETWEEN_TOOLS_CHAT,
+    ("anthropic", "claude-haiku-5-5"): ANTHROPIC_HIGH_EFFORT_CHAT,
     ("anthropic", "claude-sonnet-5"): ANTHROPIC_ADAPTIVE_CHAT,
     ("anthropic", "claude-sonnet-4-6"): ANTHROPIC_CHAT,
     ("anthropic", "claude-haiku-4-5"): ANTHROPIC_CHAT,
-    ("gemini", "gemini-3.7-flash"): GEMINI_NO_MINIMAL_CHAT,
-    ("gemini", "gemini-3.5-flash"): GEMINI_CHAT,
+    ("gemini", "gemini-4-carbon"): GEMINI_NO_MINIMAL_CHAT,
+    ("gemini", "gemini-4-argon"): GEMINI_NO_MINIMAL_CHAT,
+    ("gemini", "gemini-3.8-flash"): GEMINI_NO_MINIMAL_CHAT,
     ("gemini", "gemini-3.5-flash-lite"): GEMINI_CHAT,
     ("gemini", "gemini-3.1-flash-lite"): GEMINI_CHAT,
     ("mistral", "mistral-medium-3-5"): MISTRAL_REASONING_CHAT,
+    ("mistral", "mistral-large-4"): MISTRAL_LARGE_4_CHAT,
+    ("mistral", "mistral-large-4-0"): MISTRAL_LARGE_4_CHAT,
     ("mistral", "mistral-large-2512"): MISTRAL_CHAT,
     ("mistral", "mistral-small-2603"): MISTRAL_REASONING_CHAT,
     # Ministral 3 is served from Mistral's own API — hosted chat with vision and
@@ -489,6 +593,7 @@ def _resolve_ollama_capabilities(model_id: str) -> ServedModelCapabilities:
 def _looks_like_openai_reasoning_model(model_id: str) -> bool:
     return (
         model_id.startswith("gpt-5")
+        or model_id.startswith("gpt-6")
         or model_id.startswith("o1")
         or model_id.startswith("o3")
         or model_id.startswith("o4")
@@ -510,11 +615,15 @@ def _unknown_capabilities() -> ServedModelCapabilities:
 
 __all__ = [
     "ANTHROPIC_ADAPTIVE_CHAT",
+    "ANTHROPIC_ALWAYS_THINKING_CHAT",
+    "ANTHROPIC_BETWEEN_TOOLS_CHAT",
     "ANTHROPIC_CHAT",
+    "ANTHROPIC_HIGH_EFFORT_CHAT",
     "GEMINI_CHAT",
     "HOSTED_CHAT",
     "LLAMACPP_CHAT",
     "MISTRAL_CHAT",
+    "MISTRAL_LARGE_4_CHAT",
     "MISTRAL_REASONING_CHAT",
     "OLLAMA_CHAT",
     "OLLAMA_REASONING_CHAT",

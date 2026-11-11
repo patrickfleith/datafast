@@ -105,7 +105,7 @@ def test_factories_resolve_expected_served_models():
 
     assert hosted.provider_id == "openai"
     assert hosted.endpoint_mode == EndpointMode.RESPONSES
-    assert hosted._get_model_string() == "openai/gpt-5.5"
+    assert hosted._get_model_string() == "openai/gpt-6-luna"
 
     assert local.provider_id == "tgi"
     assert local.endpoint_mode == EndpointMode.CHAT
@@ -451,6 +451,105 @@ def test_mistral_thinking_false_disables_reasoning(monkeypatch):
     assert captured["reasoning_effort"] == "none"
 
 
+@pytest.mark.parametrize("model_id", ["mistral-large-4", "mistral-large-4-0"])
+def test_mistral_large_4_capability_resolution(model_id):
+    caps = resolve_capabilities("mistral", model_id)
+
+    assert caps.supports_reasoning is True
+    assert caps.reasoning_requires_allowlist is True
+    assert caps.reasoning_efforts == frozenset({"low", "medium", "high"})
+    assert caps.modalities == frozenset({Modality.TEXT, Modality.IMAGE, Modality.FILE})
+    assert caps.files_require_file_id is True
+
+
+def test_mistral_large_4_thinking_true_sends_high_through_the_allowlist(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = mistral(model_id="mistral-large-4", api_key="test-key", thinking=True)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == "high"
+    assert "reasoning_effort" in captured["allowed_openai_params"]
+
+
+@pytest.mark.parametrize("effort", ["low", "medium", "high"])
+def test_mistral_large_4_forwards_each_documented_effort(monkeypatch, effort):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = mistral(model_id="mistral-large-4", api_key="test-key", reasoning_effort=effort)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == effort
+
+
+@pytest.mark.parametrize(
+    ("config", "expected_top_p"),
+    [
+        ({"temperature": 0}, 1),
+        ({"temperature": 0, "top_p": 0.9}, 0.9),
+        ({"temperature": 0.2}, None),
+        ({}, None),
+    ],
+)
+def test_mistral_large_4_adds_top_p_only_for_zero_temperature(
+    monkeypatch, config, expected_top_p
+):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    assert mistral(model_id="mistral-large-4", api_key="test-key", **config).generate(
+        prompt="ping"
+    ) == "ok"
+    assert captured.get("top_p") == expected_top_p
+
+
+def test_other_mistral_models_get_no_top_p_at_zero_temperature(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    mistral(model_id="mistral-small-2603", api_key="test-key", temperature=0).generate(
+        prompt="ping"
+    )
+    assert "top_p" not in captured
+
+
+@pytest.mark.parametrize(
+    "config", [{"thinking": False}, {"reasoning_effort": "none"}], ids=["thinking", "effort"]
+)
+def test_mistral_large_4_refuses_to_turn_reasoning_off(monkeypatch, config):
+    def fail_completion(**kwargs):
+        raise AssertionError("the request must not be sent")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fail_completion)
+
+    model = mistral(model_id="mistral-large-4", api_key="test-key", **config)
+
+    with pytest.raises(ValueError):
+        model.generate(prompt="ping")
+
+
 def test_anthropic_thinking_warns_and_omits_temperature(monkeypatch):
     captured = {}
 
@@ -548,6 +647,136 @@ def test_sonnet_5_rejects_an_effort_that_reads_as_off():
         )
         with pytest.raises(ValueError, match="not supported"):
             model.generate(prompt="ping")
+
+
+@pytest.mark.parametrize(
+    "model_id, off_value",
+    [
+        ("claude-haiku-5-5", {"type": "disabled"}),
+        ("claude-sonnet-5-5", {"type": "between_tools"}),
+    ],
+)
+def test_claude_5_5_thinking_false_sends_the_value_the_model_accepts(
+    monkeypatch, model_id, off_value
+):
+    """Sonnet 5.5 rejects 'disabled' and LiteLLM drops it, so it needs its own value."""
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["thinking"] == off_value
+    assert "reasoning_effort" not in captured
+
+
+@pytest.mark.parametrize("model_id", ["claude-opus-5-5", "claude-fable-5-1"])
+def test_always_thinking_claude_refuses_thinking_false(model_id):
+    """No off switch exists, and LiteLLM would drop one silently, so raise."""
+    model = anthropic(model_id=model_id, api_key="test-key", thinking=False)
+
+    with pytest.raises(ValueError, match="always reasons"):
+        model.generate(prompt="ping")
+
+
+@pytest.mark.parametrize(
+    "model_id, effort",
+    [("claude-haiku-5-5", "high"), ("claude-opus-5-5", "medium")],
+)
+def test_recommended_claude_setups_send_their_effort(monkeypatch, model_id, effort):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key", reasoning_effort=effort)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == effort
+    assert "thinking" not in captured
+
+
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        ({}, "high"),
+        ({"reasoning_effort": "low"}, "low"),
+        ({"thinking": True}, "high"),
+    ],
+)
+def test_bare_haiku_5_5_runs_at_high_effort(monkeypatch, config, expected):
+    """Only an unset effort takes the default. A caller's choice still wins."""
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(api_key="test-key", **config)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert captured["reasoning_effort"] == expected
+
+
+def test_haiku_5_5_thinking_false_sends_no_default_effort(monkeypatch):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(api_key="test-key", thinking=False)
+
+    assert model.generate(prompt="ping") == "ok"
+    assert "reasoning_effort" not in captured
+
+
+@pytest.mark.parametrize("model_id", ["claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"])
+def test_other_claude_5_5_models_keep_their_own_default_effort(monkeypatch, model_id):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key")
+
+    assert model.generate(prompt="ping") == "ok"
+    assert "reasoning_effort" not in captured
+
+
+@pytest.mark.parametrize(
+    "model_id",
+    ["claude-haiku-5-5", "claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1"],
+)
+def test_claude_5_5_drops_a_caller_temperature(monkeypatch, model_id):
+    captured = {}
+
+    def fake_completion(**kwargs):
+        captured.update(kwargs)
+        return _DummyChatResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
+
+    model = anthropic(model_id=model_id, api_key="test-key", temperature=0.0)
+
+    with pytest.warns(UserWarning, match="temperature"):
+        assert model.generate(prompt="ping") == "ok"
+    assert "temperature" not in captured
 
 
 def test_sonnet_4_6_keeps_the_older_profile():
@@ -748,7 +977,7 @@ def test_sampling_params_are_gated_by_the_profile(monkeypatch):
     assert captured["frequency_penalty"] == 0.2
 
     captured.clear()
-    reasoning_model = openai(model_id="gpt-5.4-mini", api_key="test-key", top_p=0.85)
+    reasoning_model = openai(model_id="gpt-6-luna", api_key="test-key", top_p=0.85)
     with pytest.warns(UserWarning, match="top_p"):
         reasoning_model.generate(prompt="ping")
     assert "top_p" not in captured
@@ -840,8 +1069,9 @@ def test_ollama_probe_capabilities_follows_the_generate_daemon(monkeypatch):
 def test_gemini_reasoning_capability_resolution():
     # All catalogued Gemini models support reasoning natively.
     for model_id in (
-        "gemini-3.7-flash",
-        "gemini-3.5-flash",
+        "gemini-4-carbon",
+        "gemini-4-argon",
+        "gemini-3.8-flash",
         "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
     ):
@@ -858,19 +1088,23 @@ def test_gemini_flash_lite_can_request_reasoning_off():
     assert caps.reasoning_off_param == ("reasoning_effort", "none")
 
 
-def test_gemini_flash_rejects_thinking_false():
-    """gemini-3.7-flash has no level below 'low', so thinking=False has nothing
+@pytest.mark.parametrize(
+    "model_id", ["gemini-3.8-flash", "gemini-4-argon", "gemini-4-carbon"]
+)
+def test_gemini_no_minimal_models_reject_thinking_false(model_id):
+    """These models have no level below 'low', so thinking=False has nothing
     to send. Refusing beats sending nothing and reasoning at 'medium'."""
-    model = gemini(model_id="gemini-3.7-flash", api_key="test-key", thinking=False)
+    model = gemini(model_id=model_id, api_key="test-key", thinking=False)
 
     with pytest.raises(ValueError, match="always reasons"):
         model.generate(prompt="ping")
 
 
-def test_gemini_flash_rejects_an_effort_below_its_floor():
-    model = gemini(
-        model_id="gemini-3.7-flash", api_key="test-key", reasoning_effort="minimal"
-    )
+@pytest.mark.parametrize(
+    "model_id", ["gemini-3.8-flash", "gemini-4-argon", "gemini-4-carbon"]
+)
+def test_gemini_no_minimal_models_reject_an_effort_below_their_floor(model_id):
+    model = gemini(model_id=model_id, api_key="test-key", reasoning_effort="minimal")
 
     with pytest.raises(ValueError, match="not supported"):
         model.generate(prompt="ping")
@@ -886,7 +1120,7 @@ def test_gemini_reasoning_effort_is_forwarded(monkeypatch):
     monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
     model = gemini(
-        model_id="gemini-3.5-flash", api_key="test-key", reasoning_effort="high"
+        model_id="gemini-3.8-flash", api_key="test-key", reasoning_effort="high"
     )
 
     response = model.generate_response(prompt="think it through")
@@ -907,7 +1141,7 @@ def test_gemini_thinking_true_defaults_to_low_effort(monkeypatch):
     monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
     model = gemini(
-        model_id="gemini-3.5-flash", api_key="test-key", thinking=True
+        model_id="gemini-3.8-flash", api_key="test-key", thinking=True
     )
 
     assert model.generate(prompt="ping") == "ok"
@@ -923,7 +1157,7 @@ def test_gemini_thinking_false_disables_reasoning(monkeypatch):
 
     monkeypatch.setattr(served_model_module.litellm, "completion", fake_completion)
 
-    model = gemini(model_id="gemini-3.5-flash", api_key="test-key", thinking=False)
+    model = gemini(model_id="gemini-3.5-flash-lite", api_key="test-key", thinking=False)
 
     assert model.generate(prompt="ping") == "ok"
     # Gemini 3 models think by default, so omitting the parameter would still
@@ -1266,7 +1500,7 @@ def test_responses_full_response_preserves_output_items_and_media(monkeypatch):
         lambda **kwargs: _DummyResponsesResponse(output=output),
     )
 
-    model = openai(model_id="gpt-5.5", api_key="test-key")
+    model = openai(model_id="gpt-6-luna", api_key="test-key")
     response = model.generate_response(prompt="make an image")
 
     assert response.text == "Here is the image."
@@ -1288,7 +1522,7 @@ def test_responses_endpoint_converts_file_parts_to_input_file(monkeypatch):
 
     monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
 
-    model = openai(model_id="gpt-5.5", api_key="test-key")
+    model = openai(model_id="gpt-6-luna", api_key="test-key")
     model.generate(
         messages=[
             {
@@ -1326,7 +1560,7 @@ def test_responses_endpoint_maps_reasoning_state_and_structured_output(monkeypat
     monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
 
     model = openai(
-        model_id="gpt-5.5",
+        model_id="gpt-6-luna",
         api_key="test-key",
         thinking=True,
         max_completion_tokens=64,
@@ -1340,9 +1574,9 @@ def test_responses_endpoint_maps_reasoning_state_and_structured_output(monkeypat
     )
 
     assert result == SimpleSchema(answer="Paris")
-    assert captured["model"] == "openai/gpt-5.5"
+    assert captured["model"] == "openai/gpt-6-luna"
     assert captured["previous_response_id"] == "resp_previous"
-    assert captured["reasoning"] == {"effort": "low"}
+    assert captured["reasoning"] == {"effort": "high"}
     assert captured["max_output_tokens"] == 64
     assert captured["text_format"] is SimpleSchema
     # Trace metadata must stay off the Responses wire (OpenAI requires
@@ -1369,7 +1603,7 @@ def test_openai_model_id_picks_the_endpoint_and_temperature_support(monkeypatch)
     )
 
     reasoning_model = openai(
-        model_id="gpt-5.4-mini", api_key="test-key", temperature=0.0
+        model_id="gpt-6-luna", api_key="test-key", temperature=0.0
     )
     assert reasoning_model.endpoint_mode == EndpointMode.RESPONSES
     with pytest.warns(UserWarning, match="temperature"):
@@ -1384,7 +1618,7 @@ def test_openai_model_id_picks_the_endpoint_and_temperature_support(monkeypatch)
 
 
 def test_openai_thinking_false_sends_the_off_effort(monkeypatch):
-    """gpt-5.5 defaults to effort 'medium', so omitting the parameter would
+    """gpt-6-luna defaults to effort 'high', so omitting the parameter would
     reason despite thinking=False. The off value is an effort like any other
     and must carry the Responses wrapper, not ride as a bare kwarg."""
     captured = {}
@@ -1395,11 +1629,59 @@ def test_openai_thinking_false_sends_the_off_effort(monkeypatch):
 
     monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
 
-    model = openai(model_id="gpt-5.5", api_key="test-key", thinking=False)
+    model = openai(model_id="gpt-6-luna", api_key="test-key", thinking=False)
 
     assert model.generate(prompt="ping") == "ok"
     assert captured["reasoning"] == {"effort": "none"}
     assert "reasoning_effort" not in captured
+
+
+def _sent_reasoning(monkeypatch, *args, **kwargs):
+    """The `reasoning` object one Responses call sends, or None if it sends none."""
+    captured = {}
+
+    def fake_responses(**call_kwargs):
+        captured.update(call_kwargs)
+        return _DummyResponsesResponse("ok")
+
+    monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
+    openai(*args, api_key="test-key", **kwargs).generate(prompt="ping")
+    return captured.get("reasoning")
+
+
+@pytest.mark.parametrize(
+    "args,effort",
+    [((), "high"), (("gpt-6-luna",), "high"), (("gpt-6.1-sol",), "medium")],
+)
+def test_recommended_openai_models_send_their_recommended_effort(monkeypatch, args, effort):
+    assert _sent_reasoning(monkeypatch, *args) == {"effort": effort}
+
+
+@pytest.mark.parametrize("model_id", ["gpt-6.1-terra", "gpt-6-astra"])
+def test_other_gpt6_models_leave_the_effort_to_the_provider(monkeypatch, model_id):
+    assert _sent_reasoning(monkeypatch, model_id) is None
+
+
+def test_an_explicit_effort_replaces_the_recommended_one(monkeypatch):
+    assert _sent_reasoning(monkeypatch, "gpt-6-luna", reasoning_effort="xhigh") == {
+        "effort": "xhigh"
+    }
+
+
+@pytest.mark.parametrize("model_id", ["gpt-6.1-sol", "gpt-6-astra"])
+def test_gpt6_models_without_none_refuse_thinking_false(model_id):
+    model = openai(model_id=model_id, api_key="test-key", thinking=False)
+
+    with pytest.raises(ValueError, match="thinking=False cannot be honoured"):
+        model.generate(prompt="ping")
+
+
+@pytest.mark.parametrize("model_id", ["gpt-6.1-sol", "gpt-6-astra"])
+def test_gpt6_models_without_none_refuse_the_none_effort(model_id):
+    model = openai(model_id=model_id, api_key="test-key", reasoning_effort="none")
+
+    with pytest.raises(ValueError, match="is not supported by"):
+        model.generate(prompt="ping")
 
 
 def test_openai_reasoning_summary_rides_with_the_effort(monkeypatch):
@@ -1415,14 +1697,14 @@ def test_openai_reasoning_summary_rides_with_the_effort(monkeypatch):
     monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
 
     model = openai(
-        model_id="gpt-5.5",
+        model_id="gpt-6-luna",
         api_key="test-key",
         thinking=True,
         reasoning_summary="auto",
     )
 
     response = model.generate_response(prompt="ping")
-    assert captured["reasoning"] == {"effort": "low", "summary": "auto"}
+    assert captured["reasoning"] == {"effort": "high", "summary": "auto"}
     assert response.reasoning_content == "because"
 
 
@@ -1437,7 +1719,7 @@ def test_openai_reasoning_summary_alone_still_sends_the_reasoning_object(monkeyp
 
     monkeypatch.setattr(served_model_module.litellm, "responses", fake_responses)
 
-    model = openai(model_id="gpt-5.5", api_key="test-key", reasoning_summary="detailed")
+    model = openai(model_id="gpt-6.1-terra", api_key="test-key", reasoning_summary="detailed")
 
     assert model.generate(prompt="ping") == "ok"
     assert captured["reasoning"] == {"summary": "detailed"}
@@ -1466,7 +1748,7 @@ def test_reasoning_summary_warns_where_it_cannot_be_carried(monkeypatch):
 
     captured.clear()
     off_model = openai(
-        model_id="gpt-5.5", api_key="test-key", thinking=False, reasoning_summary="auto"
+        model_id="gpt-6-luna", api_key="test-key", thinking=False, reasoning_summary="auto"
     )
     with pytest.warns(UserWarning, match="reasoning_summary"):
         off_model.generate(prompt="ping")

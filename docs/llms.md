@@ -31,7 +31,7 @@ Pass a model id, plus any configuration, to build a served model:
 ```python
 from datafast import openai, ollama
 
-model = openai("gpt-5.4-mini", temperature=0.7)
+model = openai("gpt-6-luna", temperature=0.7)
 local = ollama("gemma4:12b")
 ```
 
@@ -109,8 +109,8 @@ factory. Each is only sent to served models whose profile declares it; where the
 profile omits it the value is dropped under your `unsupported_params` policy
 (warn by default) rather than reaching the provider. OpenAI's reasoning models,
 for instance, reject sampling controls outright, so datafast never forwards one.
-`claude-sonnet-5` is the same: it accepts no temperature but its default,
-reasoning or not, so datafast drops a caller-set one. On `claude-haiku-4-5` the
+`claude-sonnet-5` and the Claude 5.5 models are the same: they accept no temperature
+but their default, reasoning or not, so datafast drops a caller-set one. On `claude-haiku-4-5` the
 restriction applies only while thinking is on.
 
 ```python

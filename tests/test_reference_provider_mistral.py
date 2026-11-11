@@ -19,6 +19,7 @@ import pytest
 
 from datafast.llm.capabilities import (
     MISTRAL_CHAT,
+    MISTRAL_LARGE_4_CHAT,
     MISTRAL_REASONING_CHAT,
     _SERVED_MODEL_CATALOG,
     resolve_capabilities,
@@ -33,6 +34,7 @@ CATALOGUED = sorted(m for (p, m) in _SERVED_MODEL_CATALOG if p == "mistral")
 PROFILES = {
     "MISTRAL_REASONING_CHAT": MISTRAL_REASONING_CHAT,
     "MISTRAL_CHAT": MISTRAL_CHAT,
+    "MISTRAL_LARGE_4_CHAT": MISTRAL_LARGE_4_CHAT,
 }
 
 
