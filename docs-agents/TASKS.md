@@ -4,7 +4,14 @@
 
 ## To do
 
-- Rerun the 14 OpenAI live tests on `chore/model-refresh`, push it, update PR 149 and merge it into the docs branch. <!-- litellm 1.106.0 to 1.108.3 fail every OpenAI Responses call without the mcp package: https://github.com/BerriAI/litellm/issues/46045 -->
+### NEXT
+
+- [ ] We want to merge docs/v1-... to main. But to do that before we need to:
+  - [ ] **Fix the 20 failing tests** in `tests/test_cookbook_*.py` and `tests/test_examples_index.py`. Their expected strings need to match the simplified-English wording the docs use now. CI has to be green before 1.0.0 can go out.
+  - [x] **Optional: stop the false `deploy` failure.** One way is to drop the `pull_request` trigger from `deploy-docs.yml`. The other is to split it into a build job that runs on PRs and a deploy job that runs only on `main`.
+
+
+### POST-MERGE
 - Fix the 30 older test failures, so `main` doesn't take them on.
 - Merge the security branch into the docs branch. You set it aside for now, but it matters here because it changes how releases are built and handles the release credentials. That needs to be in place before the first publish from this code.
 - Open a PR from the docs branch to `main`, resolve the `litellm` line, and read `publish.yml` before you merge.
