@@ -9,8 +9,6 @@ on:
       - 'datafast/**'
       - '.github/workflows/deploy-docs.yml'
     # Note: pyproject.toml changes will be ignored via the [skip docs] tag
-  pull_request:
-    branches: [main]
   workflow_dispatch:  # For manual triggers
 
 # Add concurrency group to cancel in-progress jobs
