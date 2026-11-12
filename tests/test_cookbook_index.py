@@ -1,8 +1,8 @@
-"""The example datasets grid on the Cookbook index, pinned against what it links to.
+"""The cookbook grid and example dataset list on the Cookbook index, pinned against what they link to.
 
-Each square names a kind of dataset and points at the cookbook page or the example
-script that builds it. A square whose link breaks, or whose script was renumbered, sends
-a reader to the wrong place, so every square is resolved here, anchors included.
+Each square names a cookbook and the script behind it. Each list item names an example
+script and the Examples-page section that lists it. A link that breaks, or a script that
+was renumbered, sends a reader to the wrong place, so every link is resolved here.
 """
 
 import re
@@ -39,17 +39,25 @@ def _slug(heading: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
 
 
-def test_the_grid_has_eight_squares_with_distinct_titles():
-    """2 x 4 is the layout the stylesheet is built for."""
+def _example_datasets() -> list[dict]:
+    """One dict per item in the 'Example datasets' list: its title, link target, and script."""
+    section = PAGE.read_text().partition("## Example datasets")[2]
+    items = re.findall(r"^- \[(.+?)\]\((.+?)\):(.*?Script `(\d\d)`)", section, re.M | re.S)
+    assert items, "no example datasets listed on the Cookbook index"
+    return [{"title": t, "target": target, "number": n} for t, target, _, n in items]
+
+
+def test_the_grid_has_four_squares_with_distinct_titles():
+    """2 x 2 is the layout the stylesheet is built for."""
     titles = [s["title"] for s in _squares()]
-    assert len(titles) == 8
-    assert len(set(titles)) == 8
+    assert len(titles) == 4
+    assert len(set(titles)) == 4
 
 
 @pytest.mark.parametrize("square", _squares(), ids=lambda s: s["title"])
 def test_every_square_has_a_description_and_says_what_it_links_to(square):
     assert square["body"], f"{square['title']} has no description"
-    assert re.fullmatch(r"Cookbook|Script `\d\d`", square["label"]), square["label"]
+    assert re.fullmatch(r"Script `\d\d`", square["label"]), square["label"]
 
 
 @pytest.mark.parametrize("square", _squares(), ids=lambda s: s["title"])
@@ -62,14 +70,22 @@ def test_every_square_links_to_a_page_and_heading_that_exist(square):
         assert anchor in {_slug(h) for h in headings}, f"no #{anchor} on {path}"
 
 
-@pytest.mark.parametrize(
-    "square", [s for s in _squares() if s["label"] != "Cookbook"], ids=lambda s: s["title"]
-)
-def test_every_script_square_points_where_that_script_is_listed(square):
-    """The square links to an Examples-page section; the script must be in it."""
+@pytest.mark.parametrize("square", _squares(), ids=lambda s: s["title"])
+def test_every_square_names_the_script_its_cookbook_walks_through(square):
     number = re.search(r"`(\d\d)`", square["label"]).group(1)
     (script,) = SCRIPTS.glob(f"{number}_*.py")
-    anchor = square["target"].partition("#")[2]
+    page = (PAGE.parent / square["target"]).read_text()
+    assert f"`examples/scripts/{script.name}`" in page, (
+        f"{square['target']} does not walk through {script.name}"
+    )
+
+
+@pytest.mark.parametrize("item", _example_datasets(), ids=lambda i: i["title"])
+def test_every_example_dataset_points_where_that_script_is_listed(item):
+    """The item links to an Examples-page section; the script must be in it."""
+    (script,) = SCRIPTS.glob(f"{item['number']}_*.py")
+    path, _, anchor = item["target"].partition("#")
+    assert path == "examples.md", item["target"]
     body = EXAMPLES_PAGE.read_text()
     sections = re.split(r"^## ", body, flags=re.MULTILINE)
     (section,) = [s for s in sections if _slug(s.splitlines()[0]) == anchor]

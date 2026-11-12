@@ -161,10 +161,11 @@ def test_the_seed_values_the_script_uses_are_the_ones_the_page_describes(script)
     assert len(script.TOPICS) == 8
     assert len(script.EXPERTISE_LEVELS) == 3
     assert script.LANGUAGES == {"en": "English", "fr": "French"}
+    page = " ".join(_page().split())
     for topic in script.TOPICS:
-        assert topic.lower() in _page().lower(), f"topic not on the page: {topic}"
+        assert topic.lower() in page.lower(), f"topic not on the page: {topic}"
     for level in script.EXPERTISE_LEVELS:
-        assert level in _page(), f"expertise level not on the page: {level}"
+        assert level in page, f"expertise level not on the page: {level}"
 
 
 def test_the_paths_the_page_quotes_are_the_script_s_paths(script):
@@ -229,7 +230,7 @@ def test_the_run_produces_the_row_count_the_page_promises(completed_run, script)
     records, _ = completed_run
     assert len(records) == 144
     assert script.expected_row_count() == 144
-    assert "**144 rows** by default" in _page()
+    assert "**144 records** by default" in _page()
 
 
 def test_the_step_by_step_counts_on_the_page_are_the_real_ones(completed_run, script):
@@ -252,7 +253,7 @@ def test_the_seed_grid_is_the_size_the_page_says(script):
 def test_one_llm_call_per_output_row(completed_run, script):
     records, _ = completed_run
     assert len(script._stub.prompts) == len(records) == 144
-    assert "one LLM call each" in _page()
+    assert "1 LLM call for each record" in _page()
 
 
 def test_the_output_columns_are_exactly_the_ones_the_page_shows(completed_run):

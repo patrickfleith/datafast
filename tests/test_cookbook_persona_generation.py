@@ -168,7 +168,7 @@ def test_every_prompt_file_the_script_names_exists_and_is_reachable(script):
     assert len(prompts) == 6, "three variants per step"
     for prompt in prompts:
         assert (ROOT / prompt).is_file(), f"{prompt} does not exist"
-    assert "three variants per step" in _page()
+    assert "3 variants for each step" in _page()
 
 
 def test_the_paths_the_page_quotes_are_the_script_s_paths(script):
@@ -221,18 +221,18 @@ def test_there_are_examples_to_execute():
 def test_the_run_produces_the_row_count_the_page_promises(completed_run):
     records, _ = completed_run
     assert len(records) == 10, "the page says 10 rows by default"
-    assert "**10 rows** by default" in _page()
+    assert "**10 records** by default" in _page()
 
 
 def test_each_row_costs_the_two_llm_calls_the_page_names(completed_run, script):
     records, _ = completed_run
     assert len(script._stub.prompts) == 2 * len(records)
-    assert "two LLM calls per row" in _page()
+    assert "2 LLM calls for each record" in _page()
 
 
 def test_the_output_columns_are_exactly_the_ones_the_page_tables(completed_run):
     records, _ = completed_run
-    table = re.search(r"\| Column \| Where it comes from \|\n\|---\|---\|\n((?:\|.*\n)+)", _page())
+    table = re.search(r"\| Column \| Origin \|\n\|---\|---\|\n((?:\|.*\n)+)", _page())
     assert table, "the page lost its column table"
     documented = set(re.findall(r"^\| `(\w+)`", table.group(1), re.M))
     documented |= set(re.findall(r"`(\w+)`, `(\w+)`", table.group(1))[0]) if re.findall(r"`(\w+)`, `(\w+)`", table.group(1)) else set()
@@ -411,7 +411,7 @@ def test_the_hub_push_is_private_and_unguarded(script):
     assert "private=True" in source
     assert "DATAFAST_PUSH_TO_HUB" not in source
     assert "`private=True`" in _page()
-    assert "it runs every time" in _page()
+    assert "it occurs at each run" in _page()
 
 
 def test_the_run_settings_the_page_quotes_are_the_script_s(script):

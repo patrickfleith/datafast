@@ -228,12 +228,12 @@ def test_there_are_examples_to_execute():
 
 def test_the_run_produces_the_row_count_the_page_promises(records):
     assert len(records) == 3
-    assert "**3 rows** by default" in _page()
+    assert "**3 records** by default" in _page()
 
 
 def test_each_row_costs_the_five_calls_the_page_names(script, records):
     assert len(script["_prompts"]) == 15 == 5 * len(records)
-    assert "five LLM calls per row" in _page()
+    assert "**5 LLM calls for each record**" in _page()
 
 
 def test_the_step_by_step_counts_on_the_page_are_the_real_ones(script):
@@ -333,7 +333,7 @@ def test_the_page_s_table_of_bad_score_replies_is_measured(reply, expected):
 
 def test_an_unparseable_score_drops_the_record():
     assert _scored("not json at all") == []
-    assert "the record is dropped" in _page()
+    assert "The step removes the record" in _page()
 
 
 MARGIN_CASES = [
@@ -381,7 +381,7 @@ def test_a_path_that_rewrites_a_pre_branch_column_wins_unsuffixed():
     row = pipeline.run()[0]
     assert "_model_chosen" not in row and "_model_rejected" not in row
     assert row["_model"] == "chosen-model", "the first path's value survives, unsuffixed"
-    assert "There is no\n    `_model_chosen` or `_model_rejected`" in _page()
+    assert "There is no `_model_chosen` and no\n    `_model_rejected`" in _page()
 
 
 def test_a_score_step_stamps_model_over_whatever_the_join_left():

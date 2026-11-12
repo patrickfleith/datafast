@@ -69,7 +69,7 @@ def test_every_script_the_page_names_exists():
 
 
 def test_the_page_says_how_many_scripts_there_are():
-    assert "Forty-five runnable scripts" in _page()
+    assert "has 45 scripts that you can run" in _page()
     assert len(_scripts()) == 45
 
 
@@ -85,8 +85,8 @@ def test_the_scripts_the_page_calls_key_free_really_are():
             assert not calls, f"{script.name} calls a provider but the page says it does not"
         else:
             assert calls, f"{script.name} calls no provider but the page implies it does"
-    assert "**Scripts 01–14 need no API key.**" in _page()
-    assert _page().count("— no API key") == 2, "the two key-free sections are labelled"
+    assert "**Scripts 01 to 14 do not use an API key.**" in _page()
+    assert _page().count(": no API key") == 2, "the two key-free sections are labelled"
 
 
 def test_every_llm_script_reaches_openrouter():
@@ -101,7 +101,7 @@ def test_every_llm_script_reaches_openrouter():
 
 
 def test_the_local_model_alternative_the_page_promises_is_there():
-    """'Most of the LLM scripts carry a commented-out ollama line.'"""
+    """'Most LLM scripts have an `ollama(...)` line in a comment.'"""
     with_comment = [
         script.name
         for script in _scripts()
@@ -111,7 +111,7 @@ def test_the_local_model_alternative_the_page_promises_is_there():
     assert len(with_comment) > len(llm_scripts) / 2, (
         f"only {len(with_comment)} of {len(llm_scripts)} carry the line; 'most' is wrong"
     )
-    assert "commented-out `ollama(...)` line" in _page()
+    assert "have an `ollama(...)` line in a comment" in _page()
 
 
 def test_the_scripts_the_page_calls_publishers_are_the_ones_that_publish():
