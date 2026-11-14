@@ -64,7 +64,7 @@ docs = [
     # Zensical replaces mkdocs + mkdocs-material, which goes end-of-life on
     # 2026-11-05. Same maintainers, reads mkdocs.yml natively, renders the same
     # Material theme, and supports the mkdocstrings plugin directly.
-    "zensical>=0.0.55",
+    "zensical>=0.1.1",
     "pymdown-extensions>=10.0.0",
     # docs/api.md is `:::` directives only — without this it renders as raw text.
     "mkdocstrings[python]>=0.26",

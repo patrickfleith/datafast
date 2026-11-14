@@ -16,7 +16,7 @@ import pytest
 
 # Both live in the `docs` extra, which a contributor running `pip install -e ".[dev]"`
 # will not have. Nothing here is checkable without them.
-zensical = pytest.importorskip("zensical", reason="the docs extra is not installed")
+zensical_ui = pytest.importorskip("zensical_ui", reason="the docs extra is not installed")
 yaml = pytest.importorskip("yaml", reason="the docs extra is not installed")
 
 ROOT = Path(__file__).parent.parent
@@ -41,7 +41,8 @@ def _palette() -> list[dict]:
 
 
 def _theme_dir() -> Path:
-    return Path(zensical.__file__).parent / "templates"
+    """Zensical ships its theme in the `zensical-ui` package."""
+    return Path(zensical_ui.__file__).parent / "templates"
 
 
 def _palette_stylesheet() -> str:
