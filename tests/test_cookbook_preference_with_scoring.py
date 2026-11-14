@@ -226,12 +226,12 @@ def test_there_are_examples_to_execute():
 # --- the run, measured -----------------------------------------------------------
 
 
-def test_the_run_produces_the_row_count_the_page_promises(records):
+def test_the_run_produces_the_record_count_the_page_promises(records):
     assert len(records) == 3
     assert "**3 records** by default" in _page()
 
 
-def test_each_row_costs_the_five_calls_the_page_names(script, records):
+def test_each_record_costs_the_five_calls_the_page_names(script, records):
     assert len(script["_prompts"]) == 15 == 5 * len(records)
     assert "**5 LLM calls for each record**" in _page()
 
@@ -270,7 +270,7 @@ def test_the_score_prompt_the_page_quotes_is_the_one_that_was_sent(script):
     quoted = [b for b in _code_blocks("text") if b.startswith("Score the following")]
     assert len(quoted) == 1, "the page no longer quotes the scoring prompt"
     sent = [p for p in script["_prompts"] if p.startswith("Score the following")]
-    assert len(sent) == 6, "three rows, two scores each"
+    assert len(sent) == 6, "3 records, 2 scores for each record"
     for line in quoted[0].strip().splitlines():
         if line.strip() in ("", "Content:"):
             continue

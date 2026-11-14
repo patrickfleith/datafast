@@ -226,7 +226,7 @@ def test_there_are_examples_to_execute():
 # --- the run, measured -----------------------------------------------------------
 
 
-def test_the_run_produces_the_row_count_the_page_promises(completed_run, script):
+def test_the_run_produces_the_record_count_the_page_promises(completed_run, script):
     records, _ = completed_run
     assert len(records) == 144
     assert script.expected_row_count() == 144
@@ -250,7 +250,7 @@ def test_the_seed_grid_is_the_size_the_page_says(script):
     assert len(list(seed.process(iter([])))) == 72
 
 
-def test_one_llm_call_per_output_row(completed_run, script):
+def test_one_llm_call_for_each_output_record(completed_run, script):
     records, _ = completed_run
     assert len(script._stub.prompts) == len(records) == 144
     assert "1 LLM call for each record" in _page()
@@ -274,7 +274,7 @@ def test_the_metadata_columns_lose_their_underscore(completed_run):
     assert records[0]["model"] == "stub-model"
 
 
-def test_add_uuid_runs_after_the_map_so_every_row_keeps_its_id(completed_run):
+def test_add_uuid_runs_after_the_map_so_every_record_keeps_its_id(completed_run):
     records, _ = completed_run
     ids = [r["id"] for r in records]
     assert len(set(ids)) == len(ids)
@@ -365,10 +365,10 @@ def test_a_fenced_reply_still_parses():
     assert _run(_Reply(fenced))[0]["text"] == "body"
 
 
-def test_a_missing_field_becomes_an_empty_string_and_keeps_the_row():
+def test_a_missing_field_becomes_an_empty_string_and_keeps_the_record():
     """The page's warning: this is not a parse error, so on_parse_error never sees it."""
     records = _run(_Reply(json.dumps({"title": "T"})), on_parse_error="raise")
-    assert len(records) == 1, "the row was kept"
+    assert len(records) == 1, "the step kept the record"
     assert records[0]["text"] == "", "the missing column is filled with an empty string"
 
 
@@ -404,8 +404,8 @@ def test_a_placeholder_outside_input_columns_raises_before_any_call():
     assert model.index == 0, "a call was made before the failure"
 
 
-def test_num_outputs_multiplies_rows_and_leaves_no_marker_column():
-    """The page's note: the extra rows carry nothing saying which output they were."""
+def test_num_outputs_multiplies_records_and_leaves_no_marker_column():
+    """The page's note: the extra records have no column that identifies their output."""
     records = _run(
         _Reply(
             json.dumps({"title": "A", "text": "first"}),

@@ -213,7 +213,7 @@ def test_the_expected_row_count_the_page_names_is_the_script_s(script):
     assert "96" in _page()
 
 
-def test_the_run_produces_the_rows_the_page_promises(completed_run):
+def test_the_run_produces_the_records_the_page_promises(completed_run):
     records, _ = completed_run
     assert len(records) == 96
 
@@ -242,11 +242,11 @@ def test_the_checkpoint_file_names_the_page_lists_are_the_real_ones(completed_ru
     assert not missing, f"checkpoint files the page does not list: {missing}"
 
 
-def test_a_published_row_has_exactly_the_columns_the_page_shows(completed_run):
-    """The page prints one row as JSON; its keys and order are the claim."""
+def test_a_published_record_has_exactly_the_columns_the_page_shows(completed_run):
+    """The page shows 1 record as JSON. The claim is its keys and their order."""
     records, _ = completed_run
     shown = json.loads(re.search(r"```json\n(.*?)```", _page(), re.DOTALL).group(1))
-    assert list(records[0]) == list(shown), "the page's row has drifted from the output"
+    assert list(records[0]) == list(shown), "the record on the page is different from the output"
 
 
 def test_both_languages_and_both_models_appear_in_the_output(completed_run, script):
@@ -255,7 +255,7 @@ def test_both_languages_and_both_models_appear_in_the_output(completed_run, scri
     assert {r["model"] for r in records} == set(script.MODEL_IDS)
 
 
-def test_every_label_gets_the_same_number_of_rows(completed_run, script):
+def test_every_label_gets_the_same_number_of_records(completed_run, script):
     """The page's claim that the product balances the classes by construction."""
     records, _ = completed_run
     counts = dict.fromkeys((e["label"] for e in script.LABELS), 0)
@@ -334,7 +334,7 @@ def test_input_columns_is_a_whitelist_for_the_prompt(script):
         (Source.list([record]) >> step >> ListSink()).run()
 
 
-def test_add_uuid_runs_after_the_map_so_the_id_belongs_to_the_published_row(script):
+def test_add_uuid_runs_after_the_map_so_the_id_belongs_to_the_published_record(script):
     steps = script.pipeline.steps
     assert [type(s).__name__ for s in steps].index("Map") < [
         type(s).__name__ for s in steps

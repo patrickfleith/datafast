@@ -218,13 +218,13 @@ def test_there_are_examples_to_execute():
 # --- the run, measured -----------------------------------------------------------
 
 
-def test_the_run_produces_the_row_count_the_page_promises(completed_run):
+def test_the_run_produces_the_record_count_the_page_promises(completed_run):
     records, _ = completed_run
-    assert len(records) == 10, "the page says 10 rows by default"
+    assert len(records) == 10, "the page says 10 records by default"
     assert "**10 records** by default" in _page()
 
 
-def test_each_row_costs_the_two_llm_calls_the_page_names(completed_run, script):
+def test_each_record_costs_the_two_llm_calls_the_page_names(completed_run, script):
     records, _ = completed_run
     assert len(script._stub.prompts) == 2 * len(records)
     assert "2 LLM calls for each record" in _page()

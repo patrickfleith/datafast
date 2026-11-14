@@ -6,8 +6,8 @@
 
 ### NEXT
 
-- [ ] We want to merge docs/v1-... to main. But to do that before we need to:
-  - [ ] **Fix the 20 failing tests** in `tests/test_cookbook_*.py` and `tests/test_examples_index.py`. Their expected strings need to match the simplified-English wording the docs use now. CI has to be green before 1.0.0 can go out.
+- [x] We want to merge docs/v1-... to main. But to do that before we need to:
+  - [x] **Fix the 20 failing tests** in `tests/test_cookbook_*.py` and `tests/test_examples_index.py`. Their expected strings need to match the simplified-English wording the docs use now. CI has to be green before 1.0.0 can go out.
   - [x] **Optional: stop the false `deploy` failure.** One way is to drop the `pull_request` trigger from `deploy-docs.yml`. The other is to split it into a build job that runs on PRs and a deploy job that runs only on `main`.
 
 
