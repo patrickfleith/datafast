@@ -2,7 +2,7 @@
 
 One line per choice; parentheses only if extra detail is needed.
 
-- **Language:** Python (≥3.10, tested through 3.13)
+- **Language:** Python (≥3.11, tested through 3.13)
 - **Packaging:** setuptools + wheel; published to PyPI as `datafast`
 - **Dependency manager:** uv (`uv.lock`)
 - **LLM calling:** LiteLLM (unified gateway); provider SDKs `openai`, `anthropic`, `google-generativeai`; `botocore` for AWS

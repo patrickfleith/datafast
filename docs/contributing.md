@@ -17,7 +17,7 @@ pip install -e ".[dev,docs]"
 ```
 
 `dev` brings `pytest`, `ruff`, and the `parquet` and `hub` extras, so the whole test
-suite can run. `docs` brings the site generator. Datafast needs Python 3.10 or newer.
+suite can run. `docs` brings the site generator. Datafast needs Python 3.11 or newer.
 
 ### Keys
 
@@ -268,7 +268,7 @@ splitting them is a refactor with its own review.
 changing — a formatting sweep buries the change you actually made.
 
 `.github/workflows/tests.yml` runs `pytest -m "not live"` and `ruff check .` on every
-pull request, on Python 3.10 and 3.13. `publish.yml` calls the same job and releases nothing unless it
+pull request, on Python 3.11 and 3.13. `publish.yml` calls the same job and releases nothing unless it
 passes. Run the suite locally anyway — a red pull request is a slower way to learn the
 same thing.
 

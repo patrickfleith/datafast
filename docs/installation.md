@@ -8,7 +8,8 @@ What to install, what to set, and where datafast looks for it.
 pip install datafast
 ```
 
-Datafast needs Python **3.10 or newer**.
+Datafast needs Python **3.11 or newer**.
+Datafast supports every Python version that still gets security fixes.
 
 The base install is deliberately small. It carries every step, every provider factory,
 and the JSONL, CSV and in-memory sinks — five runtime dependencies, all of them

@@ -190,8 +190,8 @@ def test_the_clone_url_matches_the_configured_remote():
 
 
 def test_the_python_version_the_page_names_matches_pyproject():
-    assert _project()["requires-python"] == ">=3.10"
-    assert "3.10" in _page()
+    assert _project()["requires-python"] == ">=3.11"
+    assert "3.11" in _page()
 
 
 # --- markers ---------------------------------------------------------------------
