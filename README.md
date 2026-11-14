@@ -1,40 +1,54 @@
-# Datafast
+<div align="center">
 
-Datafast is a pipeline-first Python library for generating synthetic datasets with
-LLMs.
+<img src="https://raw.githubusercontent.com/patrickfleith/datafast/main/assets/Datafast%20Logo.png" alt="Datafast logo" width="160">
 
-You describe the axes your dataset should cover, compose the steps that fill it in, and
-run the pipeline. What you get back is a dataset — a JSONL or CSV file, a Parquet file,
-a Hugging Face Hub repo, or records in memory — with every row still carrying the seed
-values and the model that produced it.
+<h3>Generate diverse synthetic datasets with LLMs, from a pipeline you can read.</h3>
 
-Documentation: **[patrickfleith.github.io/datafast](https://patrickfleith.github.io/datafast/)**
+[![PyPI version](https://img.shields.io/pypi/v/datafast?color=f5c518)](https://pypi.org/project/datafast/)
+[![Python versions](https://img.shields.io/pypi/pyversions/datafast)](https://pypi.org/project/datafast/)
+[![License](https://img.shields.io/github/license/patrickfleith/datafast)](https://github.com/patrickfleith/datafast/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-online-blue)](https://patrickfleith.github.io/datafast/)
+[![GitHub stars](https://img.shields.io/github/stars/patrickfleith/datafast?style=social)](https://github.com/patrickfleith/datafast)
+
+**[Documentation](https://patrickfleith.github.io/datafast/)**
 · [Quickstart](https://patrickfleith.github.io/datafast/quickstart/)
 · [Cookbook](https://patrickfleith.github.io/datafast/cookbook/)
+· [Examples](https://patrickfleith.github.io/datafast/cookbook/examples/)
 · [API reference](https://patrickfleith.github.io/datafast/api/)
 
-## Installation
+</div>
+
+Datafast is a Python library for developers and ML engineers who need a dataset for an
+LLM project and do not have one yet.
+
+A plain script that loops over prompts gets hard to control. You must write the
+nested loops that cover each combination of inputs. Without checkpoints, a crash
+halfway means you pay for the same LLM calls again. Without metadata, you cannot tell
+which input and which model made each record.
+
+With datafast, you declare the dimensions that your dataset must cover, connect steps
+into a pipeline, and run it. The pipeline writes the dataset to JSONL, CSV, Parquet or
+the Hugging Face Hub.
+
+## Install
 
 ```bash
 pip install datafast
 ```
 
-The base install covers every step, all six provider factories (plus
-`openai_compatible`), and the JSONL, CSV and in-memory sinks. Optional file
-formats and Hub I/O ship as extras:
+Datafast needs Python 3.10 or newer. Extras add Parquet, the Hugging Face Hub and
+Langfuse tracing: see [Installation](https://patrickfleith.github.io/datafast/installation/).
 
-| Extra | Enables | Pulls in |
-|-------|---------|----------|
-| `datafast[parquet]` | `Source.parquet(...)`, `ParquetSink` | `pyarrow` |
-| `datafast[hub]` | `HuggingFaceSource`, `HubSink` | `datasets`, `huggingface-hub` |
-| `datafast[langfuse]` | Langfuse tracing | `langfuse` |
-| `datafast[all]` | `parquet` + `hub` | — |
+## Quick example
+
+This example generates exam questions and answers for 3 science topics at 2 levels,
+beginner and advanced. The result is 6 example records.
+
+Set the key for your provider, here OpenAI:
 
 ```bash
-pip install "datafast[hub]"
+export OPENAI_API_KEY="sk-..."
 ```
-
-## Quick Start
 
 ```python
 from datafast import LLMStep, Seed, Sink, openai
@@ -60,92 +74,79 @@ pipeline = (
 pipeline.run()
 ```
 
-Three topics and two levels produce six rows: the seed expands the combinations, the
-LLM step fills each one in, and the sink writes the result. The full walkthrough is in
-the [Quickstart](https://patrickfleith.github.io/datafast/quickstart/).
+The pipeline has 3 steps:
 
-## Why pipelines
+1. `Seed.product` makes 1 record for each combination of the values in its dimensions:
+   3 topics × 2 levels = 6 records.
+2. `LLMStep` makes 1 LLM call for each record. With `parse_mode="json"`, it splits the
+   response into the `question` and `answer` columns.
+3. `Sink.jsonl` writes the records to `questions.jsonl`.
 
-- **Coverage is declarative.** `Seed.product` expands the combinations instead of you
-  writing nested loops.
-- **Runs are resumable.** LLM calls are checkpointed per call, so an interrupted run
-  resumes instead of being paid for twice.
-- **Providers are interchangeable.** One configuration surface covers OpenAI,
-  Anthropic, Gemini, Mistral, OpenRouter, Ollama and any OpenAI-compatible server.
-- **Mistakes surface before the spend.** `Pipeline.compile()` validates structure and
-  column references before a single call is made.
+Each line of the file is 1 record. The seed columns stay beside the generated columns,
+and `_model` tells you which model wrote the record:
 
-## Main Building Blocks
-
-- `Source`: load records from Python lists, files, or Hugging Face datasets
-- `Seed`: generate record combinations declaratively
-- `AddUUID`, `Map`, `FlatMap`, `Filter`, `Group`, `Pair`, `Concat`, `Join`: data operations
-- `Sample`: draw a subset by one of nine strategies
-- `LLMStep`: free-form generation
-- `Classify`, `Score`, `Compare`, `Rewrite`, `Extract`: higher-level LLM transforms
-- `Branch` and `JoinBranches`: multi-path pipelines
-- `Sink`: write JSONL, CSV, Parquet, Hub datasets, or collect records in memory
-- `Runner` and `RunConfig`: execution, batching, checkpoints, resume
-
-## Served Models
-
-A **served model** is a provider and a model together, with its configuration — the
-object you construct and pass to a step. Build one with a provider factory:
-
-`openai`, `anthropic`, `gemini`, `mistral`, `openrouter`, `ollama`, `openai_compatible`
-
-```python
-from datafast import openai
-
-model = openai("gpt-6-luna", temperature=0.7)
+```json
+{
+  "topic": "photosynthesis",
+  "level": "beginner",
+  "question": "What process do plants use to convert light into chemical energy?",
+  "answer": "Photosynthesis, which occurs in the chloroplasts.",
+  "_model": "gpt-6-luna"
+}
 ```
 
-The factories are the public entry points; `ServedModel` is exported for annotations.
-Each reads its own API key from the environment — `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`
-and so on — or from a `.env` file, loaded once when the first served model is built.
+The [Quickstart](https://patrickfleith.github.io/datafast/quickstart/) explains each
+step in more detail. [Key concepts](https://patrickfleith.github.io/datafast/concepts/)
+and the [API reference](https://patrickfleith.github.io/datafast/api/) list all the
+steps.
 
-## Optional Langfuse Tracing
+## Use cases
 
-With the `langfuse` extra installed, Datafast enables Langfuse tracing through LiteLLM
-automatically. Put the credentials in `.env`:
+- Make evaluation data for an LLM project before you have real user data.
+- Add records to an existing dataset to cover more cases.
+- Test an LLM application on realistic inputs before you ship it.
+- Make datasets to fine-tune LLMs and agents.
+- Distill a large model into a smaller one: the large model writes the training data.
 
-```env
-LANGFUSE_PUBLIC_KEY=pk-lf-...
-LANGFUSE_SECRET_KEY=sk-lf-...
-LANGFUSE_HOST=https://cloud.langfuse.com
-```
+## Why datafast
 
-Tracing then switches on when you create a served model — no code change:
+- **You declare the coverage.** You give the values of each dimension, and
+  `Seed.product` makes all the combinations. You do not write nested loops.
+- **A long run can resume after a crash.** Set `checkpoint_dir` to save progress,
+  then restart with the same directory and `resume=True`. See
+  [Checkpoints and resume](https://patrickfleith.github.io/datafast/guides/pipelines_and_execution/#checkpoints-and-resume) for recovery limits.
+- **You can change the provider in 1 line.** The same provider factories work for
+  OpenAI, Anthropic, Gemini, Mistral, OpenRouter, Ollama and all OpenAI-compatible
+  servers such as vLLM and llama.cpp. See
+  [Served models](https://patrickfleith.github.io/datafast/llms/).
+- **Datafast finds mistakes before you pay.** `Pipeline.compile()` checks the step
+  order and all column references before the first LLM call.
+- **Each record shows its origin.** The seed values and the model id stay in the
+  record, so you can filter or audit the dataset later.
 
-```python
-from datafast import openai
+## Cookbook
 
-model = openai()  # traced if the Langfuse credentials are present
-```
+Each cookbook is a complete pipeline that makes a real dataset. The script is in
+`examples/scripts/`, and the page explains each step.
 
-To enable it explicitly instead, call `configure_langfuse_tracing()` at startup:
+| Cookbook | Dataset | Script |
+|----------|---------|--------|
+| [Text classification](https://patrickfleith.github.io/datafast/cookbook/text_classification/) | Trail reports from hikers in 2 languages, with labels | [`45`](https://github.com/patrickfleith/datafast/blob/main/examples/scripts/45_cookbook_text_classification.py) |
+| [Personas](https://patrickfleith.github.io/datafast/cookbook/persona_generation/) | Personas made from real articles | [`43`](https://github.com/patrickfleith/datafast/blob/main/examples/scripts/43_cookbook_persona_generation.py) |
+| [Domain text corpus](https://patrickfleith.github.io/datafast/cookbook/space_text_generation/) | Spacecraft engineering text in 2 languages | [`44`](https://github.com/patrickfleith/datafast/blob/main/examples/scripts/44_cookbook_space_text_generation.py) |
+| [Preference pairs](https://patrickfleith.github.io/datafast/cookbook/preference_with_scoring/) | Chosen and rejected answers with scores, for RLHF | [`42`](https://github.com/patrickfleith/datafast/blob/main/examples/scripts/42_pipeline_preference_with_scoring.py) |
 
-```python
-from datafast import configure_langfuse_tracing
+The [examples page](https://patrickfleith.github.io/datafast/cookbook/examples/) lists
+all 45 scripts. Scripts 01 to 14 do not use an API key.
 
-configure_langfuse_tracing()
-```
+## Contributing
 
-## Repo Layout
+Bug reports, ideas and pull requests are welcome. Open an
+[issue](https://github.com/patrickfleith/datafast/issues) or read the
+[contributing guide](https://patrickfleith.github.io/datafast/contributing/).
 
-- `datafast/`: canonical source package
-- `examples/scripts/`: runnable pipeline examples
-- `examples/providers/`: direct provider usage examples
-- `docs/`: pipeline-first documentation, published at
-  [patrickfleith.github.io/datafast](https://patrickfleith.github.io/datafast/)
+## License
 
-## Running Tests
+Datafast is released under the [Apache 2.0 license](https://github.com/patrickfleith/datafast/blob/main/LICENSE).
 
-`pytest` is not on PATH in this repo. Use the project virtualenv:
-
-```bash
-.venv/bin/pytest
-```
-
-Tests under `tests/live/` call real providers. They self-skip unless you opt in with
-`--run-live`, and you can deselect them outright with `-m "not live"`.
+If datafast helps you, give the repo a star. It helps other people find it.
