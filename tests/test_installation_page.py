@@ -71,8 +71,8 @@ def test_runtime_dependency_table_matches_pyproject():
 
 
 def test_documented_python_floor_matches_pyproject():
-    assert _project()["requires-python"] == ">=3.10"
-    assert "3.10" in _page()
+    assert _project()["requires-python"] == ">=3.11"
+    assert "3.11" in _page()
 
 
 @pytest.mark.parametrize(
