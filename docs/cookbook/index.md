@@ -59,3 +59,14 @@ the cookbooks show only some of the datasets that you can make. The
   that the LLM finds in product text. Script `33`.
 - [Rewrite styles](examples.md#branching): the same text in many styles, merged into 1
   record. Script `35`.
+
+## Built with datafast badge
+
+If you publish a dataset that you made with datafast, you can add this badge to its
+dataset card:
+
+[![Built with Datafast](https://raw.githubusercontent.com/patrickfleith/datafast/main/assets/datafast-badge-web.png)](https://github.com/patrickfleith/datafast)
+
+```markdown
+[![Built with Datafast](https://raw.githubusercontent.com/patrickfleith/datafast/main/assets/datafast-badge-web.png)](https://github.com/patrickfleith/datafast)
+```
