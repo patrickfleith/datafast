@@ -38,6 +38,12 @@ PROFILES = {"GEMINI_CHAT": GEMINI_CHAT, "GEMINI_NO_MINIMAL_CHAT": GEMINI_NO_MINI
 REQUEST = NormalizedRequest(messages=[{"role": "user", "content": "hi"}])
 
 
+@pytest.fixture(autouse=True)
+def _fake_key(monkeypatch):
+    """Building a model needs a key, and CI has none."""
+    monkeypatch.setenv("GEMINI_API_KEY", "not-a-real-key")
+
+
 def _page() -> str:
     return PAGE.read_text()
 
