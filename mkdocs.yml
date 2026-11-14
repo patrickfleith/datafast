@@ -1,39 +1,48 @@
 site_name: Datafast
-site_description: A Python package for synthetic text dataset generation
+site_description: Pipeline-first synthetic data generation for Python
 site_author: Patrick Fleith
 site_url: https://patrickfleith.github.io/datafast/
 
-# Repository
 repo_name: patrickfleith/datafast
 repo_url: https://github.com/patrickfleith/datafast
 
-# Theme configuration
 theme:
   name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
   features:
     - navigation.sections
     - navigation.top
     - navigation.indexes
     - navigation.tabs
-    - navigation.collapse
-    - navigation.expand
     - search.highlight
     - toc.follow
+  # Two entries make the palette a toggle rather than a fixed scheme. Each `media`
+  # picks the entry that matches the reader's OS setting on first visit; the toggle
+  # then overrides it and the choice is remembered. `primary` and `accent` are the
+  # same in both so only the background and text invert.
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: black
-      accent: indigo
+      accent: yellow
       toggle:
-        icon: material/weather-sunny
+        icon: material/brightness-7
         name: Switch to dark mode
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
       primary: black
-      accent: indigo
+      accent: yellow
       toggle:
-        icon: material/weather-night
+        icon: material/brightness-4
         name: Switch to light mode
 
-# Extensions
+# TEMPORARY palette preview — see docs/stylesheets/palette-preview.css
+extra_css:
+  - stylesheets/palette-preview.css
+  # The cookbooks grid on the Cookbook index.
+  - stylesheets/showcase.css
+
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -41,47 +50,79 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
   - tables
   - toc:
       permalink: true
   - def_list
   - attr_list
   - md_in_html
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
-  - pymdownx.arithmatex:
-      generic: true
 
-# Navigation structure
 nav:
   - Home: index.md
-  - Models:
-      - Recommended Models: models.md
-      - LLM Providers: llms.md
-  # - Getting Started: getting_started.md
+  - Get started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+      - Key Concepts: concepts.md
+      - What's in v1: whats_in_v1.md
   - Guides:
       - guides/index.md
-      - Dataset Types:
-        - Text Classification: guides/generating_text_classification_datasets.md
-        - Text Generation: guides/generating_text_datasets.md
-        - Multiple Choice: guides/generating_mcq_datasets.md
-        - Instruction: guides/generating_ultrachat_datasets.md
-        - Preference: guides/generating_preference_datasets.md
-  - Concepts:
-      - Core Concepts: concepts.md
-      - Prompt Expansion: guides/prompt_expansion.md
-  - API: api.md
+      - Pipelines & execution: guides/pipelines_and_execution.md
+      - Structured output: guides/structured_output.md
+      - Multimodal input: guides/multimodal_input.md
+      - Calling a served model: guides/calling_a_served_model.md
+      - Error handling & troubleshooting: guides/troubleshooting.md
+      - Served models guide: llms.md
+      - Langfuse tracing: guides/langfuse_tracing.md
+  - Reference:
+      - Source: reference/source.md
+      - Seed: reference/seed.md
+      - Data ops: reference/data_ops.md
+      - Sample: reference/sample.md
+      - LLM step: reference/llm_step.md
+      - Specialized LLM steps: reference/llm_specialized.md
+      - Branching: reference/branching.md
+      - Sinks: reference/sinks.md
+      - Served models: reference/served_models.md
+      - Model defaults: models.md
+      - Providers:
+          - OpenAI: reference/providers/openai.md
+          - Anthropic: reference/providers/anthropic.md
+          - Gemini: reference/providers/gemini.md
+          - Mistral: reference/providers/mistral.md
+          - OpenRouter: reference/providers/openrouter.md
+          - Ollama: reference/providers/ollama.md
+          - OpenAI-compatible: reference/providers/openai_compatible.md
+      - API: api.md
+      - Full Glossary: glossary.md
+  - Cookbook:
+      - cookbook/index.md
+      - All examples: cookbook/examples.md
+      - Text Classification: cookbook/text_classification.md
+      - Persona Generation: cookbook/persona_generation.md
+      - Space Engineering Text Generation: cookbook/space_text_generation.md
+      - Preference Data with Scoring: cookbook/preference_with_scoring.md
+  - Contributing: contributing.md
 
-# Plugins
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
+          paths: [.]
           options:
-            show_source: true
+            docstring_style: google
+            docstring_section_style: table
+            # Several steps carry their parameter docs on __init__ rather than the
+            # class (Filter, Group, Pair); merging surfaces them on one heading.
+            merge_init_into_class: true
             show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            heading_level: 3
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            show_source: false
+            filters: ["!^_"]

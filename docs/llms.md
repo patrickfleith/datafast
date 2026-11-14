@@ -1,170 +1,178 @@
-# LLM Providers in Datafast
+# Served Models
+
+A **served model** is a provider and a model together, with its configuration — the
+object you construct and call. Datafast keeps direct provider support while using the
+pipeline-first execution model.
 
 ## Available Providers
 
-Datafast offers a unified interface for multiple LLM providers through the [LiteLLM](https://github.com/BerriAI/litellm) library:
+Each provider has a factory that returns a `ServedModel`:
 
-- **OpenAI** - For accessing GPT models.
-- **Anthropic** - For accessing Claude models.
-- **Gemini** - For accessing Google's Gemini models.
-- **Ollama** - For accessing locally hosted models.
-- **OpenRouter** - For accessing almost any models (proprietary or open source) through OpenRouter.
+- `openai`
+- `anthropic`
+- `gemini`
+- `mistral`
+- `openrouter`
+- `ollama`
+- `openai_compatible` — for self-hosted servers speaking the OpenAI wire format.
+  Takes a required `provider_id` naming the server itself (`vllm`, `llamacpp`, …),
+  since the wire format says nothing about which server is on the other end.
 
-### Importing
+## Recommended Import Style
+
+The factories are the public entry points; import them from the top level:
 
 ```python
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OllamaProvider, OpenRouterProvider
+from datafast import LLMStep, openrouter
 ```
 
-### Instantiating a Provider
-
-Each provider can be instantiated with default parameters:
+Pass a model id, plus any configuration, to build a served model:
 
 ```python
-# OpenAI (default: gpt-5-mini-2025-08-07)
-openai_llm = OpenAIProvider()
+from datafast import openai, ollama
 
-# Anthropic (default:claude-haiku-4-5-20251001)
-anthropic_llm = AnthropicProvider()
-
-# Gemini (default: gemini-2.0-flash)
-gemini_llm = GeminiProvider()
-
-# Ollama (default: gemma3:4b)
-ollama_llm = OllamaProvider()
-
-# OpenRouter (default: openai/gpt-5-mini)
-openrouter_llm = OpenRouterProvider()
+model = openai("gpt-6-luna", temperature=0.7)
+local = ollama("gemma4:12b")
 ```
 
-### With Custom Parameters
+`ServedModel` is exported for type annotations:
 
 ```python
-openai_llm = OpenAIProvider(
-    model_id="gpt-5-mini-2025-08-07",  # Custom model
-    max_completion_tokens=1000,  # Limit token generation (don't set this too low for reasoning models)
-    reasoning_effort="medium"   # Reasoning effort: "low", "medium", or "high"
+from datafast import ServedModel
+
+def build_step(model: ServedModel): ...
+```
+
+## Example
+
+```python
+from datafast import LLMStep, Source, Sink, openrouter
+
+pipeline = (
+    Source.list([{"topic": "robotics"}])
+    >> LLMStep(
+        prompt="Write one question about {topic}",
+        input_columns=["topic"],
+        output_column="question",
+        model=openrouter("z-ai/glm-4.6"),
+    )
+    >> Sink.list()
 )
 ```
 
-!!! warning "OpenAI Provider Changes"
-    `OpenAIProvider` now uses the `responses` endpoint. The following parameters are **deprecated** and will trigger warnings:
-    - `temperature`
-    - `top_p`
-    - `frequency_penalty`
-    
-    Use `reasoning_effort` ("low", "medium", "high") instead to control generation behavior.
+## Provider-Specific Methods
+
+Two providers expose a method beyond the shared `ServedModel` interface, because
+the provider's API requires a step LiteLLM does not cover.
+
+**Mistral — file uploads.** Mistral's chat API accepts a document only as an
+uploaded file id; inline base64 is rejected. Upload it, pass the id as a file
+part's `url`, and delete it when you are done. The upload is explicit so one id
+can serve every request in a pipeline run, and the file stays in your account
+until you remove it.
 
 ```python
-# Anthropic with custom parameters
-anthropic_llm = AnthropicProvider(
-    model_id="claude-haiku-4-5-20251001",
-    temperature=0.7,
-    max_completion_tokens=1000
-)
+from datafast import mistral
+from datafast.llm import ContentPart
+
+model = mistral()
+file_id = model.upload_file("report.pdf")          # optional expiry=<int>
+try:
+    answer = model.generate(messages=[{"role": "user", "content": [
+        ContentPart(type="file", url=file_id),
+        ContentPart(type="text", text="Summarise this in one sentence."),
+    ]}])
+finally:
+    model.delete_file(file_id)
 ```
 
-!!! warning "Anthropic Provider Limitations"
-    `AnthropicProvider` only supports the following parameters:
-    - `temperature` (0.0 to 1.0)
-    - `max_completion_tokens`
-    
-    The following parameters are **not supported** by Anthropic Claude 4.5 models:
-    - `top_p`
-    - `frequency_penalty`
+**Ollama — capability probe.** Which Ollama model is pulled is a property of the
+machine, not of the id, so Datafast resolves capabilities from name heuristics and
+can only be approximately right. `probe_capabilities()` asks the daemon instead,
+returning Ollama's own capability names — `completion`, `vision`, `audio`,
+`thinking`, `tools`. It reaches the same daemon your generate calls do
+(`api_base_url`, else `OLLAMA_API_BASE`, else `http://localhost:11434`), and
+raises if the model is not pulled.
 
 ```python
-# Ollama with custom API endpoint
-ollama_llm = OllamaProvider(
-    model_id="llama3.2:latest",
-    api_base="http://localhost:11434" # <--- this is the default url
-)
+from datafast import ollama
 
-# OpenRouter with different models
-openrouter_llm = OpenRouterProvider(
-    model_id="z-ai/glm-4.6",  # Access glm-4.6 via OpenRouter
-    temperature=0.7,
-    max_completion_tokens=500
-)
-
-# You can access many models through OpenRouter
-openrouter_deepseek = OpenRouterProvider(model_id="deepseek/deepseek-r1-0528")
-openrouter_qwen = OpenRouterProvider(model_id="qwen/qwen3-next-80b-a3b-instruct")
+model = ollama("qwen3:0.6b")
+if "vision" in model.probe_capabilities():
+    ...  # only then is attaching an image worth doing
 ```
 
-## API Keys
+## Sampling Parameters
 
-By default, providers look for API keys in environment variables:
-
-- OpenAI: `OPENAI_API_KEY`
-- Anthropic: `ANTHROPIC_API_KEY`
-- Gemini: `GEMINI_API_KEY`
-- Ollama: Uses `OLLAMA_API_BASE` (typically doesn't require an API key)
-- OpenRouter: `OPENROUTER_API_KEY`
-
-You can also provide keys directly:
+`temperature`, `top_p` and `frequency_penalty` are config fields on every
+factory. Each is only sent to served models whose profile declares it; where the
+profile omits it the value is dropped under your `unsupported_params` policy
+(warn by default) rather than reaching the provider. OpenAI's reasoning models,
+for instance, reject sampling controls outright, so datafast never forwards one.
+`claude-sonnet-5` and the Claude 5.5 models are the same: they accept no temperature
+but their default, reasoning or not, so datafast drops a caller-set one. On `claude-haiku-4-5` the
+restriction applies only while thinking is on.
 
 ```python
-openai_llm = OpenAIProvider(api_key="your-api-key")
-openrouter_llm = OpenRouterProvider(api_key="your-openrouter-key")
+model = openai("gpt-4o-mini", temperature=0.7, top_p=0.85, frequency_penalty=0.2)
 ```
 
-**Note**: Ollama typically runs locally and doesn't require an API key. You can set `OLLAMA_API_BASE` to specify a custom endpoint (defaults to `http://localhost:11434`).
-
-!!! warning
-    Note that `gpt-oss:20b` or `gpt-oss:120b` do not work well with structured output. Therefore we recommend you not to use them with datafast.
-
-## About OpenRouter
-
-[OpenRouter](https://openrouter.ai/) provides access to a wide variety of LLM models through a single API key. Model IDs follow the format `provider/model-name` (e.g., `deepseek/deepseek-r1-0528`, `qwen/qwen3-next-80b-a3b-instruct`). Visit [OpenRouter's models page](https://openrouter.ai/models) for the complete list.
-
-## Generation Methods
-
-### Simple Text Generation
+**Ollama does not take `frequency_penalty`.** It speaks its own API, where the
+repetition control is `repeat_penalty` — a multiplier neutral at `1.0`, and
+values *below* 1.0 reward repetition. LiteLLM renames `frequency_penalty` onto it
+without rescaling, so an OpenAI-style `0.15` would arrive as strong repetition
+encouragement and degenerate the output. Datafast therefore drops
+`frequency_penalty` on Ollama and asks for `repeat_penalty` on its own scale,
+which passes through as a provider parameter:
 
 ```python
-# Using a text prompt
-response = openai_llm.generate(prompt="What is the capital of France?")
+model = ollama("gemma4:12b", top_p=0.85, repeat_penalty=1.2)
 ```
 
-### Using Message Format
+This is specific to Ollama. Self-hosted vLLM and llama.cpp servers are reached
+over the OpenAI wire format through `openai_compatible`, where
+`frequency_penalty` keeps its usual meaning.
+
+## Environment Variables
+
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GEMINI_API_KEY`
+- `MISTRAL_API_KEY`
+- `OPENROUTER_API_KEY`
+- `OLLAMA_API_BASE`
+- `DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO`
+
+Ollama typically does not require an API key and instead uses the local API base.
+
+`DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO` defaults to enabled. Datafast sets
+LiteLLM's `suppress_debug_info` flag when a served model is created so example runs do
+not print LiteLLM provider help text such as the OpenRouter provider list banner.
+Set `DATAFAST_LITELLM_SUPPRESS_DEBUG_INFO=0` if you want LiteLLM's debug/help
+output back while troubleshooting.
+
+## Optional Langfuse Tracing
+
+Install the optional extra:
+
+```bash
+pip install "datafast[langfuse]"
+```
+
+Add the standard Langfuse variables to `.env`:
+
+```env
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+```
+
+Datafast loads `.env` when a served model is created, and if the Langfuse keys are present it registers LiteLLM's native `langfuse` callback automatically.
+
+If you want an explicit startup hook instead of auto-detection:
 
 ```python
-messages = [
-    {"role": "system", "content": "You are a helpful assistant that provides brief answers."},
-    {"role": "user", "content": "What is the capital of France?"}
-]
+from datafast import configure_langfuse_tracing
 
-response = openai_llm.generate(messages=messages)
+configure_langfuse_tracing()
 ```
-
-### Structured Output with Pydantic
-
-Define a Pydantic model for structured output:
-
-```python
-from pydantic import BaseModel, Field
-
-class SimpleResponse(BaseModel):
-    reasoning: str = Field(description="The reasoning behind the answer")
-    answer: str = Field(description="The answer to the question")
-
-# Generate structured response
-response = openai_llm.generate(
-    prompt="What is the capital of France? Provide an answer and reasoning.",
-    response_format=SimpleResponse
-)
-
-# Access structured data
-print(response.reasoning)  # "The capital of France is Paris because..."
-print(response.answer)     # "Paris"
-```
-
-Using structured output is what enables us to create reliable dataset creation pipelines.
-
-## Error Handling
-
-The `generate` method can raise:
-
-- `ValueError`: If neither prompt nor messages is provided, or if both are provided
-- `RuntimeError`: If there's an error during generation

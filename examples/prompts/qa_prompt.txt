@@ -1,0 +1,5 @@
+Based on this context, generate a question and its answer.
+
+Context: {text}
+
+Respond with a clear, educational question and a concise, accurate answer.

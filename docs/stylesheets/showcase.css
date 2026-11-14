@@ -1,0 +1,61 @@
+/* The cookbooks grid on the Cookbook index: two across, one across on a phone.
+   Builds on the theme's own `grid cards`, which draws the border and the radius. */
+
+.md-typeset .grid.cards.showcase {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .grid.cards.showcase {
+    grid-template-columns: 1fr;
+  }
+}
+
+.md-typeset .grid.cards.showcase > ul > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.1rem;
+  transition: border-color 125ms, transform 125ms;
+}
+
+.md-typeset .grid.cards.showcase > ul > li > p {
+  margin: 0;
+}
+
+/* Title: plain text colour, no underline. */
+.md-typeset .grid.cards.showcase > ul > li > p:first-child {
+  font-size: 0.9rem;
+  line-height: 1.3;
+  margin-bottom: 0.4rem;
+}
+
+.md-typeset .grid.cards.showcase > ul > li > p:first-child a {
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+}
+
+/* Stretch the title link over the whole card so the card is one click target. */
+.md-typeset .grid.cards.showcase > ul > li > p:first-child a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* Last line: the script number, muted, at the bottom edge. */
+.md-typeset .grid.cards.showcase > ul > li > p:last-child {
+  margin-top: auto;
+  padding-top: 0.8rem;
+  font-size: 0.65rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .grid.cards.showcase > ul > li:hover {
+  border-color: var(--md-accent-fg-color);
+  transform: translateY(-1px);
+}
+
+.md-typeset .grid.cards.showcase > ul > li:hover > p:first-child a {
+  color: var(--md-accent-fg-color);
+}

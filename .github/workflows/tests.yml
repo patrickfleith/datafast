@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:  # publish.yml runs this before it releases
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The ends of the range pyproject.toml claims to support.
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      # `docs` too: the theme tests importorskip on zensical, so without it they
+      # skip silently and CI looks greener than it is.
+      - run: pip install -e ".[dev,docs]"
+
+      # `not live` deselects the tests that call a real provider, so this job
+      # needs no API key.
+      - run: pytest -m "not live"
+
+      - run: ruff check .

@@ -4,49 +4,82 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datafast"
-version = "0.0.36"
-description = "A Python package for synthetic text dataset generation"
+version = "1.0.0"
+description = "Pipeline-first synthetic data generation for Python"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
   { name = "Patrick Fleith" }
 ]
-keywords = ["dataset", "text", "generation"]
+keywords = ["synthetic-data", "pipeline", "llm", "generation"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
+# Every runtime dependency below is imported at module scope by the package.
+# LiteLLM is the only LLM path: provider SDKs (anthropic, google-generativeai,
+# openai) are not imported here — LiteLLM reaches those providers over its own
+# HTTP transport. Optional file formats and Hub I/O live in the extras.
 dependencies = [
-    "datasets>=3.0",
-    "instructor",
-    "google-generativeai",
-    "python-dotenv",
-    "anthropic",
-    "openai",
-    "pydantic",
-    "litellm==1.82.6",  # Pin to safe version - DO NOT UPDATE - versions 1.82.7 and 1.82.8 compromised with malware
-    "gradio",
+    # Floor, not a pin: litellm 1.82.7 and 1.82.8 were published with malware,
+    # so 1.83 is the oldest release that is known good. Do not lower it. The
+    # upper bound is there because the provider adapters track litellm's API
+    # closely enough that a 2.0 could break them on a fresh install. 1.108.3 is
+    # the oldest release that works with the Claude 5.5 models: 1.83 rejects
+    # reasoning_effort for them and builds structured output on a forced tool
+    # call, which they refuse. 1.108.4 is the floor because 1.106.0 to 1.108.3
+    # fail every OpenAI Responses API call without the mcp package (litellm
+    # issue 46045).
+    "litellm>=1.108.4,<2",
     "loguru",
+    "pydantic",
+    "httpx",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]
+# Parquet I/O: `Source.parquet(...)` and `ParquetSink`.
+parquet = [
+    "pyarrow>=15.0",
+]
+# HuggingFace Hub I/O: `HuggingFaceSource` and `HubSink`.
+hub = [
+    "datasets>=3.0",
+    "huggingface-hub>=0.25",
+]
+all = [
+    "datafast[parquet,hub]",
+]
 dev = [
+    "datafast[parquet,hub]",
     "pytest>=6.0",
     "ruff>=0.9.0",
+]
+docs = [
+    # Zensical replaces mkdocs + mkdocs-material, which goes end-of-life on
+    # 2026-11-05. Same maintainers, reads mkdocs.yml natively, renders the same
+    # Material theme, and supports the mkdocstrings plugin directly.
+    "zensical>=0.1.1",
+    "pymdown-extensions>=10.0.0",
+    # docs/api.md is `:::` directives only — without this it renders as raw text.
+    "mkdocstrings[python]>=0.26",
+]
+langfuse = [
+    "langfuse",
 ]
 
 [tool.setuptools.packages.find]
 include = ["datafast*"]
 
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "-ra -q"
+# PEP 561: without this marker in the wheel, a type checker ignores every
+# annotation in the package.
+[tool.setuptools.package-data]
+datafast = ["py.typed"]
 
 [tool.ruff]
 # Basic Ruff configuration
@@ -54,11 +87,15 @@ exclude = ["venv", ".venv", "build", "dist", "__pycache__"]
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "C", "W"]
+# C4 (comprehensions), not the whole C family: C90 is mccabe complexity, and ten
+# functions in the runner, the branch merge, the filter operators and the samplers
+# sit above any threshold worth setting. Splitting them is a refactor with its own
+# review, not a lint rule.
+select = ["E", "F", "C4", "W"]
 ignore = ["E501"]
 
 
 [project.urls]
-"Documentation" = "https://github.com/patrickfleith/datafast"
+"Documentation" = "https://patrickfleith.github.io/datafast/"
 "Issue Tracker" = "https://github.com/patrickfleith/datafast/issues"
 "Discussions" = "https://github.com/patrickfleith/datafast/discussions"

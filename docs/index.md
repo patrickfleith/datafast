@@ -1,164 +1,74 @@
-# Welcome to Datafast
+---
+hide:
+  - navigation
+---
 
-Create high-quality and diverse synthetic text datasets in minutes, not weeks.
+# Datafast
+Generate high-quality and diverse synthetic data with LLMs.
 
-## Intended use cases
+In datafast, you assemble building blocks of data operations that would otherwise be done manually. It is designed to be flexible and modular, and you get a custom pipeline that generates a dataset matching your project needs. It works with open-weights and proprietary models.
+
+### Intended Use Cases
+
 - Get initial evaluation text data instead of starting your LLM project blind.
 - Increase diversity and coverage of another dataset by generating additional data.
-- Experiment and test quickly LLM-based application PoCs
-- Make your own datasets to fine-tune and evaluate language models for your application.
+- Experiment and test quickly LLM-based applications, and before shipping to production.
+- Make your own datasets to fine-tune and evaluate LLMs and agents.
+- Model distillation
 
-🌟 Star this repo if you find this useful! 
+🌟 Star this repo if you find this useful!
 
-## Supported Dataset Types
+### Example Pipeline
 
-- ✅ Text Classification Dataset
-- ✅ Raw Text Generation Dataset
-- ✅ Instruction Dataset (Ultrachat-like)
-- ✅ Multiple Choice Question (MCQ) Dataset
-- ✅ Preference Dataset
-- ✅ Generic Pipeline Dataset
-- ⏳ more to come...
+The simple pipeline below combines seeds topics and difficulty levels to generate questions and answers, written to a JSONL file.
 
-## Supported LLM Providers
-
-Currently we support the following LLM providers:
-
-- ✔︎ OpenAI
-- ✔︎ Anthropic
-- ✔︎ Google Gemini
-- ✔︎ Ollama (your local LLM server)
-- ✔︎ OpenRouter (almost any LLM including open-source models)
-- ⏳ more to come...
-
-## Quick Start
-
-### 1. Environment Setup
-
-Make sure you have created a `.env` file with your API keys.
-HF token is needed if you want to push the dataset to your HF hub.
-Other keys depends on which LLM providers you use.
-```
-GEMINI_API_KEY=XXXX
-OPENAI_API_KEY=sk-XXXX
-ANTHROPIC_API_KEY=sk-ant-XXXXX
-OPENROUTER_API_KEY=XXXXX
-HF_TOKEN=hf_XXXXX
-```
-
-### 2. Import Dependencies
 ```python
-from datafast.datasets import ClassificationDataset
-from datafast.schema.config import ClassificationDatasetConfig, PromptExpansionConfig
-from datafast.llms import OpenAIProvider, AnthropicProvider, GeminiProvider, OpenRouterProvider
-from datafast.logger_config import configure_logger
-from dotenv import load_dotenv
+from datafast import LLMStep, Seed, Sink, openai
 
-# Load environment variables
-load_dotenv() # <--- your API keys
-
-# Configure logger for visibility into generation process
-configure_logger() # <--- see progress, warnings, and success messages
-```
-
-### 3. Configure Dataset
-```python
-# Configure the dataset for text classification
-config = ClassificationDatasetConfig(
-    classes=[
-        {"name": "positive", "description": "Text expressing positive emotions or approval"},
-        {"name": "negative", "description": "Text expressing negative emotions or criticism"}
-    ],
-    num_samples_per_prompt=5,
-    output_file="outdoor_activities_sentiments.jsonl",
-    languages={
-        "en": "English", 
-        "fr": "French"
-    },
-    prompts=[
-        (
-            "Generate {num_samples} reviews in {language_name} which are diverse "
-            "and representative of a '{label_name}' sentiment class. "
-            "{label_description}. The reviews should be {{style}} and in the "
-            "context of {{context}}."
-        )
-    ],
-    expansion=PromptExpansionConfig(
-        placeholders={
-            "context": ["hike review", "speedboat tour review", "outdoor climbing experience"],
-            "style": ["brief", "detailed"]
-        },
-        combinatorial=True
+pipeline = (
+    # Create two columns combining topic x level (the 'seeds')
+    Seed.product(
+        Seed.values("topic", ["photosynthesis", "plate tectonics", "virus"]),
+        Seed.values("level", ["beginner", "advanced"]),
     )
+    # Use seeds in LLM prompt to generate structured outputs of Q&As.
+    >> LLMStep(
+        prompt="Write one {level} exam question about {topic}, with its answer. "
+               "Return JSON with fields question and answer.",
+        input_columns=["topic", "level"],
+        output_columns=["question", "answer"],
+        parse_mode="json",
+        model=openai(),
+    )
+    # Save locally to a file
+    >> Sink.jsonl("questions.jsonl")
 )
+
+# Run the pipeline
+pipeline.run()
 ```
 
-### 4. Setup LLM Providers
-```python
-# Create LLM providers
-providers = [
-    OpenAIProvider(model_id="gpt-5-mini-2025-08-07"),
-    AnthropicProvider(model_id="claude-haiku-4-5-20251001"),
-    GeminiProvider(model_id="gemini-2.0-flash"),
-    OpenRouterProvider(model_id="z-ai/glm-4.6")
-]
-```
+## Why pipelines
 
-### 5. Generate and Push Dataset
-```python
-# Generate dataset and local save
-dataset = ClassificationDataset(config)
-dataset.generate(providers)
+AI projects all need something special in their datasets. Whether this is for training, fine tuning, evaluation, or just to test the application coverage in realistic conditions. So we need something highly flexible and modular: Like assembling LEGOs, datafast provides building blocks so you can build your synthetic data pipeline that matches your needs.
 
-# Optional: Push to Hugging Face Hub
-dataset.push_to_hub(
-    repo_id="YOUR_USERNAME/YOUR_DATASET_NAME",
-    train_size=0.6
-)
-```
+## Where to start?
 
-## Next Steps
+- Follow the [Quickstart](quickstart.md) - from install to your first dataset.
+- Read [Key Concepts](concepts.md) for the execution model.
+- Read [Source](reference/source.md), [Seed](reference/seed.md) and [Data
+  ops](reference/data_ops.md) for sources, transforms and sinks.
+- Read [LLM step](reference/llm_step.md) for generation and evaluation steps.
+- Read [Pipelines & execution](guides/pipelines_and_execution.md) for resume and
+  execution controls.
+- Read [Served models](llms.md) for provider configuration, reasoning and multimodal
+  input.
+- Browse the [Cookbook](cookbook/index.md) for complete recipes, and the
+  [example datasets](cookbook/index.md#example-datasets) that the example scripts make.
+- Look up anything in the [API reference](api.md).
 
-Check out our comprehensive guides for different dataset types:
+### Coming soon
 
-- [Text Classification](guides/generating_text_classification_datasets.md) - Generate labeled datasets for text classification tasks
-- [Text Generation](guides/generating_text_datasets.md) - Create datasets for general text generation tasks
-- [Multiple Choice Questions](guides/generating_mcq_datasets.md) - Build datasets with multiple choice questions and answers
-- [Instruction Following](guides/generating_ultrachat_datasets.md) - Develop instruction-following conversation datasets
-- [Preference Pairs](guides/generating_preference_datasets.md) - Generate datasets for preference-based learning
-- [Generic Pipeline](guides/generating_generic_pipeline_datasets.md) - Build custom input-output LLM synthetic data generation pipelines
-
-To understand the core concepts behind Datafast, visit our [Concepts](concepts.md) page.
-
-Star this package to send positive vibes and support 🌟
-
-## Key Features
-
-* **Easy-to-use** and simple interface 🚀
-* **Multi-lingual** datasets generation 🌍
-* **Multiple LLMs** used to boost dataset diversity 🤖
-* **Flexible prompt**: use our default prompts or provide your own custom prompts 📝
-* **Prompt expansion**: Combinatorial variation of prompts to maximize diversity 🔄
-* **Built-in logging**: Comprehensive logging with progress tracking, rate limiting warnings, and success messages 📊
-* **Hugging Face Integration**: Push generated datasets to the Hub 🤗
-
-!!! warning
-    This library is in its early stages of development and might change significantly.
-
-## Roadmap
-
-- RAG datasets
-- Integrate personas
-- Integrate seeds
-- More types of instructions datasets (not just ultrachat)
-- More LLM providers
-- Deduplication, filtering
-- Dataset cards generation
-
-## License
-
-[Apache 2.0](LICENSE)
-
-## Creator
-
-Made with ❤️ by [Patrick Fleith](https://www.linkedin.com/in/patrick-fleith/).
+- An `llms.txt` so you can ask questions about of docs to your favorite AI.
+- A `datafast` SKILL so your coding agent can build the pipeline the right way under your supervision.
+- Integration with llama.cpp, vLLM

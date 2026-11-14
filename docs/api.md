@@ -1,22 +1,86 @@
 # API Reference
 
-🚧 **Under Construction** 🚧
+Generated from the source docstrings, so it cannot drift from the code.
 
-This API reference documentation is currently being developed.
+The recommended import surface is the top-level `datafast` package:
 
-## Available Resources
+```python
+from datafast import Source, LLMStep, Sink, openrouter
+```
 
-While waiting for the complete API documentation, please refer to these resources:
+Everything on this page is exported from `datafast` directly. The served-model
+internals (capability profiles, parsers, transport enums) live in `datafast.llm`
+and are documented under [Served models](llms.md).
 
-- [Quick Start Guide](index.md) - Basic usage examples to get started
-- [Core Concepts](concepts.md) - Understanding the underlying architecture and design
-- [Dataset Guides](guides/index.md) - Detailed instructions for each dataset type:
-    - [Text Classification](guides/generating_text_classification_datasets.md)
-    - [Text Generation](guides/generating_text_datasets.md)
-    - [Multiple Choice Questions](guides/generating_mcq_datasets.md)
-    - [Instruction Following](guides/generating_ultrachat_datasets.md)
-    - [Preference Pairs](guides/generating_preference_datasets.md)
-- [Prompt Expansion](guides/prompt_expansion.md) - Learn how to maximize dataset diversity
-- [LLM Providers](llms.md) - Details on supported providers and configuration
+## Core
 
-These resources contain code examples and explanations that should help you use the library effectively while the formal API documentation is being completed.
+::: datafast.Record
+::: datafast.Step
+::: datafast.Pipeline
+::: datafast.Runner
+::: datafast.RunConfig
+::: datafast.LLMExecutionStrategy
+::: datafast.run_pipeline
+::: datafast.CheckpointManager
+::: datafast.PipelineChangedError
+::: datafast.PipelineValidationError
+
+## Sources and seeds
+
+::: datafast.Source
+::: datafast.HuggingFaceSource
+::: datafast.Seed
+::: datafast.SeedDimension
+
+## Data operations
+
+::: datafast.Sample
+::: datafast.AddUUID
+::: datafast.Map
+::: datafast.FlatMap
+::: datafast.Filter
+::: datafast.Group
+::: datafast.Pair
+::: datafast.Concat
+::: datafast.Join
+
+## LLM operations
+
+::: datafast.LLMStep
+::: datafast.Classify
+::: datafast.Score
+::: datafast.Compare
+::: datafast.Rewrite
+::: datafast.Extract
+
+## Branching
+
+::: datafast.Branch
+::: datafast.JoinBranches
+
+## Sinks
+
+::: datafast.Sink
+::: datafast.JSONLSink
+::: datafast.CSVSink
+::: datafast.ParquetSink
+::: datafast.ListSink
+::: datafast.HubSink
+
+## Served models
+
+::: datafast.ServedModel
+::: datafast.openai
+::: datafast.anthropic
+::: datafast.gemini
+::: datafast.mistral
+::: datafast.openrouter
+::: datafast.ollama
+::: datafast.openai_compatible
+
+## Utilities
+
+::: datafast.configure_logger
+::: datafast.configure_langfuse_tracing
+::: datafast.is_langfuse_tracing_enabled
+::: datafast.get_version

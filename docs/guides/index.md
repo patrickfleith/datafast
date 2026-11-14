@@ -1,16 +1,16 @@
-# Datafast Guides
+# How To Guides
 
-Welcome to the Datafast guides section. Here you'll find detailed instructions on how to generate various types of synthetic text datasets.
+Task-shaped pages. Each one takes a job you are trying to do and walks it end to end.
 
-## Available Dataset Types
-
-Datafast supports generating the following types of datasets:
-
-- [Text Classification](generating_text_classification_datasets.md) - Generate labeled datasets for text classification tasks
-- [Text Generation](generating_text_datasets.md) - Create datasets for general text generation tasks
-- [Multiple Choice](generating_mcq_datasets.md) - Build datasets with multiple choice questions and answers
-- [Instruction](generating_ultrachat_datasets.md) - Develop instruction-following datasets
-- [Preference](generating_preference_datasets.md) - Generate datasets for preference-based learning
-- [Generic Pipeline](generating_generic_pipeline_datasets.md) - Build custom input-output LLM synthetic data generation pipelines
-
-Select a guide from the navigation menu to learn more about each dataset type.
+- [Pipelines & execution](pipelines_and_execution.md) — composing steps with `>>`, what
+  `compile()` catches, and every option `run()` takes: checkpointing, resume, batching
+  and call ordering.
+- [Structured output](structured_output.md) — getting named columns out of a model,
+  and the difference between parsing a reply and constraining it.
+- [Multimodal input](multimodal_input.md) — sending images, audio, video and files, and
+  how a served model decides what it accepts.
+- [Calling a served model](calling_a_served_model.md) — using a model directly, without
+  a pipeline.
+- [Error handling & troubleshooting](troubleshooting.md) — what each error means, what
+  survives a crash, and the failures that are silent.
+- [Langfuse tracing](langfuse_tracing.md) — recording every call to Langfuse.

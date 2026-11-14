@@ -1,0 +1,98 @@
+# Tasks
+
+<!-- Newest to do on top. Check off in place; move to Done when complete. -->
+
+## To do
+
+### NEXT
+
+- [x] We want to merge docs/v1-... to main. But to do that before we need to:
+  - [x] **Fix the 20 failing tests** in `tests/test_cookbook_*.py` and `tests/test_examples_index.py`. Their expected strings need to match the simplified-English wording the docs use now. CI has to be green before 1.0.0 can go out.
+  - [x] **Optional: stop the false `deploy` failure.** One way is to drop the `pull_request` trigger from `deploy-docs.yml`. The other is to split it into a build job that runs on PRs and a deploy job that runs only on `main`.
+
+
+### POST-MERGE
+- Fix the 30 older test failures, so `main` doesn't take them on.
+- Merge the security branch into the docs branch. You set it aside for now, but it matters here because it changes how releases are built and handles the release credentials. That needs to be in place before the first publish from this code.
+- Open a PR from the docs branch to `main`, resolve the `litellm` line, and read `publish.yml` before you merge.
+- [ ] Create a skill that teaches a coding agent to use datafast <!-- promised under 'Coming soon' on the docs home page -->
+- [ ] Make security updates
+- [ ] Check every link across the whole documentation resolves, and update the stale ones <!-- right before launch -->
+- [ ] <task> <!-- optional (context) -->
+
+## Documentation improvements
+
+## Conventions for documentation pages
+
+Kept from the v1 launch, because every future page follows them.
+
+- Copy `docs/reference/source.md` for a page and `tests/test_reference_source.py` for its test.
+- Plain short sentences and simple words. Use the glossary's terms and never one it lists under *Avoid*.
+- Assert code → docs first: every parameter `inspect.signature` reports must appear on the page in backticks.
+- Then execute every self-contained example, prove each behavioural claim with a real call, and resolve every relative link.
+- No test may pass vacuously — assert the introspection found something before asserting what it found.
+- Never make a live LLM call. Stub the provider factory on the `datafast` module itself, not inside an `exec` namespace.
+- Ground every claim in the source. Where the code disagrees with its docstring, document the code and log the mismatch in `CONCERNS.md`.
+
+## Done
+
+- [X] Get the new local environment variables
+- [X] Raise the `litellm` floor to 1.108.4 on `chore/model-refresh` (`fda0cc1`)
+- [X] Fix the `checkpoint_every` wording in the troubleshooting and pipelines guides:
+      both now say resume needs the first progress file and is exact after it; a new
+      test pins the exact half
+- [X] Add an example datasets showcase: a 2x4 grid of square cards on the Cookbook
+      index, linked from the home page; 24 tests resolve every square's page, anchor and
+      script, and require a square for every new cookbook walkthrough
+- [X] Rename 'Concepts' to 'Key Concepts' and widen it: 548 lines covering all 29
+      glossary terms, with new sections on capabilities, parse mode, branching and
+      execution strategy; 76 tests. Found that a crash before an LLM step's first
+      progress save still re-runs the whole step, now in CONCERNS
+- [X] Polish the Quickstart: plain wording, and a tested claim that the script makes
+      six calls
+- [X] Move the Glossary under Reference as 'Full Glossary': nav and page title only, so
+      the URL and the 28 inbound links keep working; their link text now matches
+- [X] Polish 'What's in v1': plain wording, and the resume rough edge added
+- [X] Reorganize Concepts pedagogically — nine concept sections in the intended
+      order, five of them new; 28 tests, and the section order itself is now pinned
+- [X] Retitle the guides index to 'How To Guides' — the page's `# ` heading and browser
+      title only; the tab, sidebar and section label still read 'Guides'
+- [X] Split the sources & seed reference into a Source page and a Seed page — two nav
+      entries, two test files, and 17 inbound references rewritten
+- [X] Retire `SOFTWARE_DESCRIPTION.md` — deleted after verifying every section is covered elsewhere
+- [X] Ship `py.typed` — plus the package-data entry, verified inside a built wheel, with 74 tests guarding the annotations it exposes
+- [X] Nav restructure — nine finished pages had been unreachable; three superseded guides deleted and their 31 inbound links rewritten
+- [X] "What's in v1" release notes — 146 lines, 23 tests; the rough edges are user-facing, with no code detail
+- [X] Contributing & development guide — 286 lines, 109 tests; every command on the page is executed, and six repository concerns were logged
+- [X] Dark mode for the docs site — a two-entry palette with a toggle, 19 tests, and no CSS written
+- [X] Examples index — 137 lines, 57 tests; every script has a row, and a test pins which scripts need no API key
+- [X] New cookbook: preference data with scoring — 322 lines, 35 tests; documents two measured traps in the recipe that hits them
+- [X] Deepen the space text generation cookbook — 378 lines, 40 tests; tables the opt-in Hub push trade-off rather than hiding it
+- [X] Deepen the persona generation cookbook — 388 lines, 42 tests; the old page had drifted from its script in three places
+- [X] Deepen the text classification cookbook — 349 lines, 39 tests, every number measured against a real stubbed run
+- [X] Error handling & troubleshooting guide — 320 lines, 58 tests; measured the batch-group loss and resume duplication now in CONCERNS
+- [X] Calling a served model directly — 211 lines, 45 tests; measured the endpoint asymmetry, the error contract and what retries cover
+- [X] Multimodal input guide — 221 lines, 64 tests; found that an unknown content-part type is silently treated as text
+- [X] Structured output guide — 226 lines, 41 tests; found that no step passes `response_format`, so provider-side schemas need a direct call
+- [X] Pipeline & execution guide — 322 lines, 51 tests; measured that the checkpoint fingerprint covers only step names and classes
+- [X] Fix the persona cookbook's chained sinks — resolved as DEC-005: a pipeline may end in several sinks
+- [X] Review the documentation and identify missing blocks before v1 — became the roadmap's documentation section and found six non-doc blockers
+- [X] Manually test all Gemini example scripts
+- [X] Retire the unused pytest markers — dropped `integration`, `slow`, `vllm` and `llamacpp`; the rest are carried by real tests
+- [X] Retire the last legacy `integration` suite — openrouter's live suite already covered everything except model-quality cases
+- [X] Give OpenRouter a live suite — 13 tests pinning one endpoint per request, since one model id spans 19 that disagree
+- [X] Retire the anthropic, openai and mistral legacy `integration` suites — 1200 lines deleted, 8 live tests ported first
+- [X] Retire gemini's half of the legacy `integration` layer — ported three shapes the live suite lacked, dropped the model-quality cases
+- [X] Give Gemini a live suite — 14 tests across two models, because the reasoning floor is per-model
+- [X] Give `top_p` and `frequency_penalty` real config fields — both were declared by profiles but slipped through unchecked
+- [X] Decide what `frequency_penalty` means on a local backend — only ollama is affected; it takes `repeat_penalty` on its own scale
+- [X] Expose reasoning summaries — a real `reasoning_summary` config field rather than documenting a `provider_params` workaround
+- [X] Add a live pipeline smoke test — source to sink over four providers, each self-skipping on its existing guard
+- [X] Give Ollama a live suite, a capability probe and a current default — the probe reads the daemon, since the pulled model is machine-local
+- [X] Retire ollama's half of the legacy `integration` layer — ported sampling params, batched message lists and nested schema
+- [X] Make `Modality.FILE` state which carrier a served model accepts, and give Mistral an explicit file upload path
+- [X] Narrow the roadmap's file/document input item to what is actually left
+- [X] Make file content parts symmetric with image parts
+- [X] Make sure the roadmap clearly outlines the release of the new version of datafast
+- [X] Make a roadmap
+- [X] Try out the OpenAI, Mistral, Anthropic and Ollama example scripts

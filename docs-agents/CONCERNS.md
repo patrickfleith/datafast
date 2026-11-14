@@ -1,0 +1,168 @@
+# Concerns
+
+Risks and defects to investigate. Found while writing the v1 reference pages
+(2026-08-18): twelve pages were written by reading the source and proving each claim
+with a test, which surfaced behaviour the docstrings describe wrongly or not at all.
+The pages document what the code does today. What has since been fixed is listed at the
+bottom rather than deleted.
+
+## Defects
+
+- **A branch path that rewrites an existing column loses the change.** `JoinBranches`
+  copies pre-branch columns unsuffixed from the first path that produced a record and
+  suffixes only *new* columns, so if two paths both rewrite `text`, the second is
+  discarded silently.
+
+- **`JoinBranches(how="outer")` does not fill with `None`** as its docstring promises —
+  `_merge_group` skips a `None` record, so the missing path contributes no keys at all.
+
+- **A crash before an LLM step's first progress save still recovers nothing.** The
+  2026-08-19 fix below writes each call id right after its record, but
+  `load_llm_progress` returns nothing unless the progress file exists, and the runner
+  first writes that file after `checkpoint_every` calls. Measured with a stub model on a
+  200-call step (2026-11-08): a crash at call 160 resumes with 40 calls, a crash at call
+  60 re-runs all 200. Writing the progress file when the step starts would close it.
+  Key Concepts, the pipelines guide and the troubleshooting guide document the measured
+  behaviour, pinned by `tests/test_concepts_page.py` and
+  `tests/test_guide_troubleshooting.py`.
+
+## Risks
+
+- **Resume can attach LLM results to the wrong records.** `_step_signature` renders a
+  branch path by its step *class* names, so changing the lambda inside a `Map` inside a
+  path leaves the checkpoint fingerprint unchanged and nothing warns. Call ids are
+  positional, so a non-deterministic path step silently misaligns completed results on
+  resume. This is the mechanism behind the determinism rule, and it currently depends
+  entirely on the user obeying it.
+
+- **Three providers have no model-name fallback.** OpenAI, Mistral and Ollama match
+  uncatalogued models by name; Anthropic, Gemini and OpenRouter fall straight through to
+  one provider default. For a reasoning model that default's "off" is either omission or
+  nothing at all — exactly the silent reasoning-and-billing bug already fixed twice
+  (gemini-3, sonnet-5). Any future reasoning model on those three reintroduces it until
+  someone adds a catalog entry.
+
+- **Ragged records fail asymmetrically.** A later record with an extra column makes
+  `CSVSink` raise and `ParquetSink` silently drop the column. Same input, one loud
+  failure and one quiet data loss.
+
+- **`Score` turns every bad answer into a confident number.** `_parse_llm_result` clamps
+  to the range and falls back to its bottom, so on `score_range=(1, 10)`: `99` is stored as
+  `10`, `"high"` as `1`, and a reply with no `score` key at all as `1`. Only a reply that is
+  not JSON is treated as a failure. A model that ignored the instruction lands in the
+  dataset as a perfect or a worst score, which then drives any downstream filter — cookbook
+  42 filters on the margin between two of them. The clamp also mixes types in one column:
+  an in-range answer is stored as a float (`7.0`) and a clamped one as the range bound
+  itself (`10`, an int), because `max`/`min` return whichever operand won.
+
+- **No step ever uses provider-side structured output.** `response_format` appears
+  nowhere in `datafast/transforms/`: `LLMStep` appends JSON instructions to the prompt
+  and parses the reply, and the specialized steps `json.loads` a reply they asked for in
+  prose. Every shipped provider except an unprofiled `openai_compatible()` server
+  declares `json_schema`, so a pipeline asks a model to please return JSON when the
+  provider could have guaranteed it. Combined with `on_parse_error="skip"` being the
+  default, a model that strays costs a dropped record and a wasted call. Wiring
+  `output_columns` into a generated Pydantic model would close it — `JSONParser` already
+  builds one in `_create_response_model`, and nothing calls that method.
+
+- **A typo in a content part's `type` is silently forwarded as text.**
+  `_normalize_content_part` returns an unrecognised part untouched and
+  `_modality_for_part` reports `Modality.TEXT` for it, so `type="imgae"` passes the
+  modality gate on a text-only served model and reaches the provider unnormalized. Every
+  other malformed part raises locally with a useful message; this one comes back as an
+  opaque provider error. A closed set of part types would be a one-line fix.
+
+- **The default OpenAI served model warns on every batch.** `openai()` resolves to a
+  reasoning model on the Responses endpoint, where `batch_mode` is
+  `FALLBACK_CONCURRENCY`, so any multi-input call raises the "does not expose native
+  batching" `UserWarning`. It is accurate, but it fires on the out-of-the-box
+  configuration doing something ordinary, which trains users to ignore the warning that
+  matters — the `prompted_json` one on the same channel. Worth demoting to a log line, or
+  emitting once per served model.
+
+- **`SeedDimension` is public, constructible and undocumented.** It is in
+  `datafast.__all__`, and cookbook script 45 builds one directly to keep `label` and
+  `label_description` in a single dimension. `seed.md` names it only as a type
+  in two parameter tables, so the reference page has no way to build a dimension of more
+  than two columns — `Seed.expand` is parent/child only. Either document the constructor or
+  give `Seed` a factory for the n-column case.
+
+- **A partial JSON reply is a silent success.** `JSONParser.parse` fills any
+  `output_columns` entry the reply omits with `""`, logs a warning and returns normally, so
+  it is not a parse error and `on_parse_error` never sees it. A row whose whole value is
+  the generated text (cookbook 44's `text`) lands in the dataset empty, having cost a call
+  and looking like a row. Measured: a reply of `{"title": "T"}` against
+  `output_columns=["title", "text"]` yields one record with `text == ""`, even with
+  `on_parse_error="raise"`. Either count a missing column as a parse failure or let the
+  step declare which columns are required.
+
+- **`num_outputs > 1` leaves no marker on the extra records.** `_build_output_record`
+  stamps `_model`, `_language` and `_prompt_index`, but nothing for the output index, so
+  *n* records generated from one prompt/model/language combination are distinguishable
+  only by their generated text. Nothing can group siblings, and a deduplication step
+  cannot tell an intended repeat from an accidental one. `_prompt_index` shows the shape
+  the fix would take.
+
+- **`fn` mode is inconsistent.** In `Classify`, `Score` and `Compare` it ignores
+  `forward_columns` / `exclude_columns` and adds no `_model`; in `Extract` those
+  arguments work. Undiscoverable from the docstrings.
+
+Found while writing `docs/contributing.md` (2026-08-19) — these are about the repository
+rather than the library, and every one of them costs a new contributor time.
+
+- **`theme.palette.primary: black` has no effect.** Zensical ships a `classic` and a
+  `modern` build of the Material stylesheets and the site loads `modern`, which defines
+  `--md-primary-fg-color` for nineteen colours — `black` and `white` are not among them,
+  though `classic` defines both. So the header renders in the theme's default indigo
+  (`#4051b5`), not black, and has done since before dark mode. Pick a colour `modern`
+  supports (`grey`, `blue-grey`) or drop the line. Links are unaffected: the dark scheme
+  keys its `--md-typeset-a-color` override on the *attribute*, which is still `black`.
+  Pinned by `test_the_configured_primary_is_ignored_by_this_stylesheet`.
+
+## Fixed
+
+Cleared on 2026-08-18, each with a test that fails if the behaviour comes back.
+
+- `Sample(n=0, strategy="last")` returned every record.
+- `ListSink.records` accumulated across runs.
+- `HubSink` re-prepended its README front-matter on every push.
+- `stop_after` ignored a name that matched no step.
+- `PipelineValidationError` was not exported from the top-level package.
+- `SeedDimension.values` was annotated with the builtin `any`.
+- `Concat`'s docstring contradicted its code.
+- Cookbook script 43's `take_first_100` step took ten records; renamed `take_first_10`.
+- No CI workflow ran the test suite, so a broken merge was released (2026-08-19).
+- One failing LLM call abandoned its whole batch group; the group is now retried one
+  call at a time, so only the failing call is lost (2026-08-19).
+- Resume duplicated the records finished since the last progress save; each call id is
+  now written immediately after its record (2026-08-19).
+- `on_parse_error="raise"` was ignored under `run()`; it now stops the run, as it always
+  did under `process()` (2026-08-19).
+- A crash before the first progress save recovered nothing; `checkpoint_every` no longer
+  affects what resume knows (2026-08-19).
+- `LLMStep(temperature=..., max_tokens=...)` did nothing. Both parameters are gone, since
+  temperature is resolved from the served model's config through the capability gate and a
+  per-step override would be a feature, not a fix (2026-08-20).
+- A mistyped prompt file path became the prompt and was sent to the model. A missing file
+  now raises `FileNotFoundError` before the first call, for any `Path` and for a string
+  that reads as a path to a prompt file (2026-08-20).
+- `Filter`'s `$or` / `$and` returned early and dropped sibling keys. Every key in a
+  `where` dict now has to hold, so a logical operator narrows its siblings rather than
+  replacing them (2026-08-20).
+- `Pair(strategy="random")` with no `max_pairs` yielded 100,000 tuples per group. The cap
+  is now required for that strategy — and so for a bare `Pair()`, since random is the
+  default — raising `ValueError` when the step is built (2026-08-20).
+- The dead `[tool.pytest.ini_options]` block is gone from `pyproject.toml`, so pytest no
+  longer warns on every run. `minversion` moved to `pytest.ini`; `addopts = "-ra -q"` was
+  dropped rather than adopted, since nobody had been getting it (2026-08-20).
+- `ruff check .` passes and CI gates on it. The lint selection is now `E`, `F`, `C4`, `W`:
+  `C90` complexity was dropped on purpose, since ten core functions sit above any
+  threshold worth setting and splitting them is a refactor, not a lint fix. `ruff format`
+  is still not adopted — it would rewrite 110 of 221 files (2026-08-20).
+- The live gate reads `item.get_closest_marker("live")` instead of `item.keywords`, so a
+  mocked test parametrized with the string "live" is no longer skipped (2026-08-20).
+- `test_qa_pipeline.py` is deleted. It was a scratch script duplicating
+  `examples/scripts/38_pipeline_qa_generation.py`, which does the same pipeline properly
+  (2026-08-20).
+- The `uv.lock` finding was wrong: the file is gitignored, so no clone has one and
+  nothing ships it. The contributing page's warning about it is gone (2026-08-19).

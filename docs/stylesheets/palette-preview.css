@@ -1,0 +1,31 @@
+/* TEMPORARY palette preview: black, white, light grey, yellow. Set here rather than
+   in mkdocs.yml because Zensical's `modern` stylesheet has no `black` primary.
+   To revert: drop `extra_css` from mkdocs.yml and delete this file. */
+
+:root {
+  --md-primary-fg-color: #101010;
+  --md-footer-bg-color: #101010;
+  --md-code-bg-color: #f3f3f4;
+  /* The accent yellow is 2.5:1 on white — unreadable as text. This is 10.8:1. */
+  --md-typeset-a-color: #4d3b00;
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary] {
+  --md-primary-fg-color: #000000;
+  --md-footer-bg-color: #000000;
+  --md-default-bg-color: #121212;
+  --md-default-fg-color: #ffffff;
+  --md-code-bg-color: #1b1b1b;
+  /* On near-black the full accent yellow reads at 13:1. The doubled selector
+     above matches the theme's own slate link rule, which outranks a bare one. */
+  --md-typeset-a-color: var(--md-accent-fg-color);
+}
+
+.md-typeset a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.md-typeset a:hover {
+  background-color: var(--md-accent-fg-color--transparent);
+}
