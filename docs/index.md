@@ -6,7 +6,15 @@ hide:
 # Datafast
 Generate high-quality and diverse synthetic data with LLMs.
 
-In datafast, you assemble building blocks of data operations that would otherwise be done manually. It is designed to be flexible and modular, and you get a custom pipeline that generates a dataset matching your project needs. It works with open-weights and proprietary models.
+Datafast is a Python library for generating synthetic datasets with LLMs.
+
+You assemble building blocks for data operations into a custom pipeline that generates
+a synthetic dataset matching your project's needs. It works with open-weight and
+proprietary models.
+
+Start with seeds or the dimensions your dataset must cover. Connect LLMs and data
+processing steps for filtering, transformations, and annotations, then run the pipeline.
+Save the dataset locally or push it to the Hugging Face Hub.
 
 ### Intended Use Cases
 
