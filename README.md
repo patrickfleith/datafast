@@ -2,7 +2,7 @@
 
 <img src="https://raw.githubusercontent.com/patrickfleith/datafast/main/assets/Datafast%20Logo.png" alt="Datafast logo" width="160">
 
-<h3>Generate diverse synthetic datasets with LLMs, from a pipeline you can read.</h3>
+<h3>Generate high-quality and diverse synthetic data with LLMs.</h3>
 
 [![PyPI version](https://img.shields.io/pypi/v/datafast?color=f5c518)](https://pypi.org/project/datafast/)
 [![Python versions](https://img.shields.io/pypi/pyversions/datafast)](https://pypi.org/project/datafast/)
@@ -18,17 +18,14 @@
 
 </div>
 
-Datafast is a Python library for developers and ML engineers who need a dataset for an
-LLM project and do not have one yet.
+Datafast is a Python library for generating synthetic datasets with LLMs.
 
-A plain script that loops over prompts gets hard to control. You must write the
-nested loops that cover each combination of inputs. Without checkpoints, a crash
-halfway means you pay for the same LLM calls again. Without metadata, you cannot tell
-which input and which model made each record.
+You assemble building blocks for data operations into a custom pipeline that generates a dataset
+matching your project needs. It works with open-weight and proprietary models.
 
-With datafast, you declare the dimensions that your dataset must cover, connect steps
-into a pipeline, and run it. The pipeline writes the dataset to JSONL, CSV, Parquet or
-the Hugging Face Hub.
+Declare the dimensions your dataset must cover, connect generation and data processing
+steps, and run the pipeline. Save the dataset to JSONL, CSV, Parquet or the Hugging
+Face Hub.
 
 ## Install
 
@@ -36,7 +33,7 @@ the Hugging Face Hub.
 pip install datafast
 ```
 
-Datafast needs Python 3.10 or newer. Extras add Parquet, the Hugging Face Hub and
+Datafast needs Python 3.11 or newer. Extras add Parquet, the Hugging Face Hub and
 Langfuse tracing: see [Installation](https://patrickfleith.github.io/datafast/installation/).
 
 ## Quick example
