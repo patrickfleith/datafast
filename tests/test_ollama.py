@@ -74,6 +74,11 @@ def test_ollama_messages_with_structured_output():
 
 
 @pytest.mark.integration
+@pytest.mark.xfail(
+    strict=True,
+    reason="litellm maps frequency_penalty to Ollama repeat_penalty unscaled; "
+    "0.15 rewards repetition. Present since 0.0.36, fixed in v1.",
+)
 def test_ollama_with_all_parameters():
     """Test Ollama provider with all optional parameters specified."""
     provider = OllamaProvider(

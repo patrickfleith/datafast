@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datafast"
-version = "0.0.36"
+version = "0.0.37"
 description = "A Python package for synthetic text dataset generation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,7 +30,7 @@ dependencies = [
     "anthropic",
     "openai",
     "pydantic",
-    "litellm==1.82.6",  # Pin to safe version - DO NOT UPDATE - versions 1.82.7 and 1.82.8 compromised with malware
+    "litellm>=1.108.4,<2",  # 1.108.4 fixes the MCP import regression; excludes compromised 1.82.7 and 1.82.8
     "gradio",
     "loguru",
 ]
